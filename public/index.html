@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>家庭服务器管理面板</title>
-  <link rel="stylesheet" href="/css/style.css?v=1.6.0">
+  <link rel="stylesheet" href="/css/style.css?v=1.7.0">
 </head>
 <body>
   <div class="app-container">
@@ -58,6 +58,10 @@
         <a href="#cron" class="nav-item" data-page="cron">
           <span class="nav-icon">⏰</span>
           <span>定时任务</span>
+        </a>
+        <a href="#pm2" class="nav-item" data-page="pm2">
+          <span class="nav-icon">🔄</span>
+          <span>进程管理</span>
         </a>
         <a href="#settings" class="nav-item" data-page="settings">
           <span class="nav-icon">⚙️</span>
@@ -261,6 +265,35 @@
           </div>
         </section>
 
+        <!-- PM2 进程管理 -->
+        <section class="page hidden" id="page-pm2">
+          <h1>进程管理</h1>
+          <div class="stats-grid" id="pm2Overview" style="margin-bottom:16px;"></div>
+          <div class="page-toolbar">
+            <button class="btn btn-primary" id="btnPM2Refresh">🔄 刷新</button>
+            <button class="btn" id="btnPM2Save">💾 保存配置</button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="pm2Table">
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th>PID</th>
+                  <th>状态</th>
+                  <th>CPU</th>
+                  <th>内存</th>
+                  <th>运行时间</th>
+                  <th>重启</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="pm2Tbody">
+                <tr class="empty-row"><td colspan="8">点击刷新获取进程列表</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <!-- 操作日志 -->
         <section class="page hidden" id="page-log">
           <h1>操作日志</h1>
@@ -357,17 +390,18 @@
 
   <div class="notify-bar hidden" id="notifyBar"></div>
 
-  <script src="/js/utils.js?v=1.6.0"></script>
-  <script src="/js/api.js?v=1.6.0"></script>
-  <script src="/js/pages/dashboard.js?v=1.6.0"></script>
-  <script src="/js/pages/ddns.js?v=1.6.0"></script>
-  <script src="/js/pages/cert.js?v=1.6.0"></script>
-  <script src="/js/pages/nginx.js?v=1.6.0"></script>
-  <script src="/js/pages/proxy.js?v=1.6.0"></script>
-  <script src="/js/pages/port.js?v=1.6.0"></script>
-  <script src="/js/pages/log.js?v=1.6.0"></script>
-  <script src="/js/pages/cron.js?v=1.6.0"></script>
-  <script src="/js/pages/settings.js?v=1.6.0"></script>
-  <script src="/js/app.js?v=1.6.0"></script>
+  <script src="/js/utils.js?v=1.7.0"></script>
+  <script src="/js/api.js?v=1.7.0"></script>
+  <script src="/js/pages/dashboard.js?v=1.7.0"></script>
+  <script src="/js/pages/ddns.js?v=1.7.0"></script>
+  <script src="/js/pages/cert.js?v=1.7.0"></script>
+  <script src="/js/pages/nginx.js?v=1.7.0"></script>
+  <script src="/js/pages/proxy.js?v=1.7.0"></script>
+  <script src="/js/pages/port.js?v=1.7.0"></script>
+  <script src="/js/pages/log.js?v=1.7.0"></script>
+  <script src="/js/pages/cron.js?v=1.7.0"></script>
+  <script src="/js/pages/pm2.js?v=1.7.0"></script>
+  <script src="/js/pages/settings.js?v=1.7.0"></script>
+  <script src="/js/app.js?v=1.7.0"></script>
 </body>
 </html>

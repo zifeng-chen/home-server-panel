@@ -173,3 +173,22 @@
 | public/js/pages/dashboard.js | 重写 - 去重 + 11卡片 |
 | public/js/app.js | 注册 log/cron 页面加载器 |
 | public/index.html | 新增日志/定时任务页面 + 导航 |
+
+## v1.7.0 - 2026-05-31
+
+### 🔄 进程管理 (PM2)
+- pm2-service.js: pm2 jlist 查询 + 启停/重启/删除操作
+- routes/pm2.js: GET/POST/DELETE API 端点
+- PM2 页面: 进程列表 + 概览卡片 + 操作按钮
+- Dashboard 集成: 显示 PM2 进程数状态
+
+### 🐛 修复
+- app.js pageLoaders 去重 (log/cron 重复键)
+- dashboard.js 添加防并发/防重入标记
+- safeFetch 单接口容错
+- 缓存破坏 v=1.7.0 全部 JS/CSS
+
+### 📁 新增文件
+- src/services/pm2-service.js
+- src/routes/pm2.js
+- public/js/pages/pm2.js

@@ -43,6 +43,7 @@ app.use('/api/port', require('./routes/port'));
 app.use('/api/system', require('./routes/system'));
 app.use('/api/log', require('./routes/log'));
 app.use('/api/cron', require('./routes/cron'));
+app.use('/api/pm2', require('./routes/pm2'));
 
 // SPA fallback
 app.use((req, res, next) => {
@@ -63,7 +64,7 @@ server.listen(PORT, () => {
   console.log(`🏠 家庭服务器管理面板已启动: http://0.0.0.0:${PORT}`);
   console.log(`📅 启动时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
   console.log(`👤 默认账号: admin / admin123`);
-  console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron`);
+  console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron PM2`);
   require('./services/cron-service'); // 启动定时任务
 
 });

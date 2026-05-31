@@ -130,6 +130,17 @@ ${cert.daysRemaining < 0 ? '<p style="color:#F44336">⚠️ 证书已过期，�
       template: 'html'
     });
   }
+
+  // 获取通知服务状态
+  async getStatus() {
+    const configured = !!this.token;
+    return {
+      configured,
+      tokenPreview: this.token ? this.token.substring(0, 8) + '****' : null,
+      provider: 'PushPlus',
+      channel: 'wechat'
+    };
+  }
 }
 
 module.exports = new NotifyService();

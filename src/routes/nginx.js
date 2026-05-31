@@ -3,6 +3,16 @@ const fs = require('fs');
 const router = express.Router();
 const nginxService = require('../services/nginx-service');
 
+// GET /api/nginx - 根路由，返回状态
+router.get('/', async (req, res) => {
+  try {
+    const status = await nginxService.getStatus();
+    res.json({ success: true, data: status });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/nginx/status - Nginx 完整状态
 router.get('/status', async (req, res) => {
   try {

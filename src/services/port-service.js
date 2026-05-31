@@ -50,7 +50,7 @@ class PortService {
       const cols = lines[i].trim().split(/\s+/);
       if (cols.length < 8) continue;
 
-      const process = headerMap.cmd != null ? cols[headerMap.cmd] : cols[0];
+      const process = (headerMap.cmd != null ? cols[headerMap.cmd] : cols[0]).replace(/\\x[0-9a-fA-F]{2}/g, ' ').trim();
       const pid = headerMap.pid != null ? cols[headerMap.pid] : cols[1];
       const nameCol = headerMap.name != null ? cols[headerMap.name] : cols[cols.length - 1];
 

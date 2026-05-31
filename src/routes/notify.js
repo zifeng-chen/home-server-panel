@@ -4,6 +4,16 @@ const notifyService = require('../services/notify-service');
 const ddnsService = require('../services/ddns-service');
 const sslService = require('../services/ssl-service');
 
+// GET /api/notify - 根路由，返回通知服务状态
+router.get('/', async (req, res) => {
+  try {
+    const status = await notifyService.getStatus();
+    res.json({ success: true, data: status });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/notify/test - 测试推送
 router.post('/test', async (req, res) => {
   try {

@@ -192,3 +192,16 @@
 - src/services/pm2-service.js
 - src/routes/pm2.js
 - public/js/pages/pm2.js
+
+## v1.7.1 - 2026-05-31
+
+### 🐛 修复
+- Nginx 路由：添加 GET /api/nginx 根路由（之前返回 404）
+- Notify 路由：添加 GET /api/notify 根路由 + getStatus() 方法
+- System Info：添加 modules 列表和 panelVersion 字段
+- Port 进程名：修复 lsof `\x20` 转义（如 Plex\x20M → Plex M）
+
+### 📁 修改文件
+- src/routes/nginx.js, notify.js, system.js
+- src/services/notify-service.js, port-service.js
+- public/index.html, public/js/app.js (version update)

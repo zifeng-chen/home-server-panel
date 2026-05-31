@@ -15,7 +15,9 @@ router.get('/info', (req, res) => {
     },
     uptime: Math.floor(os.uptime()),
     loadavg: os.loadavg(),
-    nodeVersion: process.version
+    nodeVersion: process.version,
+    modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2'],
+    panelVersion: '1.7.1'
   };
   res.json({ success: true, data: info });
 });

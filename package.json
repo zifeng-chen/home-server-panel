@@ -1,0 +1,30 @@
+{
+  "name": "home-server-panel",
+  "version": "1.6.1",
+  "description": "家庭服务器运维管理面板 - DDNS/SSL/Nginx/反向代理/端口管理",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop home-server-panel",
+    "pm2:restart": "pm2 restart home-server-panel"
+  },
+  "keywords": [
+    "ddns",
+    "ssl",
+    "nginx",
+    "reverse-proxy",
+    "letsencrypt"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@alicloud/alidns20150109": "^4.4.1",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/pop-core": "^1.8.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0"
+  }
+}

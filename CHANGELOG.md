@@ -222,3 +222,17 @@
 - src/routes/nginx.js
 - public/js/pages/nginx.js
 - public/css/style.css (spinner 动画)
+
+## v1.8.1 - 2026-06-01
+
+### 🐛 修复
+- Nginx 版本检测：分离 `nginx -v`/`-t` 检测，stderr 不再导致版本丢失
+- 反向代理：兼容 `sourceHost/targetHost` + `domain/target` 双字段格式
+- 系统设置：实现 POST /api/system/config 写入 .env（原返回「功能开发中」）
+- 设置页：补全 pageLoaders 中 `settings: loadSettings`（侧栏可点但无 JS 绑定）
+- proxy catch 块：version 字段兜底
+
+### 📁 修改文件
+- src/routes/system.js, proxy.js
+- src/services/nginx-service.js
+- public/js/app.js

@@ -1,6 +1,6 @@
 {
   "name": "home-server-panel",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "家庭服务器运维管理面板 - DDNS/SSL/Nginx/反向代理/端口管理",
   "main": "src/server.js",
   "scripts": {

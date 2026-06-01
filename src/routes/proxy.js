@@ -21,7 +21,23 @@ router.get('/stats', (req, res) => {
 // POST /api/proxy - 添加规则
 router.post('/', (req, res) => {
   try {
-    const rule = proxyService.addRule(req.body);
+    // 兼容两种字段命名 (前端可能用 domain/target，后端存 sourceHost/targetHost)
+    const body = { ...req.body };
+    if (!body.sourceHost && body.domain) body.sourceHost = body.domain;
+    if (!body.targetHost) {
+      if (body.target) {
+        // 解析 http://localhost:8080 格式
+        const m = body.target.match(/^https?:\/\/([^:/]+)(?::(\d+))?/);
+        if (m) {
+          body.targetHost = m[1];
+          if (m[2]) body.targetPort = parseInt(m[2]);
+          body.targetProtocol = body.target.startsWith('https') ? 'https' : 'http';
+        } else {
+          body.targetHost = body.target;
+        }
+      }
+    }
+    const rule = proxyService.addRule(body);
     res.json({ success: true, message: '代理规则已添加', data: { rule } });
   } catch (err) {
     res.json({ success: false, message: err.message });

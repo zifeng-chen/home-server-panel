@@ -17,7 +17,7 @@ router.get('/info', (req, res) => {
     loadavg: os.loadavg(),
     nodeVersion: process.version,
     modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2'],
-    panelVersion: '1.7.1'
+    panelVersion: '1.8.1'
   };
   res.json({ success: true, data: info });
 });
@@ -54,7 +54,39 @@ router.get('/config', (req, res) => {
 
 // POST /api/system/config - 保存配置
 router.post('/config', (req, res) => {
-  res.json({ success: false, message: '功能开发中' });
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const dotenvPath = path.join(__dirname, '..', '..', '.env');
+
+    // 读取现有 .env
+    let envContent = '';
+    if (fs.existsSync(dotenvPath)) {
+      envContent = fs.readFileSync(dotenvPath, 'utf-8');
+    }
+
+    const updater = (key, value) => {
+      const re = new RegExp(`^${key}=.*$`, 'm');
+      const line = `${key}=${value}`;
+      if (re.test(envContent)) {
+        envContent = envContent.replace(re, line);
+      } else {
+        envContent += `\n${line}`;
+      }
+    };
+
+    const { aliKeyId, aliKeySecret, pushplusToken, acmeEmail, acmeDns } = req.body;
+    if (aliKeyId && aliKeyId.indexOf('****') === -1) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
+    if (aliKeySecret && aliKeySecret !== '****') updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
+    if (pushplusToken) updater('PUSHPLUS_TOKEN', pushplusToken);
+    if (acmeEmail) updater('ACME_EMAIL', acmeEmail);
+    if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
+
+    fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
+    res.json({ success: true, message: '配置已保存，重启后生效' });
+  } catch (err) {
+    res.json({ success: false, message: '保存失败: ' + err.message });
+  }
 });
 
 module.exports = router;

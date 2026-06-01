@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.8.0',
+  version: '1.8.1',
   NOTIFY_DURATION: 3000,
   _pending: {},
   isPending(key) {
@@ -84,5 +84,6 @@ App.pageLoaders = {
   port: loadPort,
   pm2: loadPM2,
   log: loadLog,
-  cron: loadCron
+  cron: loadCron,
+  settings: loadSettings
 };

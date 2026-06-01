@@ -65,17 +65,30 @@ class NginxService {
     }
 
     try {
-      const version = await this._exec(`${this.nginxBin} -v 2>&1`);
-      const testResult = await this._exec(`${this.nginxBin} -t 2>&1`);
-      const running = await this._isRunning();
-      const pid = running ? await this._getPid() : null;
+      // nginx -v 输出到 stderr，分开处理
+      let version = 'unknown';
+      try {
+        const vOutput = await this._exec(`${this.nginxBin} -v 2>&1`);
+        version = (vOutput.match(/nginx\/([\d.]+)/) || [])[1] || 'unknown';
+      } catch (e) { /* version 获取失败，使用默认值 */ }
+
+      let running = false;
+      let pid = null;
+      let testResult = '';
+      try {
+        testResult = await this._exec(`${this.nginxBin} -t 2>&1`);
+        running = await this._isRunning();
+        pid = running ? await this._getPid() : null;
+      } catch (e) {
+        testResult = e.message;
+      }
 
       return {
         installed: true,
         running,
         pid,
-        version: (version.match(/nginx\/([\d.]+)/) || [])[1] || 'unknown',
-        configTest: testResult.includes('successful') ? 'ok' : 'error',
+        version,
+        configTest: testResult.includes('successful') || testResult.includes('ok') ? 'ok' : 'error',
         configTestOutput: testResult,
         nginxBin: this.nginxBin,
         configDir: this.configDir,
@@ -88,6 +101,7 @@ class NginxService {
       return {
         installed: true,
         running: false,
+        version: 'unknown',
         nginxBin: this.nginxBin,
         configDir: this.configDir,
         error: err.message

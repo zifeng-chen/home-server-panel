@@ -205,3 +205,20 @@
 - src/routes/nginx.js, notify.js, system.js
 - src/services/notify-service.js, port-service.js
 - public/index.html, public/js/app.js (version update)
+
+## v1.8.0 - 2026-06-01
+
+### ✨ 新增
+- Nginx 一键安装 + SSE 实时进度追踪
+  - GET /api/nginx/install/stream SSE端点，支持 brew/apt/yum/apk
+  - 前端实时终端式日志输出，安装错误可视化
+  - 支持 SSH 部署后的远程安装（sudo + stream）
+- POST /api/nginx/install 安装引导API（返回平台推荐的安装方式）
+
+### 🔧 优化
+- installNginx 弹窗UI重做：方法选择按钮 + 实时进度面板
+
+### 📁 修改文件
+- src/routes/nginx.js
+- public/js/pages/nginx.js
+- public/css/style.css (spinner 动画)

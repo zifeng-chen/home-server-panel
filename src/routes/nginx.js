@@ -101,33 +101,111 @@ router.get('/logs', async (req, res) => {
   }
 });
 
-// POST /api/nginx/install - 安装 Nginx（引导执行）
+// GET /api/nginx/install/stream - SSE 实时安装进度
+router.get('/install/stream', (req, res) => {
+  const platform = nginxService.platform;
+  let { method } = req.query;
+
+  // 平台默认安装方式
+  if (!method) {
+    method = platform === 'darwin' ? 'brew' : 'apt';
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  const send = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+  };
+
+  // 检查是否已安装
+  if (nginxService.nginxBin) {
+    send('done', { message: 'Nginx 已安装', installed: true });
+    return res.end();
+  }
+
+  // 构建安装命令
+  let cmd;
+  if (method === 'brew' && platform === 'darwin') {
+    cmd = 'brew install nginx 2>&1';
+  } else if (method === 'apt' && platform === 'linux') {
+    cmd = 'sudo apt-get update -qq 2>&1 && sudo apt-get install -y nginx 2>&1';
+  } else if (method === 'yum' && platform === 'linux') {
+    cmd = 'sudo yum install -y nginx 2>&1';
+  } else if (method === 'apk' && platform === 'linux') {
+    cmd = 'sudo apk add nginx 2>&1';
+  } else {
+    send('error', { message: `不支持的平台(${platform})或安装方式(${method})` });
+    return res.end();
+  }
+
+  send('start', { command: cmd, platform, method });
+
+  const { exec } = require('child_process');
+  const child = exec(cmd, { timeout: 600000, maxBuffer: 1024 * 1024 });
+
+  let buffer = '';
+  const flushLines = (data, type) => {
+    buffer += data.toString();
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // 不完整行保留
+    for (const line of lines) {
+      if (line.trim()) {
+        send('output', { text: line, stream: type });
+      }
+    }
+  };
+
+  child.stdout.on('data', (data) => flushLines(data, 'stdout'));
+  child.stderr.on('data', (data) => flushLines(data, 'stderr'));
+
+  child.on('close', (code) => {
+    // flush remaining buffer
+    if (buffer.trim()) {
+      send('output', { text: buffer.trim(), stream: 'stdout' });
+    }
+    if (code === 0) {
+      nginxService._detectPaths();
+      send('done', { message: '安装成功!', installed: true, code });
+    } else {
+      send('error', { message: `安装失败 (退出码: ${code})`, code });
+    }
+    res.end();
+  });
+
+  child.on('error', (err) => {
+    send('error', { message: err.message });
+    res.end();
+  });
+
+  req.on('close', () => {
+    child.kill();
+  });
+});
+
+// POST /api/nginx/install - 安装引导（返回推荐命令）
 router.post('/install', async (req, res) => {
   try {
-    const { method } = req.body;
     const guide = await nginxService.getInstallGuide();
-    
     if (guide.installed) {
-      return res.json({ success: true, message: 'Nginx 已安装' });
+      return res.json({ success: true, data: { installed: true, message: 'Nginx 已安装' } });
     }
-
-    // 只支持 Homebrew 自动安装
-    if (method === 'brew' && nginxService.platform === 'darwin') {
-      const { exec } = require('child_process');
-      exec('brew install nginx', { timeout: 300000 }, (err, stdout, stderr) => {
-        if (err && !fs.existsSync('/opt/homebrew/sbin/nginx') && !fs.existsSync('/usr/local/sbin/nginx')) {
-          return res.json({ success: false, message: '安装失败: ' + (stderr || err.message).slice(-200) });
-        }
-        nginxService._detectPaths();
-        res.json({ success: true, message: 'Nginx 安装完成' });
-      });
-      return; // response sent in callback
-    }
-
     res.json({
-      success: false,
-      message: '请手动执行安装命令',
-      data: { commands: guide.guide?.commands || [] }
+      success: true,
+      data: {
+        installed: false,
+        platform: nginxService.platform,
+        recommended: nginxService.platform === 'darwin' ? 'brew' : 'apt',
+        methods: nginxService.platform === 'linux'
+          ? ['apt', 'yum', 'apk']
+          : ['brew'],
+        commands: guide.guide?.commands || []
+      }
     });
   } catch (err) {
     res.json({ success: false, message: err.message });

@@ -53,3 +53,8 @@
 - [ ] SSL 自动续期定时任务
 - [ ] 服务健康检查（HTTP 探测）
 - [ ] 仪表盘增强（DDNS状态/证书到期/端口在线数）
+### ✅ Phase 11 — Nginx 一键安装 + SSE 进度 (v1.8.0)
+- [x] SSE 安装流端点 (`GET /api/nginx/install/stream`)
+- [x] 安装引导API (`POST /api/nginx/install`)
+- [x] 前端实时终端日志 UI (EventSource + 滚动)
+- [x] 多平台支持 (brew/apt/yum/apk)

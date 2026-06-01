@@ -1,8 +1,72 @@
 // PM2 进程管理服务
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const os = require('os');
+const fs = require('fs');
 
 class Pm2Service {
+  // 检查 PM2 是否已安装
+  isInstalled() {
+    try {
+      execSync('which pm2 2>/dev/null || npm list -g pm2 2>/dev/null', { timeout: 3000, encoding: 'utf-8' });
+      return true;
+    } catch (e) {
+      try {
+        const ver = execSync('pm2 -v 2>/dev/null', { timeout: 3000, encoding: 'utf-8' }).trim();
+        return !!ver;
+      } catch (e2) {
+        return false;
+      }
+    }
+  }
+
+  // 获取 PM2 守护进程状态
+  getDaemonStatus() {
+    try {
+      // 先检查 PM2 命令是否存在
+      execSync('which pm2 2>/dev/null', { timeout: 3000, encoding: 'utf-8' });
+    } catch (e) {
+      return { installed: false, running: false, version: '' };
+    }
+
+    // PM2 已安装，检查守护进程
+    try {
+      const raw = execSync('pm2 ping 2>&1 || true', { timeout: 3000, encoding: 'utf-8' });
+      const running = raw.includes('pong') || raw.includes('[PM2]');
+      let pm2Ver = '';
+      try { pm2Ver = execSync('pm2 -v 2>/dev/null', { timeout: 2000, encoding: 'utf-8' }).trim(); } catch (e) {}
+      return { installed: true, running, version: pm2Ver };
+    } catch (err) {
+      return { installed: true, running: false, version: '' };
+    }
+  }
+
+  // PM2 安装引导信息
+  getInstallGuide() {
+    const nodeVer = process.version;
+    const npmVer = (() => { try { return execSync('npm -v 2>/dev/null', { timeout: 3000, encoding: 'utf-8' }).trim(); } catch (e) { return 'unknown'; } })();
+    const globalPath = (() => { try { return execSync('npm root -g 2>/dev/null', { timeout: 3000, encoding: 'utf-8' }).trim(); } catch (e) { return 'unknown'; } })();
+
+    const installed = this.isInstalled();
+    const daemon = installed ? this.getDaemonStatus() : null;
+
+    return {
+      success: true,
+      data: {
+        installed,
+        daemonRunning: daemon?.running || false,
+        pm2Version: daemon?.version || '',
+        nodeVersion: nodeVer,
+        npmVersion: npmVer,
+        globalNpmPath: globalPath,
+        guides: [
+          { step: 1, title: '安装 PM2', cmd: 'npm install -g pm2', desc: '全局安装 PM2 进程管理器' },
+          { step: 2, title: '创建 ecosystem 配置', cmd: 'pm2 init', desc: '在项目目录生成 ecosystem.config.js' },
+          { step: 3, title: '启动应用（示例）', cmd: 'pm2 start ecosystem.config.js', desc: '按配置文件启动进程' },
+          { step: 4, title: '设置开机自启', cmd: 'pm2 startup && pm2 save', desc: '让 PM2 随系统启动' }
+        ]
+      }
+    };
+  }
   // 获取所有 PM2 进程
   getProcesses() {
     try {

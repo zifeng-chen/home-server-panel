@@ -85,5 +85,6 @@ App.pageLoaders = {
   pm2: loadPM2,
   log: loadLog,
   cron: loadCron,
+  docker: loadDocker,
   settings: loadSettings
 };

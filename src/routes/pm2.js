@@ -3,6 +3,16 @@ const express = require('express');
 const router = express.Router();
 const pm2Service = require('../services/pm2-service');
 
+// PM2 状态检测（安装/守护进程）
+router.get('/status', (req, res) => {
+  res.json({ success: true, data: pm2Service.getDaemonStatus() });
+});
+
+// PM2 安装引导
+router.get('/guide', (req, res) => {
+  res.json(pm2Service.getInstallGuide());
+});
+
 // 获取所有进程
 router.get('/', (req, res) => {
   res.json(pm2Service.getProcesses());

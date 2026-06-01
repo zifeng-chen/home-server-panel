@@ -167,7 +167,6 @@ class DockerService {
 
   async getStats(id) {
     await this._init();
-    // --no-stream 获取当前快照
     const format = '"{{json .}}"';
     const cmd = `${this.getDockerCmd()} stats --no-stream --format ${format} ${id}`;
     const raw = this._execSync(cmd);
@@ -189,12 +188,31 @@ class DockerService {
   }
 
   async getAllStats() {
-    const containers = await this.listContainers(false); // running only
+    await this._init();
+    if (!this._available) return [];
+    // 批量获取：一次 docker stats --all 获取所有容器快照，避免逐个 execSync 阻塞事件循环
+    const format = '"{{json .}}"';
+    const cmd = `${this.getDockerCmd()} stats --no-stream --all --format ${format} 2>/dev/null`;
+    const raw = this._execSync(cmd);
     const stats = [];
-    for (const c of containers) {
+    const lines = raw.split('\n').filter(l => l.trim());
+    for (const line of lines) {
       try {
-        const s = await this.getStats(c.id);
-        if (s) stats.push(s);
+        const data = JSON.parse(line.trim());
+        // 过滤已停止的容器（CPU 为 0.00% 且无内存使用）
+        const cpuStr = (data.CPUPerc || '').replace('%', '');
+        const memStr = (data.MemUsage || '').split('/')[0]?.trim();
+        if (cpuStr === '0.00' && (memStr === '0B' || memStr === '0KiB')) continue;
+        stats.push({
+          name: data.Name,
+          cpuPercent: parseFloat(cpuStr) || 0,
+          memoryUsage: memStr || '0',
+          memoryLimit: (data.MemUsage || '').split('/')[1]?.trim() || '0',
+          memoryPercent: parseFloat((data.MemPerc || '').replace('%', '')) || 0,
+          netIO: data.NetIO || '--',
+          blockIO: data.BlockIO || '--',
+          pids: parseInt(data.PIDs) || 0
+        });
       } catch (e) {}
     }
     return stats;

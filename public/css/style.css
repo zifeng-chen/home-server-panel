@@ -470,5 +470,29 @@ body {
   .settings-grid { grid-template-columns: 1fr; }
   .page-container { padding: 16px; }
 }
+/* ====== SSH 终端 ====== */
+#ssh-terminal {
+  background: #0f172a;
+  min-height: 200px;
+}
+
+#ssh-terminal .xterm {
+  padding: 8px;
+  height: 100%;
+}
+
+#ssh-terminal .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+#ssh-terminal .xterm-viewport::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+#ssh-terminal .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+
 /* 旋转动画 */
 @keyframes spin { to { transform: rotate(360deg); } }

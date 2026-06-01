@@ -86,5 +86,6 @@ App.pageLoaders = {
   log: loadLog,
   cron: loadCron,
   docker: loadDocker,
+  ssh: loadSSH,
   settings: loadSettings
 };

@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.8.6',
+  version: '1.8.6+1780373532',
   NOTIFY_DURATION: 3000,
   _pending: {},
   isPending(key) {

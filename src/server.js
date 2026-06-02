@@ -30,8 +30,32 @@ app.use('/api/auth', (req, res, next) => {
 // Auth 中间件
 app.use(auth.middleware());
 
-// 静态文件
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// 静态文件 - 显式设置 MIME 类型（兼容 NAS 环境下 mime-types 数据库缺失）
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    } else if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    } else if (filePath.endsWith('.html') || filePath.endsWith('.htm')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    } else if (filePath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+    } else if (filePath.endsWith('.json')) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.ico')) {
+      res.setHeader('Content-Type', 'image/x-icon');
+    } else if (filePath.endsWith('.woff2')) {
+      res.setHeader('Content-Type', 'font/woff2');
+    } else if (filePath.endsWith('.woff')) {
+      res.setHeader('Content-Type', 'font/woff');
+    }
+  }
+}));
 
 // API 路由
 app.use('/api/ddns', require('./routes/ddns'));

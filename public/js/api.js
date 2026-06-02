@@ -6,7 +6,7 @@ const Api = {
     return localStorage.getItem('hsp_token');
   },
 
-  async request(method, path, data) {
+  async request(method, path, data, signal) {
     const headers = { 'Content-Type': 'application/json' };
     const token = this._getToken();
     if (token) headers['x-auth-token'] = token;
@@ -16,6 +16,7 @@ const Api = {
       headers,
       credentials: 'same-origin'
     };
+    if (signal) opts.signal = signal;
 
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
       opts.body = JSON.stringify(data);
@@ -37,7 +38,7 @@ const Api = {
     }
   },
 
-  get(path) { return this.request('GET', path); },
+  get(path, signal) { return this.request('GET', path, null, signal); },
   post(path, data) { return this.request('POST', path, data); },
   put(path, data) { return this.request('PUT', path, data); },
   del(path, data) { return this.request('DELETE', path, data || {}); }

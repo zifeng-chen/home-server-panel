@@ -20,10 +20,18 @@ async function loadDashboard() {
   try {
     console.log('[Dashboard] 开始加载...');
 
-    // 单接口失败不影响其他
-    const safeFetch = async (path, fallback) => {
-      try { return await Api.get(path); }
-      catch (e) { console.warn('[Dashboard]', path, '失败:', e.message); return fallback; }
+    // 单接口失败不影响其他，每个请求超时 10 秒
+    const safeFetch = async (path, fallback, timeoutMs) => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(function() { controller.abort(); }, timeoutMs || 10000);
+        const result = await Api.get(path, controller.signal);
+        clearTimeout(timer);
+        return result;
+      } catch (e) {
+        console.warn('[Dashboard]', path, '失败:', e.message);
+        return fallback;
+      }
     };
 
     const [info, uptime, ddns, cert, nginxRes, proxy, port] = await Promise.all([

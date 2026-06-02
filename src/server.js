@@ -33,6 +33,11 @@ app.use(auth.middleware());
 // 静态文件 - 显式设置 MIME 类型（兼容 NAS 环境下 mime-types 数据库缺失）
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   setHeaders: (res, filePath) => {
+    // 禁用缓存，确保浏览器始终获取最新版本
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     } else if (filePath.endsWith('.css')) {

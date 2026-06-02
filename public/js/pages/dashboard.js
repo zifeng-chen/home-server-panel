@@ -2,17 +2,6 @@
 let dashboardLoaded = false;
 let dashboardInProgress = false;
 
-// 🔍 诊断日志（写入 DOM 方便用户看到）
-function _diag(log) {
-  try {
-    var el = document.createElement('div');
-    el.style.cssText = 'padding:4px 8px;font:11px monospace;border-bottom:1px solid #1e293b;color:' + (log.indexOf('❌')>=0?'#f87171':'#4ade80');
-    el.textContent = log;
-    var dg = document.getElementById('_diagPanel');
-    if (dg) dg.appendChild(el);
-  } catch(e) {}
-}
-
 async function loadDashboard() {
   const grid = document.getElementById('statsGrid');
   if (!grid) return;
@@ -23,37 +12,23 @@ async function loadDashboard() {
 
   dashboardInProgress = true;
 
-  try {
-    // 🔍 创建诊断面板
-    var diagPanel = document.createElement('div');
-    diagPanel.id = '_diagPanel';
-    diagPanel.style.cssText = 'margin:8px 0;background:#0f172a;border:1px solid #1e293b;border-radius:8px;max-height:300px;overflow:auto;padding:4px 0;';
-    diagPanel.innerHTML = '<div style="padding:4px 8px;color:#f59e0b;font:12px monospace;font-weight:bold;">🔍 Dashboard 诊断日志</div>';
-    grid.parentNode.insertBefore(diagPanel, grid.nextSibling);
-    _diag('🟡 loadDashboard() 已触发');
-    
-    // 显示加载状态
-    grid.innerHTML = Array(6).fill(
-      '<div class="stat-card loading"><div class="stat-icon">⏳</div><div class="stat-info"><span class="stat-label">加载中...</span><span class="stat-value">--</span></div></div>'
-    ).join('');
+  // 显示加载状态
+  grid.innerHTML = Array(6).fill(
+    '<div class="stat-card loading"><div class="stat-icon">⏳</div><div class="stat-info"><span class="stat-label">加载中...</span><span class="stat-value">--</span></div></div>'
+  ).join('');
 
-    _diag('🔄 开始并行请求 7 个 API...');
+  try {
     console.log('[Dashboard] 开始加载...');
 
     // 单接口失败不影响其他，每个请求超时 10 秒
     const safeFetch = async (path, fallback, timeoutMs) => {
-      var t0 = Date.now();
       try {
         const controller = new AbortController();
         const timer = setTimeout(function() { controller.abort(); }, timeoutMs || 10000);
         const result = await Api.get(path, controller.signal);
         clearTimeout(timer);
-        var ms = Date.now() - t0;
-        _diag('✅ ' + path + ' (' + ms + 'ms, success=' + result.success + ')');
         return result;
       } catch (e) {
-        var ms = Date.now() - t0;
-        _diag('❌ ' + path + ' 异常: ' + e.message + ' (' + ms + 'ms)');
         console.warn('[Dashboard]', path, '失败:', e.message);
         return fallback;
       }
@@ -125,7 +100,6 @@ async function loadDashboard() {
       + '</div>';
     }).join('');
 
-    _diag('📊 渲染 ' + cards.length + ' 张卡片到页面');
     console.log('[Dashboard] 渲染完成, ' + cards.length + ' 张卡片');
 
     // 侧边栏版本和运行时间
@@ -137,7 +111,6 @@ async function loadDashboard() {
     dashboardLoaded = true;
 
   } catch (err) {
-    _diag('💥 loadDashboard 崩溃: ' + (err.message || '未知错误'));
     console.error('[Dashboard] 渲染失败:', err);
     grid.innerHTML = '<div class="stat-card" style="grid-column:1/-1;text-align:center;color:var(--danger);padding:24px;">⚠️ Dashboard 加载失败: ' + (err.message || '未知错误') + '<br><small>请刷新页面或检查控制台</small></div>';
   } finally {

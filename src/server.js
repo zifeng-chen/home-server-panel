@@ -9,6 +9,11 @@ const logService = require('./services/log-service');
 const app = express();
 const PORT = process.env.SERVER_PORT || 3456;
 
+// 永久缓存爆破：每次启动生成唯一版本号，注入 index.html
+// 浏览器端所有 JS/CSS URL 携带此版本号，重启即刷新缓存
+const BUILD_ID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+console.log('🔑 构建版本: ' + BUILD_ID);
+
 // Cookie 解析
 app.use(cookieParser());
 
@@ -30,13 +35,36 @@ app.use('/api/auth', (req, res, next) => {
 // Auth 中间件
 app.use(auth.middleware());
 
+// 缓存爆破中间件：拦截 index.html 请求，注入 BUILD_ID
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html') {
+    const fs = require('fs');
+    const filePath = path.join(__dirname, '..', 'public', 'index.html');
+    try {
+      let html = fs.readFileSync(filePath, 'utf-8');
+      html = html.replace(/\{BUILD_ID\}/g, BUILD_ID);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache'); // index.html 每次验证，其他静态文件用 ?v=BUILD_ID 长缓存
+      return res.send(html);
+    } catch (e) {
+      return next();
+    }
+  }
+  next();
+});
+
+// 将 BUILD_ID 注入 app 以供其他模块使用
+app.locals.buildId = BUILD_ID;
+
 // 静态文件 - 显式设置 MIME 类型（兼容 NAS 环境下 mime-types 数据库缺失）
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   setHeaders: (res, filePath) => {
-    // 禁用缓存，确保浏览器始终获取最新版本
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    // JS/CSS 文件携带 BUILD_ID 参数，可安全长缓存（变更会自动生成新 ID）
+    if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
 
     if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');

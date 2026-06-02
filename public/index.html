@@ -4,9 +4,74 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>家庭服务器管理面板</title>
-  <link rel="stylesheet" href="/css/style.css?v=1780373532">
+  <link rel="stylesheet" href="/css/style.css?v=1780379661">
 </head>
 <body>
+  <!-- 🔍 诊断面板 -->
+  <div id="hsp-diag" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#0f172a;color:#e2e8f0;font:12px monospace;padding:8px 16px;border-bottom:2px solid #f59e0b;display:none;">
+    <span id="hsp-diag-status">🟡 诊断中...</span>
+    <span id="hsp-diag-msg" style="margin-left:12px;color:#94a3b8;"></span>
+    <button onclick="document.getElementById('hsp-diag').style.display='none'" style="float:right;background:#1e293b;border:1px solid #334155;color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;">✕</button>
+  </div>
+  <script>
+    // 🔍 行内诊断 - 在引入任何外部脚本之前
+    var _diag = { steps: [], ok: 0, fail: 0 };
+    function diagLog(msg, ok) {
+      _diag.steps.push({ msg: msg, ok: ok, t: Date.now() });
+      if (ok) _diag.ok++; else _diag.fail++;
+      var el = document.getElementById('hsp-diag');
+      var st = document.getElementById('hsp-diag-status');
+      var ms = document.getElementById('hsp-diag-msg');
+      if (el) { el.style.display = 'block'; }
+      if (st) { st.textContent = (_diag.fail > 0 ? '🔴' : '🟢') + ' ' + _diag.ok + '/' + (_diag.ok + _diag.fail) + ' | ' + msg; }
+      if (ms) { ms.textContent = (ok ? '✅' : '❌') + ' ' + msg; }
+      console.log('[DIAG] ' + (ok ? '✅' : '❌') + ' ' + msg);
+    }
+    diagLog('行内诊断脚本已运行（确认JS可执行）', true);
+    
+    // 监控脚本加载
+    var _diag_scripts = [];
+    var _diag_observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.tagName === 'SCRIPT' && node.src) {
+            _diag_scripts.push(node.src);
+            node.addEventListener('load', function() { diagLog('脚本加载: ' + node.src.split('/').pop().split('?')[0], true); });
+            node.addEventListener('error', function() { diagLog('脚本失败: ' + node.src.split('/').pop().split('?')[0], false); });
+          }
+        });
+      });
+    });
+    
+    // 检查 <head> 中已存在的脚本
+    document.querySelectorAll('script[src]').forEach(function(s) {
+      if (s.src && !_diag_scripts.includes(s.src)) {
+        _diag_scripts.push(s.src);
+        s.addEventListener('load', function() { diagLog('(head)脚本加载: ' + s.src.split('/').pop().split('?')[0], true); });
+      }
+    });
+    
+    // 页面加载完成后诊断
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        // 检查关键全局变量
+        if (typeof App !== 'undefined') diagLog('App 对象存在', true); else diagLog('App 对象不存在!', false);
+        if (typeof Api !== 'undefined') diagLog('Api 对象存在', true); else diagLog('Api 对象不存在!', false);
+        if (typeof loadDashboard === 'function') diagLog('loadDashboard 函数存在', true); else diagLog('loadDashboard 函数不存在!', false);
+        
+        // 检查页面元素
+        var grid = document.getElementById('statsGrid');
+        if (grid) diagLog('statsGrid 元素存在 (' + grid.children.length + ' 个子元素)', true);
+        else diagLog('statsGrid 元素不存在!', false);
+        
+        // 统计最终卡片数
+        setTimeout(function() {
+          var cards = document.querySelectorAll('.stat-card:not(.loading)');
+          diagLog('最终渲染: ' + cards.length + ' 张有效卡片 | ' + _diag.ok + ' OK / ' + _diag.fail + ' 失败', cards.length > 0);
+        }, 5000);
+      }, 500);
+    });
+  </script>
   <div class="app-container">
     <!-- 侧边栏 -->
     <aside class="sidebar" id="sidebar">
@@ -406,20 +471,20 @@
 
   <div class="notify-bar hidden" id="notifyBar"></div>
 
-  <script src="/js/utils.js?v=1780373532"></script>
-  <script src="/js/api.js?v=1780373532"></script>
-  <script src="/js/pages/dashboard.js?v=1780373532"></script>
-  <script src="/js/pages/ddns.js?v=1780373532"></script>
-  <script src="/js/pages/cert.js?v=1780373532"></script>
-  <script src="/js/pages/nginx.js?v=1780373532"></script>
-  <script src="/js/pages/proxy.js?v=1780373532"></script>
-  <script src="/js/pages/port.js?v=1780373532"></script>
-  <script src="/js/pages/log.js?v=1780373532"></script>
-  <script src="/js/pages/cron.js?v=1780373532"></script>
-  <script src="/js/pages/pm2.js?v=1780373532"></script>
-  <script src="/js/pages/docker.js?v=1780373532"></script>
-  <script src="/js/pages/ssh.js?v=1780373532"></script>
-  <script src="/js/pages/settings.js?v=1780373532"></script>
-  <script src="/js/app.js?v=1780373532"></script>
+  <script src="/js/utils.js?v=1780379661"></script>
+  <script src="/js/api.js?v=1780379661"></script>
+  <script src="/js/pages/dashboard.js?v=1780379661"></script>
+  <script src="/js/pages/ddns.js?v=1780379661"></script>
+  <script src="/js/pages/cert.js?v=1780379661"></script>
+  <script src="/js/pages/nginx.js?v=1780379661"></script>
+  <script src="/js/pages/proxy.js?v=1780379661"></script>
+  <script src="/js/pages/port.js?v=1780379661"></script>
+  <script src="/js/pages/log.js?v=1780379661"></script>
+  <script src="/js/pages/cron.js?v=1780379661"></script>
+  <script src="/js/pages/pm2.js?v=1780379661"></script>
+  <script src="/js/pages/docker.js?v=1780379661"></script>
+  <script src="/js/pages/ssh.js?v=1780379661"></script>
+  <script src="/js/pages/settings.js?v=1780379661"></script>
+  <script src="/js/app.js?v=1780379661"></script>
 </body>
 </html>

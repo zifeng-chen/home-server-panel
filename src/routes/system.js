@@ -17,7 +17,7 @@ router.get('/info', (req, res) => {
     loadavg: os.loadavg(),
     nodeVersion: process.version,
     modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH'],
-    panelVersion: '1.8.6+1780373532'
+    panelVersion: '1.8.6-diag+1780379661'
   };
   res.json({ success: true, data: info });
 });

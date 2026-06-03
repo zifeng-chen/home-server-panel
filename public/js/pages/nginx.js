@@ -281,20 +281,69 @@ window.startNginxInstall = async (method) => {
   }
 };
 
-// 查看日志
-window.viewNginxLogs = async () => {
-  const type = document.getElementById('nginxLogType')?.value || 'error';
+// 查看日志（支持错误/访问切换 + 一键复制）
+window.viewNginxLogs = async (type) => {
+  type = type || 'error';
+
+  const title = `📋 Nginx ${type === 'access' ? '访问' : '错误'}日志`;
+  const body = `
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+      <button class="btn btn-sm ${type==='error'?'btn-primary':'btn-secondary'}" id="logTabError" onclick="viewNginxLogs('error')">错误日志</button>
+      <button class="btn btn-sm ${type==='access'?'btn-primary':'btn-secondary'}" id="logTabAccess" onclick="viewNginxLogs('access')">访问日志</button>
+      <span id="logPath" style="color:var(--text-secondary);font-size:12px;margin-left:auto;">加载中...</span>
+    </div>
+    <div id="logLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
+    <pre id="logContent" style="display:none;max-height:420px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+  `;
+  const footer = `
+    <button class="btn btn-sm btn-secondary" id="btnLogCopy" onclick="copyNginxLog()">📋 一键复制</button>
+    <button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>
+  `;
+  Utils.openModal(title, body, footer);
+
+  // 异步加载日志
   try {
-    const res = await Api.get(`/nginx/logs?type=${type}&lines=100`);
-    if (res.success && res.data) {
-      const logs = res.data.logs || '(空)';
-      const body = `<pre style="max-height:400px;overflow:auto;background:var(--bg-tertiary);padding:12px;border-radius:8px;font-size:11px;white-space:pre-wrap;word-break:break-all;">${logs}</pre>`;
-      Utils.openModal(`${type === 'access' ? '访问' : '错误'}日志 (${res.data.path || ''})`, body, '<button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>');
-    } else {
-      Utils.notify(res.message || '未找到日志', 'error');
+    const res = await Api.get(`/nginx/logs?type=${type}&lines=200`);
+    const logEl = document.getElementById('logContent');
+    const loaderEl = document.getElementById('logLoader');
+    const pathEl = document.getElementById('logPath');
+    if (logEl && loaderEl) {
+      loaderEl.style.display = 'none';
+      logEl.style.display = 'block';
+      if (res.success && res.data) {
+        logEl.textContent = res.data.logs || '(空)';
+        if (pathEl) pathEl.textContent = '📁 ' + (res.data.path || '');
+        window._hspNginxLog = res.data.logs || '';
+      } else {
+        logEl.textContent = res.message || '加载失败';
+        window._hspNginxLog = '';
+      }
     }
   } catch (err) {
-    Utils.notify('加载日志失败', 'error');
+    const loaderEl = document.getElementById('logLoader');
+    if (loaderEl) loaderEl.textContent = '❌ 加载失败: ' + err.message;
+    window._hspNginxLog = '';
+  }
+};
+
+window.copyNginxLog = () => {
+  const text = window._hspNginxLog || '';
+  if (!text) { Utils.notify('没有可复制的日志内容', 'warn'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      Utils.notify('✅ 已复制 ' + text.split('\n').length + ' 行日志', 'success');
+    }).catch(() => {
+      Utils.notify('复制失败，请手动选择', 'error');
+    });
+  } else {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    Utils.notify('✅ 日志已复制', 'success');
   }
 };
 

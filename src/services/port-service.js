@@ -3,19 +3,21 @@ const { exec } = require('child_process');
 const os = require('os');
 
 class PortService {
-  // 扫描本机监听端口
+  // 扫描本机所有被占用端口（TCP+UDP，含 LISTEN/ESTABLISHED 等）
   async scan() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const platform = os.platform();
       
       if (platform === 'darwin' || platform === 'linux') {
-        // 使用 lsof -iTCP -sTCP:LISTEN -nP
-        exec('lsof -iTCP -sTCP:LISTEN -nP 2>/dev/null', { timeout: 10000 }, (err, stdout) => {
+        // 扫描 TCP LISTEN + 全部 UDP（UDP 无连接状态）
+        exec('lsof -iTCP -sTCP:LISTEN -nP 2>/dev/null; echo "---UDP---"; lsof -iUDP -nP 2>/dev/null', { timeout: 15000 }, (err, stdout) => {
           if (err && !stdout) {
-            // fallback 到 ss/netstat
             return this._fallbackScan(resolve);
           }
-          resolve(this._parseLsof(stdout || ''));
+          const parts = (stdout || '').split('---UDP---');
+          const tcpPorts = this._parseLsof(parts[0] || '', 'TCP');
+          const udpPorts = this._parseLsof(parts[1] || '', 'UDP');
+          resolve(this._sortPorts([...tcpPorts, ...udpPorts]));
         });
       } else {
         resolve(this._parseFallback(''));
@@ -24,13 +26,13 @@ class PortService {
   }
 
   _fallbackScan(resolve) {
-    // netstat fallback
-    exec('netstat -tlnp 2>/dev/null || netstat -an 2>/dev/null', { timeout: 10000 }, (err, stdout) => {
+    // netstat fallback (TCP+UDP)
+    exec('netstat -tulnp 2>/dev/null || netstat -an 2>/dev/null', { timeout: 10000 }, (err, stdout) => {
       resolve(this._parseNetstat(stdout || ''));
     });
   }
 
-  _parseLsof(output) {
+  _parseLsof(output, protocol) {
     const lines = output.trim().split('\n');
     if (lines.length < 2) return [];
 
@@ -59,18 +61,19 @@ class PortService {
       if (!portMatch) continue;
 
       const port = parseInt(portMatch[1]);
-      if (ports.find(p => p.port === port && p.pid === pid)) continue;
+      // 去重：同端口+同协议只保留一条
+      if (ports.find(p => p.port === port && p.protocol === protocol)) continue;
 
       const host = nameCol.replace(/:\d+$/, '');
       const isIPv6 = nameCol.startsWith('[');
 
       ports.push({
         port,
-        protocol: 'TCP',
+        protocol,
         process,
         pid: pid ? parseInt(pid) : null,
         host: host === '*' ? '0.0.0.0' : (isIPv6 ? `[::]` : host),
-        status: 'LISTEN',
+        status: protocol === 'UDP' ? 'UDP' : 'LISTEN',
         description: this._getServiceName(port, process)
       });
     }
@@ -91,6 +94,8 @@ class PortService {
       if (statusIdx === -1) continue;
 
       const status = parts[statusIdx];
+      const proto = parts[0];
+      const isUdp = proto?.toLowerCase().includes('udp');
       
       // 找地址
       let addr = '';
@@ -113,11 +118,11 @@ class PortService {
 
       ports.push({
         port,
-        protocol: parts[0]?.includes('6') ? 'TCP6' : 'TCP',
+        protocol: isUdp ? 'UDP' : (proto?.includes('6') ? 'TCP6' : 'TCP'),
         process: parts[parts.length - 1]?.split('/')[1] || 'unknown',
         pid: parts[parts.length - 1]?.split('/')[0] || null,
         host: '0.0.0.0',
-        status: status === 'LISTEN' ? 'LISTEN' : status,
+        status: isUdp ? 'UDP' : (status === 'LISTEN' ? 'LISTEN' : status),
         description: this._getServiceName(port, parts[parts.length - 1]?.split('/')[1] || '')
       });
     }
@@ -156,9 +161,17 @@ class PortService {
       5001: '群晖 DSM HTTP', 5000: '群晖 DSM HTTPS',
       4567: '家药管家', 3456: 'Server Panel', 3457: 'Invoice Manager',
       9000: 'Portainer', 9200: 'Elasticsearch', 9092: 'Kafka',
-      8888: 'Jupyter', 3389: 'RDP', 5900: 'VNC',
+      8888: 'Jupyter', 3389: 'RDP', 5900: 'VNC', 6443: 'k8s API',
       25: 'SMTP', 110: 'POP3', 143: 'IMAP', 993: 'IMAPS', 995: 'POP3S',
-      53: 'DNS'
+      53: 'DNS', 67: 'DHCP', 68: 'DHCP', 161: 'SNMP', 389: 'LDAP',
+      445: 'SMB', 548: 'AFP', 137: 'NetBIOS', 138: 'NetBIOS', 139: 'NetBIOS',
+      1723: 'PPTP', 51820: 'WireGuard', 1194: 'OpenVPN', 1701: 'L2TP',
+      3478: 'STUN', 5349: 'STUN/TLS', 1900: 'SSDP', 5353: 'mDNS',
+      51413: 'Transmission', 6881: 'BT', 9093: 'Transmission',
+      32400: 'Plex', 8920: 'Jellyfin', 6789: 'Syncthing', 8384: 'Syncthing',
+      22000: 'Syncthing', 8082: 'qBittorrent', 9117: 'Jackett', 7878: 'Radarr',
+      8989: 'Sonarr', 9696: 'Prowlarr', 8686: 'Lidarr', 8191: 'FlareSolverr',
+      8123: 'Home Assistant'
     };
 
     if (known[port]) return known[port];

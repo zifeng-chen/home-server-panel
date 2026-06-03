@@ -19,9 +19,11 @@ async function loadPort() {
     const stats = res.data?.stats || {};
 
     if (statsEl) {
+      const udpCount = ports.filter(p => p.protocol === 'UDP').length;
       statsEl.innerHTML = `
         <span style="margin-right:16px;">📡 监听端口: <strong>${stats.total || 0}</strong></span>
         <span style="margin-right:16px;color:var(--success);">🌐 Web端口: <strong>${stats.webPorts || 0}</strong></span>
+        <span style="margin-right:16px;color:var(--info);">📶 UDP: <strong>${udpCount}</strong></span>
         <span style="color:var(--text-secondary);">🖥️ 进程: <strong>${stats.topProcesses?.[0]?.name || '--'}</strong></span>
       `;
     }
@@ -33,14 +35,16 @@ async function loadPort() {
 
     tbody.innerHTML = ports.map(p => {
       const isSystem = p.port < 1024;
-      const isWeb = [80, 443, 8080, 8443, 3000, 4000, 5000].includes(p.port);
+      const isWeb = [80, 443, 8080, 8443, 3000, 4000, 5000, 8096, 32400, 9000, 8082].includes(p.port);
       const isSelf = p.port === 3456;
-      const statusColor = p.status === 'LISTEN' ? 'var(--success)' : 'var(--text-secondary)';
+      const isUdp = p.protocol === 'UDP';
+      const statusColor = p.status === 'LISTEN' ? 'var(--success)' : (isUdp ? 'var(--info)' : 'var(--text-secondary)');
       
       let icon = '📌';
       if (isWeb) icon = '🌐';
       else if (isSystem) icon = '⚙️';
       else if (isSelf) icon = '🏠';
+      else if (isUdp) icon = '📡';
 
       return `
         <tr class="${isSelf ? 'highlight-row' : ''}">
@@ -54,7 +58,7 @@ async function loadPort() {
             ${p.process && p.process !== p.description ? `<br><small style="color:var(--text-secondary);">${p.process}</small>` : ''}
           </td>
           <td><small>${p.host || '0.0.0.0'}</small></td>
-          <td><span style="color:${statusColor};" class="status-badge online">${p.status}</span></td>
+          <td><span style="color:${statusColor};" class="status-badge ${isUdp ? 'offline' : 'online'}">${p.status}</span></td>
           ${p.pid ? `<td><code>PID ${p.pid}</code></td>` : '<td>--</td>'}
           <td>
             <button class="btn btn-sm" onclick="checkSinglePort(${p.port})">🔍 检测</button>

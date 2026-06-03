@@ -68,6 +68,9 @@ function initNavigation() {
       const target = pageMap[pageName];
       if (target) target.classList.remove('hidden');
 
+      // 设置当前页面（用于诊断日志标记）
+      if (typeof Api !== 'undefined') Api._currentPage = pageName;
+
       // 页面级懒加载
       (App.pageLoaders || {})[pageName]?.();
     });

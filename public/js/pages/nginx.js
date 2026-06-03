@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 日志按钮
   const logBtn = document.getElementById('btnNginxLogs');
-  if (logBtn) logBtn.addEventListener('click', viewNginxLogs);
+  if (logBtn) logBtn.addEventListener('click', () => viewNginxLogs());
 
   // 默认隐藏所有操作按钮（等状态加载后显示）
   updateActionButtons(false);

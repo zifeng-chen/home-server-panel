@@ -65,22 +65,37 @@ class NginxService {
     }
 
     try {
-      // nginx -v 输出到 stderr，分开处理
+      // 1) 版本检测（stderr，可能失败）
       let version = 'unknown';
       try {
         const vOutput = await this._exec(`${this.nginxBin} -v 2>&1`);
         version = (vOutput.match(/nginx\/([\d.]+)/) || [])[1] || 'unknown';
-      } catch (e) { /* version 获取失败，使用默认值 */ }
+      } catch (e) { /* 非关键 */ }
 
+      // 2) 运行状态检测（独立于版本/配置检测）
       let running = false;
       let pid = null;
-      let testResult = '';
       try {
-        testResult = await this._exec(`${this.nginxBin} -t 2>&1`);
         running = await this._isRunning();
         pid = running ? await this._getPid() : null;
+      } catch (e) { /* 非关键 */ }
+
+      // 3) 配置测试（独立，可能权限不足，尝试 sudo -n）
+      let configTest = 'ok';
+      let configTestOutput = '';
+      try {
+        configTestOutput = await this._exec(`${this.nginxBin} -t 2>&1`);
       } catch (e) {
-        testResult = e.message;
+        // 权限不足时尝试 sudo -n
+        try {
+          configTestOutput = await this._exec(`sudo -n ${this.nginxBin} -t 2>&1`);
+        } catch (e2) {
+          configTestOutput = e2.message;
+          configTest = 'error';
+        }
+      }
+      if (configTest !== 'error') {
+        configTest = (configTestOutput.includes('successful') || configTestOutput.includes('ok')) ? 'ok' : 'error';
       }
 
       return {
@@ -88,8 +103,8 @@ class NginxService {
         running,
         pid,
         version,
-        configTest: testResult.includes('successful') || testResult.includes('ok') ? 'ok' : 'error',
-        configTestOutput: testResult,
+        configTest,
+        configTestOutput,
         nginxBin: this.nginxBin,
         configDir: this.configDir,
         confdDir: this.configDir ? path.join(this.configDir, 'conf.d') : null,
@@ -113,30 +128,26 @@ class NginxService {
 
   async start() {
     this._requireNginx();
-    await this._execSudo(`${this.nginxBin}`);
+    await this._execSudo('start', `${this.nginxBin}`);
     return { success: true, action: 'start', message: 'Nginx 已启动' };
   }
 
   async stop() {
     this._requireNginx();
-    await this._execSudo(`${this.nginxBin} -s stop`);
+    await this._execSudo('stop', `${this.nginxBin} -s stop`);
     return { success: true, action: 'stop', message: 'Nginx 已停止' };
   }
 
   async reload() {
     this._requireNginx();
-    await this._execSudo(`${this.nginxBin} -s reload`);
+    await this._execSudo('reload', `${this.nginxBin} -s reload`);
     return { success: true, action: 'reload', message: 'Nginx 配置已重载' };
   }
 
   async restart() {
     this._requireNginx();
-    const running = await this._isRunning();
-    if (running) {
-      await this._execSudo(`${this.nginxBin} -s stop`);
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    await this._execSudo(`${this.nginxBin}`);
+    // 优先用 systemctl restart（已有服务），否则 stop+start
+    await this._execSudo('restart', `${this.nginxBin} -s stop`, `${this.nginxBin}`);
     return { success: true, action: 'restart', message: 'Nginx 已重启' };
   }
 
@@ -298,6 +309,9 @@ class NginxService {
 
   async _pidAlive(pid) {
     try {
+      // /proc/<pid> 比 kill -0 更可靠（root进程也能读）
+      if (fs.existsSync(`/proc/${pid}`)) return true;
+      // Fallback: kill -0
       await this._exec(`kill -0 ${pid} 2>/dev/null`);
       return true;
     } catch {
@@ -437,12 +451,44 @@ class NginxService {
     });
   }
 
-  _execSudo(command) {
-    // Try without sudo first (e.g., Mac Homebrew)
-    return this._exec(command).catch(() => {
-      // Fallback to sudo
-      return this._exec(`sudo ${command}`);
-    });
+  _hasSystemctl() {
+    if (this._hasSystemctlCache !== undefined) return this._hasSystemctlCache;
+    try {
+      require('child_process').execSync('which systemctl 2>/dev/null || systemctl --version 2>/dev/null', { timeout: 2000 });
+      this._hasSystemctlCache = true;
+    } catch { this._hasSystemctlCache = false; }
+    return this._hasSystemctlCache;
+  }
+
+  async _execSudo(action, ...commands) {
+    const command = commands.join(' && sleep 0.5 && ');
+
+    // systemd 优先: systemctl start/stop/reload/restart nginx
+    if (this.platform === 'linux' && this._hasSystemctl() && ['start','stop','reload','restart'].includes(action)) {
+      try {
+        // 先尝试无 sudo（某些系统允许）
+        return await this._exec(`systemctl ${action} nginx`);
+      } catch (e1) {
+        try {
+          // sudo -n: 非交互模式，如果没 NOPASSWD 会干净报错而非挂起
+          return await this._exec(`sudo -n systemctl ${action} nginx`);
+        } catch (e2) {
+          throw new Error(`Nginx ${action} 需要管理员权限。请配置 NOPASSWD: sudo sh -c 'echo "${process.env.USER || process.env.LOGNAME} ALL=(ALL) NOPASSWD: /usr/bin/systemctl ${action} nginx" >> /etc/sudoers.d/nginx'`);
+        }
+      }
+    }
+
+    // 非 systemd 或 Mac: 直接运行命令
+    try {
+      return await this._exec(command);
+    } catch (e1) {
+      try {
+        // sudo -n 非交互模式
+        return await this._exec(`sudo -n ${command}`);
+      } catch (e2) {
+        throw new Error(`权限不足: ${e2.message}。请配置 sudo NOPASSWD 或手动运行: sudo ${command}`);
+      }
+    }
   }
 }
 

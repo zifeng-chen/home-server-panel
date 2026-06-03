@@ -1,6 +1,12 @@
 // API 通信模块
 const Api = {
-  baseUrl: '',
+  baseUrl: '/api',
+  _diagLog: [],  // 诊断日志
+
+  _diag(msg) {
+    this._diagLog.push(msg);
+    try { var d=document.getElementById('page-diag'); if(d) d.innerHTML+='<br><span style="color:#38bdf8">🌐 '+msg+'</span>'; } catch(e){}
+  },
 
   _getToken() {
     return localStorage.getItem('hsp_token');
@@ -22,18 +28,31 @@ const Api = {
       opts.body = JSON.stringify(data);
     }
 
-    try {
-      const res = await fetch(this.baseUrl + path, opts);
+    const url = this.baseUrl + path;
+    this._diag(method + ' ' + url + ' | token=' + (token ? '✅' : '❌'));
 
-      // 401 未登录，跳转登录页
+    try {
+      const res = await fetch(url, opts);
+
+      // 🔍 记录状态码
+      this._diag(method + ' ' + url + ' → HTTP ' + res.status + ' ct=' + (res.headers.get('content-type')||'?'));
+
       if (res.status === 401) {
         localStorage.removeItem('hsp_token');
+        this._diag('🔴 401 未登录，跳转登录页');
         window.location.href = '/login.html';
         return { success: false, message: '未登录' };
       }
 
-      return await res.json();
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        this._diag('🟠 JSON解析失败! 响应不是JSON: ' + text.substring(0, 100));
+        return { success: false, message: 'Invalid JSON: ' + text.substring(0, 80) };
+      }
     } catch (err) {
+      this._diag('🔴 fetch异常: ' + (err.name||'?') + ' ' + (err.message||''));
       return { success: false, message: err.message };
     }
   },

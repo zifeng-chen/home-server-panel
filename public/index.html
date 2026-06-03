@@ -7,6 +7,58 @@
   <link rel="stylesheet" href="/css/style.css?v={BUILD_ID}">
 </head>
 <body>
+  <!-- 浏览器端诊断：页面顶部显示状态 -->
+  <meta name="build-id" content="{BUILD_ID}">
+  <div id="page-diag" style="display:none;background:#0f172a;color:#e2e8f0;padding:8px 16px;font:11px/1.6 monospace;border-bottom:2px solid #475569;max-height:200px;overflow-y:auto;position:fixed;top:0;left:0;right:0;z-index:9999"></div>
+  <script>
+(function(){
+  var D=document.getElementById('page-diag'),L=[],B=document.querySelector('meta[name=build-id]');
+  function A(m,c){c=c||'#4ade80';L.push('<span style="color:'+c+'">'+m+'</span>');D.innerHTML=L.join('<br>');D.style.display='block';}
+  // BUILD_ID from meta tag
+  A('🏷️ BUILD_ID='+(B?B.content:'???'));
+  // Auth info
+  var hasCookie=/hsp_token/.test(document.cookie);
+  var hasLS=!!localStorage.getItem('hsp_token');
+  A('🍪 Cookie hsp_token='+(hasCookie?'✅有':'❌无'),hasCookie?'#4ade80':'#f87171');
+  A('💾 localStorage hsp_token='+(hasLS?'✅有':'❌无'),hasLS?'#4ade80':'#f87171');
+  // Direct fetch test - bypass all API.js
+  A('🚀 直接fetch /api/system/info ...');
+  fetch('/api/system/info',{credentials:'same-origin',headers:{'Content-Type':'application/json'}})
+    .then(function(r){A('📡 HTTP状态: '+r.status+' '+r.statusText+' ct='+(r.headers.get('content-type')||'?'));return r.text();})
+    .then(function(t){
+      A('📄 响应体前200字: '+t.substring(0,200),'#38bdf8');
+      try{var j=JSON.parse(t);A('✅ JSON解析成功 success='+j.success+(j.data?' keys='+Object.keys(j.data).join(','):''));}
+      catch(e){A('🟠 非JSON响应!','#f87171');}
+    })
+    .catch(function(e){A('🔴 fetch失败: '+e.message,'#f87171');});
+})();
+  </script>
+  <script>
+(function(){
+  var D=document.getElementById('page-diag');
+  if(!D)return;
+  D.innerHTML+='<br><span style="color:#4ade80">🔍 诊断脚本已激活</span>';D.style.display='block';
+  // Monitor ALL script loads
+  document.querySelectorAll('script[src]').forEach(function(s,i){D.innerHTML+='<br><span style="color:#4ade80">✅ #'+(i+1)+' '+s.src.split('/').pop()+' 加载中...</span>';s.addEventListener('load',function(){D.innerHTML+='<br><span style="color:#4ade80">✅ #'+(i+1)+' '+this.src.split('/').pop()+' 加载完成</span>';});s.addEventListener('error',function(){D.innerHTML+='<br><span style="color:#f87171">❌ #'+(i+1)+' '+this.src.split('/').pop()+' 加载失败!</span>';});});
+  // Check after 3s
+  setTimeout(function(){
+    var O=D;
+    function P(m,c){c=c||'#4ade80';O.innerHTML+='<br><span style="color:'+c+'">'+m+'</span>';}
+    if(typeof App!=='undefined'){P('✅ App='+App.version);}else{P('❌ App未定义','#f87171');}
+    if(typeof Api!=='undefined'){P('✅ Api模块存在');}else{P('❌ Api未定义','#f87171');}
+    if(typeof loadDashboard==='function'){P('✅ loadDashboard函数存在');P('📊 等待dashboard渲染...');}else{P('❌ loadDashboard未定义','#f87171');}
+    setTimeout(function(){
+      var g=document.getElementById('statsGrid');
+      var v=document.getElementById('version');
+      var u=document.getElementById('uptime');
+      P('--- 5秒后检查 ---');
+      if(g){P('✅ statsGrid子元素数:'+g.children.length);P('statsGrid内容:'+(g.textContent||'').substring(0,80),'#38bdf8');}else{P('❌ statsGrid不存在','#f87171');}
+      if(v){P('sidebar版本:'+v.textContent);}else{P('❌ version元素不存在','#f87171');}
+      if(u){P('sidebar运行时长:'+u.textContent);}else{P('❌ uptime元素不存在','#f87171');}
+    },5000);
+  },3000);
+})();
+  </script>
   <div class="app-container">
     <!-- 侧边栏 -->
     <aside class="sidebar" id="sidebar">

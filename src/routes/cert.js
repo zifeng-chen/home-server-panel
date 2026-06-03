@@ -12,7 +12,7 @@ router.get('/acme', async (req, res) => {
   }
 });
 
-// POST /api/cert/acme/install - 安装 acme.sh
+// POST /api/cert/acme/install - 安装 acme.sh（普通请求）
 router.post('/acme/install', async (req, res) => {
   try {
     const { email } = req.body;
@@ -22,6 +22,41 @@ router.post('/acme/install', async (req, res) => {
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
     res.json({ success: false, message: '安装失败: ' + err.message });
+  }
+});
+
+// GET /api/cert/acme/install/stream - SSE 实时安装进度
+router.get('/acme/install/stream', async (req, res) => {
+  const email = req.query.email || 'admin@izifeng.com';
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  const send = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+  };
+
+  try {
+    send('start', { message: '开始安装 acme.sh...' });
+    const result = await sslService.installAcmeSSE(email, (type, data) => send(type, data));
+    send('done', { message: result.message || 'acme.sh 安装完成' });
+  } catch (err) {
+    send('error', { message: err.message });
+  }
+  res.end();
+});
+
+// POST /api/cert/acme/uninstall - 卸载 acme.sh
+router.post('/acme/uninstall', async (req, res) => {
+  try {
+    const result = await sslService.uninstallAcme();
+    res.json({ success: true, message: result.message, data: result });
+  } catch (err) {
+    res.json({ success: false, message: '卸载失败: ' + err.message });
   }
 });
 

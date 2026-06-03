@@ -31,27 +31,104 @@ class SslService {
 
   async installAcme(email) {
     if (!email) throw new Error('请提供联系邮箱');
-    
-    // 检查是否已安装
     if (fs.existsSync(ACME_BIN)) {
       return { installed: true, message: 'acme.sh 已安装，跳过' };
     }
-
     return new Promise((resolve, reject) => {
-      const cmd = 'curl';
-      const args = ['-sS', 'https://get.acme.sh', '|', 'sh', '-s', `email=${email}`];
-      
-      // 用 shell 执行管道
       const { exec } = require('child_process');
-      exec(`curl -sS https://get.acme.sh | sh -s email=${email}`, { timeout: 60000 }, (err, stdout, stderr) => {
+      exec(`curl -sS https://get.acme.sh | sh -s email=${email}`, { timeout: 120000 }, (err, stdout, stderr) => {
         if (err) {
-          // acme.sh install script may return non-zero even on success
-          if (fs.existsSync(ACME_BIN)) {
-            return resolve({ installed: true, message: 'acme.sh 安装完成' });
-          }
+          if (fs.existsSync(ACME_BIN)) return resolve({ installed: true, message: 'acme.sh 安装完成' });
           return reject(new Error(`安装失败: ${stderr || err.message}`));
         }
         resolve({ installed: true, message: 'acme.sh 安装完成', output: stdout });
+      });
+    });
+  }
+
+  async installAcmeSSE(email, onProgress) {
+    if (!email) throw new Error('请提供联系邮箱');
+    if (fs.existsSync(ACME_BIN)) {
+      onProgress('output', { text: 'acme.sh 已安装，跳过安装步骤' });
+      return { installed: true, message: 'acme.sh 已安装' };
+    }
+
+    // 从 Gitee 下载（国内快）
+    const tmpDir = `/tmp/acme-install-${Date.now()}`;
+    const tarFile = `${tmpDir}.tar.gz`;
+
+    return new Promise((resolve, reject) => {
+      const { exec } = require('child_process');
+
+      const run = (cmd, callback) => {
+        onProgress('output', { text: `$ ${cmd}` });
+        exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
+          if (stdout) onProgress('output', { text: stdout.trim() });
+          if (stderr) onProgress('output', { text: stderr.trim() });
+          callback(err);
+        });
+      };
+
+      // Step 1: Download
+      onProgress('step', { text: '📥 从 Gitee 下载 acme.sh 源码包...' });
+      run(`curl -fsSL --connect-timeout 30 --max-time 120 -o ${tarFile} 'https://gitee.com/neilpang/acme.sh/repository/archive/master.tar.gz'`, (err) => {
+        if (err) return reject(new Error('下载失败: ' + err.message));
+
+        // Step 2: Extract
+        onProgress('step', { text: '📦 解压源码包...' });
+        run(`mkdir -p ${tmpDir} && tar -xzf ${tarFile} -C ${tmpDir} --strip-components=1 && rm ${tarFile}`, (err) => {
+          if (err) return reject(new Error('解压失败: ' + err.message));
+
+          // Step 3: Install
+          onProgress('step', { text: '🔧 安装到 ~/.acme.sh...' });
+          run(`cd ${tmpDir} && ./acme.sh --install --home ${ACME_HOME} --config-home ${ACME_HOME}/data --cert-home ${ACME_HOME}/certs --accountemail ${email} --nocron`, (err) => {
+            if (err && !fs.existsSync(ACME_BIN)) {
+              run(`rm -rf ${tmpDir}`, () => {});
+              return reject(new Error('安装失败: ' + err.message));
+            }
+
+            // Step 4: Register account
+            onProgress('step', { text: '🔑 注册 ZeroSSL 账户...' });
+            run(`${ACME_BIN} --register-account -m ${email}`, (err) => {
+              run(`rm -rf ${tmpDir}`, () => {});
+              // Register failure is non-fatal
+              onProgress('output', { text: err ? '注册账户警告: ' + err.message : '账户注册成功' });
+              resolve({ installed: true, message: 'acme.sh v' + (this._getVersion() || '?') + ' 安装完成' });
+            });
+          });
+        });
+      });
+    });
+  }
+
+  _getVersion() {
+    try {
+      const { execSync } = require('child_process');
+      return execSync(`${ACME_BIN} --version`, { encoding: 'utf-8', timeout: 5000 }).split('\n').pop()?.trim() || '';
+    } catch { return ''; }
+  }
+
+  async uninstallAcme() {
+    if (!fs.existsSync(ACME_BIN)) {
+      return { message: 'acme.sh 未安装，无需卸载' };
+    }
+
+    return new Promise((resolve, reject) => {
+      const { execFile } = require('child_process');
+      execFile(ACME_BIN, ['--uninstall'], { timeout: 15000 }, (err, stdout, stderr) => {
+        if (err) {
+          // Try manual removal
+          if (fs.existsSync(ACME_BIN)) {
+            try {
+              fs.rmSync(ACME_HOME, { recursive: true, force: true });
+              return resolve({ message: 'acme.sh 已强制卸载（目录已删除）' });
+            } catch (e) {
+              return reject(new Error('卸载失败: ' + e.message));
+            }
+          }
+          return reject(new Error(`卸载失败: ${stderr || err.message}`));
+        }
+        resolve({ message: 'acme.sh 已卸载', output: stdout });
       });
     });
   }

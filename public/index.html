@@ -7,20 +7,21 @@
   <link rel="stylesheet" href="/css/style.css?v={BUILD_ID}">
 </head>
 <body>
-  <!-- 浏览器端诊断栏：默认收起 -->
+  <!-- 诊断栏：完全隐藏，只在右上角留一个极小入口 -->
   <meta name="build-id" content="{BUILD_ID}">
-  <div id="page-diag" style="position:fixed;top:0;left:0;right:0;z-index:9999;font:11px/1.5 monospace;">
-    <div id="page-diag-bar" onclick="var d=document.getElementById('page-diag-content');var a=d.style.display==='none';d.style.display=a?'block':'none';this.textContent=a?'📊 诊断 (点击收起)':'📊 诊断 (点击展开)'" style="cursor:pointer;background:#1e293b;color:#94a3b8;padding:4px 12px;border-bottom:1px solid #334155;user-select:none;">📊 诊断 (点击展开)</div>
-    <div id="page-diag-content" style="display:none;background:#0f172a;color:#e2e8f0;padding:6px 12px;border-bottom:2px solid #475569;max-height:200px;overflow-y:auto;"></div>
+  <div id="page-diag" style="position:fixed;top:0;right:0;z-index:9999;font:10px/1.4 monospace;">
+    <div id="page-diag-bar" title="诊断窗口" onclick="var d=document.getElementById('page-diag-content');var a=d.style.display==='none';d.style.display=a?'block':'none';this.textContent=a?'🔬':'🔬'" style="cursor:pointer;background:rgba(30,41,59,0.7);color:#475569;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:0 0 0 8px;user-select:none;font-size:11px;opacity:0.4;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">🔬</div>
+    <div id="page-diag-content" style="display:none;background:#0f172a;color:#e2e8f0;padding:6px 12px;border-left:2px solid #475569;border-bottom:2px solid #475569;border-radius:0 0 0 8px;max-height:180px;max-width:520px;overflow-y:auto;"></div>
   </div>
   <script>
 (function(){
   var C=document.getElementById('page-diag-content'),B=document.querySelector('meta[name=build-id]');
-  function P(m,c){c=c||'#4ade80';C.innerHTML+='<br><span style="color:'+c+'">'+m+'</span>';}
+  function P(m,c){c=c||'#4ade80';C.innerHTML+='<span style="color:'+c+'">'+m+'</span><br>';}
   P('🏷️ BUILD_ID='+(B?B.content:'???'));
   var hasLS=!!localStorage.getItem('hsp_token');
-  P('💾 localStorage hsp_token='+(hasLS?'✅有':'❌无'),hasLS?'#4ade80':'#f87171');
-  P('✅ '+(document.querySelectorAll('script[src]').length)+' 个外部脚本加载中...');
+  P('💾 token='+(hasLS?'✅有':'❌无'),hasLS?'#4ade80':'#f87171');
+  var sc=document.querySelectorAll('script[src]');
+  P('✅ '+(sc.length)+' scripts loading...');
   setTimeout(function(){
     if(typeof App!=='undefined')P('✅ App v'+App.version);else P('❌ App未定义','#f87171');
   },2000);
@@ -191,7 +192,7 @@
               <button class="btn btn-success" id="btnNginxStart" style="display:none;">▶ 启动</button>
               <button class="btn btn-danger" id="btnNginxStop" style="display:none;">⏹ 停止</button>
               <button class="btn btn-warning" id="btnNginxReload" style="display:none;">🔄 重载</button>
-              <button class="btn" id="btnNginxRestart" style="display:none;">♻️ 重启</button>
+              <button class="btn btn-secondary" id="btnNginxRestart" style="display:none;">♻️ 重启</button>
               <button class="btn btn-secondary" id="btnNginxTest">🧪 配置测试</button>
               <button class="btn btn-secondary" id="btnNginxLogs">📋 看日志</button>
               <button class="btn btn-warning" id="btnNginxInstall" style="display:none;">🔧 安装 Nginx</button>

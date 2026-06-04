@@ -254,7 +254,10 @@
         </div>
         <div class="form-group">
           <label>密码</label>
-          <input type="password" id="password" class="form-input" placeholder="输入密码">
+          <div style="position:relative">
+            <input type="password" id="password" class="form-input" placeholder="输入密码" style="padding-right:44px">
+            <button type="button" id="togglePwd" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:8px;font-size:16px;color:#94a3b8;line-height:1;border-radius:6px;transition:all 0.2s" title="显示密码">👁</button>
+          </div>
         </div>
         <div class="error-msg" id="errorMsg"></div>
         <button type="submit" class="btn-login" id="loginBtn">登录</button>
@@ -389,6 +392,16 @@
         btn.disabled = false;
         btn.textContent = '登录';
       }
+    });
+
+    // 密码显示切换
+    const togglePwd = document.getElementById('togglePwd');
+    const pwdInput = document.getElementById('password');
+    togglePwd.addEventListener('click', () => {
+      const isPassword = pwdInput.type === 'password';
+      pwdInput.type = isPassword ? 'text' : 'password';
+      togglePwd.textContent = isPassword ? '🙈' : '👁';
+      togglePwd.title = isPassword ? '隐藏密码' : '显示密码';
     });
 
     // 回车登录

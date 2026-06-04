@@ -5,10 +5,9 @@ const Api = {
   _currentPage: 'dashboard',
 
   _diag(msg, level) {
-    level = level || 'info'; // info | success | warn | error
+    level = level || 'info';
     const entry = { page: this._currentPage, time: new Date().toLocaleTimeString(), msg, level };
     this._diagLog.push(entry);
-    // 只保留最近 200 条
     if (this._diagLog.length > 200) this._diagLog = this._diagLog.slice(-200);
     try { var d = document.getElementById('page-diag-content'); if(d) d.innerHTML+='<br><span style="color:#38bdf8">🌐 '+msg+'</span>'; } catch(e){}
   },
@@ -26,29 +25,32 @@ const Api = {
     return localStorage.getItem('hsp_token');
   },
 
-  async request(method, path, data, signal) {
+  // opts.showError: true (default, modal) | false (page handles it) | 'notify' (toast only)
+  async request(method, path, data, signal, opts) {
+    opts = opts || {};
+    const showError = opts.showError !== false;
+
     const headers = { 'Content-Type': 'application/json' };
     const token = this._getToken();
     if (token) headers['x-auth-token'] = token;
 
-    const opts = {
+    const fetchOpts = {
       method,
       headers,
       credentials: 'same-origin'
     };
-    if (signal) opts.signal = signal;
+    if (signal) fetchOpts.signal = signal;
 
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-      opts.body = JSON.stringify(data);
+      fetchOpts.body = JSON.stringify(data);
     }
 
     const url = this.baseUrl + path;
     this._diag(method + ' ' + url + ' | token=' + (token ? '✅' : '❌'));
 
     try {
-      const res = await fetch(url, opts);
+      const res = await fetch(url, fetchOpts);
 
-      // 🔍 记录状态码
       const ct = res.headers.get('content-type')||'?';
       const ok = res.ok && ct.includes('json');
       this._diag(method + ' ' + url + ' → HTTP ' + res.status + ' ct=' + ct, ok ? 'success' : 'warn');
@@ -62,19 +64,34 @@ const Api = {
 
       const text = await res.text();
       try {
-        return JSON.parse(text);
+        const result = JSON.parse(text);
+        // 自动弹窗错误
+        if (!result.success && showError && typeof Utils !== 'undefined') {
+          if (showError === 'notify') {
+            Utils.notify(result.message || '请求失败', 'error');
+          } else {
+            Utils.showError('请求失败', result.message || '未知错误', method + ' ' + url);
+          }
+        }
+        return result;
       } catch (e) {
         this._diag('🟠 JSON解析失败! 响应不是JSON: ' + text.substring(0, 100), 'error');
+        if (showError && typeof Utils !== 'undefined') {
+          Utils.showError('数据解析失败', '服务器返回了非 JSON 响应', 'URL: ' + url + '\nContent: ' + text.substring(0, 500));
+        }
         return { success: false, message: 'Invalid JSON: ' + text.substring(0, 80) };
       }
     } catch (err) {
       this._diag('🔴 fetch异常: ' + (err.name||'?') + ' ' + (err.message||''), 'error');
+      if (showError && typeof Utils !== 'undefined') {
+        Utils.showError('网络请求异常', err.message || '请求失败', method + ' ' + url);
+      }
       return { success: false, message: err.message };
     }
   },
 
-  get(path, signal) { return this.request('GET', path, null, signal); },
-  post(path, data) { return this.request('POST', path, data); },
-  put(path, data) { return this.request('PUT', path, data); },
-  del(path, data) { return this.request('DELETE', path, data || {}); }
+  get(path, signal, opts) { return this.request('GET', path, null, signal, opts); },
+  post(path, data, opts) { return this.request('POST', path, data, null, opts); },
+  put(path, data, opts) { return this.request('PUT', path, data, null, opts); },
+  del(path, data, opts) { return this.request('DELETE', path, data || {}, null, opts); }
 };

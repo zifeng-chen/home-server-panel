@@ -67,10 +67,6 @@
           <span class="nav-icon">🔌</span>
           <span>端口管理</span>
         </a>
-        <a href="#log" class="nav-item" data-page="log">
-          <span class="nav-icon">📋</span>
-          <span>操作日志</span>
-        </a>
         <a href="#cron" class="nav-item" data-page="cron">
           <span class="nav-icon">⏰</span>
           <span>定时任务</span>
@@ -93,7 +89,7 @@
         </a>
       </nav>
       <div class="sidebar-footer">
-        <span id="version">v1.9.0</span>
+        <span id="version">v1.10.0</span>
         <span id="uptime">--</span>
       </div>
     </aside>
@@ -131,6 +127,7 @@
           <div class="page-toolbar">
             <button class="btn btn-primary" id="btnDdnsRefresh">🔄 刷新解析</button>
             <button class="btn btn-success" id="btnDdnsAdd">+ 添加域名</button>
+            <button class="btn btn-secondary" style="margin-left:8px" id="btnDdnsLog">📋 日志</button>
           </div>
           <div class="table-wrapper">
             <table class="data-table" id="ddnsTable">
@@ -157,6 +154,7 @@
           <h1>SSL 证书管理</h1>
           <div class="page-toolbar">
             <button class="btn btn-success" id="btnCertApply">+ 申请证书</button>
+            <button class="btn btn-secondary" style="margin-left:8px" id="btnCertLog">📋 日志</button>
           </div>
           <div class="table-wrapper">
             <table class="data-table" id="certTable">
@@ -177,73 +175,74 @@
           </div>
         </section>
 
-        <!-- Nginx & 反向代理 -->
+        <!-- Nginx & 反向代理（左右分栏）-->
         <section class="page hidden" id="page-nginx">
-          <!-- 标签切换 -->
-          <div class="nginx-tabs">
-            <button class="nginx-tab active" data-tab="nginx-sites">🌐 Nginx 管理</button>
-            <button class="nginx-tab" data-tab="nginx-proxy">🔄 反向代理</button>
+          <div class="page-toolbar">
+            <h1>Nginx & 反向代理</h1>
+            <button class="btn btn-sm btn-secondary" onclick="openNginxLog()" style="margin-left:auto">📋 Nginx 日志</button>
           </div>
-
-          <!-- 标签1: Nginx 管理 -->
-          <div class="nginx-tab-panel active" id="panel-nginx-sites">
-            <div class="page-toolbar" style="margin-top:12px;">
-              <h1>Nginx 管理</h1>
-              <div style="margin-left:auto;display:flex;gap:6px;">
+          <div class="split-layout" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+            <!-- 左栏: Nginx 管理 -->
+            <div class="card" style="position:relative">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h3 style="margin:0;font-size:15px">🌐 Nginx 管理</h3>
+                <button class="btn btn-sm btn-secondary" onclick="openProxyLog()">📋 代理日志</button>
+              </div>
+              <div id="nginxStatusBar" style="margin-bottom:12px;padding:10px 14px;background:var(--bg-secondary);border-radius:8px;font-size:13px;">检测中...</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
                 <button class="btn btn-success btn-sm" id="btnNginxStart" style="display:none;">▶ 启动</button>
                 <button class="btn btn-danger btn-sm" id="btnNginxStop" style="display:none;">⏹ 停止</button>
                 <button class="btn btn-warning btn-sm" id="btnNginxReload" style="display:none;">🔄 重载</button>
                 <button class="btn btn-secondary btn-sm" id="btnNginxRestart" style="display:none;">♻️ 重启</button>
                 <button class="btn btn-secondary btn-sm" id="btnNginxTest">🧪 测试</button>
-                <button class="btn btn-secondary btn-sm" id="btnNginxLogs">📋 日志</button>
                 <button class="btn btn-warning btn-sm" id="btnNginxInstall" style="display:none;">🔧 安装</button>
               </div>
-            </div>
-            <div id="nginxStatusBar" style="margin:16px 0;padding:12px 16px;background:var(--bg-secondary);border-radius:8px;font-size:14px;">检测中...</div>
-            <div class="table-wrapper">
-              <table class="data-table" id="nginxTable">
-                <thead>
-                  <tr>
-                    <th>站点名</th>
-                    <th>监听</th>
-                    <th>Server Name</th>
-                    <th>SSL</th>
-                    <th>代理/根目录</th>
-                    <th>来源</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="nginxTbody">
-                  <tr class="empty-row"><td colspan="7">暂未检测到站点配置</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- 标签2: 反向代理 -->
-          <div class="nginx-tab-panel hidden" id="panel-nginx-proxy">
-            <div class="page-toolbar" style="margin-top:12px;">
-              <h1>反向代理规则</h1>
-              <div style="margin-left:auto;display:flex;gap:6px;">
-                <button class="btn btn-success btn-sm" id="btnProxyAdd">+ 添加规则</button>
+              <div class="table-wrapper" style="max-height:420px">
+                <table class="data-table" id="nginxTable">
+                  <thead>
+                    <tr>
+                      <th>站点名</th>
+                      <th>监听</th>
+                      <th>Server Name</th>
+                      <th>SSL</th>
+                      <th>代理/根目录</th>
+                      <th style="width:60px">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="nginxTbody">
+                    <tr class="empty-row"><td colspan="6">暂未检测到站点配置</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div class="table-wrapper">
-              <table class="data-table" id="proxyTable">
-                <thead>
-                  <tr>
-                    <th>规则名称</th>
-                    <th>来源</th>
-                    <th>目标</th>
-                    <th>状态</th>
-                    <th>更新时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="proxyTbody">
-                  <tr class="empty-row"><td colspan="6">暂无代理规则</td></tr>
-                </tbody>
-              </table>
+
+            <!-- 右栏: 反向代理 -->
+            <div class="card" style="position:relative">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <h3 style="margin:0;font-size:15px">🔄 反向代理规则</h3>
+                <div style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-sm" id="btnProxyAdd">+ 添加规则</button>
+                  <button class="btn btn-secondary btn-sm" id="btnProxyPreview" style="display:none">📄 预览</button>
+                  <button class="btn btn-secondary btn-sm" id="btnProxyExport" style="display:none">💾 导出</button>
+                </div>
+              </div>
+              <div id="proxyStats" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)"></div>
+              <div class="table-wrapper" style="max-height:440px">
+                <table class="data-table" id="proxyTable">
+                  <thead>
+                    <tr>
+                      <th>规则名称</th>
+                      <th>来源</th>
+                      <th>目标</th>
+                      <th>状态</th>
+                      <th style="width:110px">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="proxyTbody">
+                    <tr class="empty-row"><td colspan="5">暂无代理规则</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -322,42 +321,6 @@
               </thead>
               <tbody id="pm2Tbody">
                 <tr class="empty-row"><td colspan="8">点击刷新获取进程列表</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- 操作日志 -->
-        <section class="page hidden" id="page-log">
-          <h1>操作日志</h1>
-          <div class="page-toolbar">
-            <select id="logModuleFilter" class="form-input" style="width:120px;">
-              <option value="all">全部模块</option>
-              <option value="system">系统</option>
-              <option value="ddns">DDNS</option>
-              <option value="cert">SSL</option>
-              <option value="nginx">Nginx</option>
-              <option value="proxy">代理</option>
-              <option value="port">端口</option>
-            </select>
-            <input type="text" id="logSearch" class="form-input" placeholder="搜索..." style="width:200px;">
-            <button class="btn btn-primary" id="btnLogRefresh">🔍 查询</button>
-            <button class="btn btn-danger" id="btnLogClear">🗑 清空</button>
-          </div>
-          <div id="logStats" style="margin:8px 0;font-size:12px;color:var(--text-secondary);"></div>
-          <div class="table-wrapper">
-            <table class="data-table" id="logTable">
-              <thead>
-                <tr>
-                  <th>时间</th>
-                  <th>模块</th>
-                  <th>操作</th>
-                  <th>消息</th>
-                  <th>级别</th>
-                </tr>
-              </thead>
-              <tbody id="logTbody">
-                <tr class="empty-row"><td colspan="5">点击查询查看日志</td></tr>
               </tbody>
             </table>
           </div>
@@ -462,7 +425,6 @@
   <script src="/js/pages/cert.js?v={BUILD_ID}"></script>
   <script src="/js/pages/nginx.js?v={BUILD_ID}"></script>
   <script src="/js/pages/port.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/log.js?v={BUILD_ID}"></script>
   <script src="/js/pages/cron.js?v={BUILD_ID}"></script>
   <script src="/js/pages/pm2.js?v={BUILD_ID}"></script>
   <script src="/js/pages/docker.js?v={BUILD_ID}"></script>

@@ -533,40 +533,19 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 /* 旋转动画 */
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ====== Nginx + 反向代理 标签页 ====== */
-.nginx-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--border-color);
-  margin-bottom: 0;
+/* ====== Nginx + 反向代理 左右分栏 ====== */
+.split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
 }
 
-.nginx-tab {
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
+@media (max-width: 900px) {
+  .split-layout {
+    grid-template-columns: 1fr;
+  }
 }
-
-.nginx-tab:hover {
-  color: var(--text-primary);
-  background: rgba(99, 102, 241, 0.05);
-}
-
-.nginx-tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-}
-
-.nginx-tab-panel.hidden { display: none; }
-.nginx-tab-panel.active { display: block; }
 
 /* IPv6 类型徽标 */
 .type-badge-ipv6 {

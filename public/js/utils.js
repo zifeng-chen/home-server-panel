@@ -39,6 +39,114 @@ const Utils = (window.Utils = {
       Utils.closeModal();
       if (onConfirm) onConfirm();
     });
+  },
+
+  // 错误弹窗 - 支持一键复制
+  showError(title, message, details) {
+    const detailStr = details ? `\n\n--- 详情 ---\n${details}` : '';
+    const displayMsg = (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const displayDetails = (details || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fullText = message + detailStr;
+
+    const body = `
+      <div style="margin-bottom:12px;padding:12px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;max-height:360px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap;word-break:break-all">${displayMsg}${details ? '\n\n<span style="color:var(--text-secondary);font-size:12px">---</span>\n<span style="color:var(--text-secondary);font-size:12px">' + displayDetails + '</span>' : ''}</div>
+    `;
+    const footer = `
+      <button class="btn btn-secondary btn-sm" onclick="Utils.copyErrorText()">📋 一键复制</button>
+      <button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>
+    `;
+    this._lastErrorText = fullText;
+    Utils.openModal('❌ ' + (title || '错误'), body, footer);
+  },
+
+  copyErrorText() {
+    const text = this._lastErrorText || '';
+    if (!text) { this.notify('没有可复制的内容', 'warn'); return; }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => this.notify('✅ 已复制错误信息', 'success'))
+        .catch(() => this.notify('复制失败，请手动选择', 'error'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); this.notify('✅ 错误信息已复制', 'success');
+    }
+  },
+
+  // 显示页面 API 诊断日志
+  showPageDiagLog(title, pageFilter) {
+    const filter = pageFilter || (window.Api ? Api._currentPage : 'dashboard');
+    const entries = window.Api ? Api.getDiagLog(filter) : [];
+    if (entries.length === 0) {
+      // 如果当前页无日志，回退到显示全部
+      const allEntries = window.Api ? Api.getDiagLog() : [];
+      if (allEntries.length === 0) {
+        this.notify('暂无诊断日志', 'info');
+        return;
+      }
+      const logText = allEntries.map(e => `[${e.time}] [${e.page}] ${e.level.toUpperCase()} ${e.msg}`).join('\n');
+      window._hspUtilsLog = logText;
+      const body = `
+        <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">共 ${allEntries.length} 条 API 调用记录（全部页面）</div>
+      `;
+      const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
+      Utils.openModal('📋 API诊断 - ' + (title || ''), body, footer);
+      return;
+    }
+    const logText = entries.map(e => `[${e.time}] ${e.level.toUpperCase()} ${e.msg}`).join('\n');
+    window._hspUtilsLog = logText;
+    const body = `
+      <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">共 ${entries.length} 条 API 调用记录</div>
+    `;
+    const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
+    Utils.openModal('📋 API诊断 - ' + (title || ''), body, footer);
+  },
+
+  // 通用日志弹窗（供各页面使用）
+  async showLog(apiPath, title) {
+    const body = `
+      <div id="utilsLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
+      <pre id="utilsLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+    `;
+    const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
+    Utils.openModal('📋 ' + (title || '日志'), body, footer);
+
+    try {
+      const api = window.Api;
+      const res = await (api ? api.get(apiPath) : fetch(apiPath).then(r => r.json()));
+      const contentEl = document.getElementById('utilsLogContent');
+      const loaderEl = document.getElementById('utilsLogLoader');
+      if (contentEl && loaderEl) {
+        loaderEl.style.display = 'none';
+        contentEl.style.display = 'block';
+        if (res.success && res.data) {
+          contentEl.textContent = res.data.logs || '(空)';
+          window._hspUtilsLog = res.data.logs || '';
+        } else {
+          contentEl.innerHTML = '<span style="color:var(--danger)">' + (res.message || '加载失败') + '</span>';
+          window._hspUtilsLog = '';
+        }
+      }
+    } catch (err) {
+      const loaderEl = document.getElementById('utilsLogLoader');
+      if (loaderEl) loaderEl.textContent = '❌ 加载失败: ' + err.message;
+      window._hspUtilsLog = '';
+    }
+  },
+
+  copyLog() {
+    const text = window._hspUtilsLog || '';
+    if (!text) { this.notify('没有可复制的日志', 'warn'); return; }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => this.notify('✅ 日志已复制', 'success')).catch(() => this.notify('复制失败', 'error'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); this.notify('✅ 日志已复制', 'success');
+    }
   }
 });
 

@@ -257,6 +257,7 @@ window.deleteCertConfig = async (domain) => {
 // 页面加载
 document.addEventListener('DOMContentLoaded', () => {
   const applyBtn = document.getElementById('btnCertApply');
+  const logBtn = document.getElementById('btnCertLog');
   const acmeStatusEl = document.getElementById('acmeStatus');
 
   // 在工具栏插入 acme.sh 状态提示
@@ -270,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (applyBtn) applyBtn.addEventListener('click', showIssueCertModal);
+  if (logBtn) logBtn.addEventListener('click', () => Utils.showPageDiagLog('SSL 证书', 'ssl'));
 
   // 在工具栏插入「安装/卸载 acme.sh」按钮
   if (toolbar) {

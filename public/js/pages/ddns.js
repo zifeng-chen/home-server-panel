@@ -221,6 +221,7 @@ window.showAddDdnsModal = () => {
 document.addEventListener('DOMContentLoaded', () => {
   const refreshBtn = document.getElementById('btnDdnsRefresh');
   const addBtn = document.getElementById('btnDdnsAdd');
+  const logBtn = document.getElementById('btnDdnsLog');
 
   // 在工具栏右侧插入 IP 显示
   const toolbar = document.querySelector('#page-ddns .page-toolbar');
@@ -234,4 +235,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (refreshBtn) refreshBtn.addEventListener('click', refreshAllDdns);
   if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
+  if (logBtn) logBtn.addEventListener('click', () => Utils.showPageDiagLog('DDNS', 'ddns'));
 });

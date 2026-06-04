@@ -24,6 +24,7 @@ const App = window.App = {
 document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSidebarToggle();
+  initLogout();
   updateClock();
   setInterval(updateClock, 30000);
   loadDashboard();
@@ -47,6 +48,23 @@ function initSidebarToggle() {
       }
     });
   }
+}
+
+// 退出登录
+function initLogout() {
+  const btn = document.getElementById('btnLogout');
+  if (!btn) return;
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'x-auth-token': localStorage.getItem('hsp_token') || '' }
+      });
+    } catch (_) {}
+    localStorage.removeItem('hsp_token');
+    window.location.href = '/login.html';
+  });
 }
 
 // 导航

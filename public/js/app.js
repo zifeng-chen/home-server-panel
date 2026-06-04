@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.8.7',
+  version: '1.9.0',
   NOTIFY_DURATION: 3000,
   _pending: {},
   isPending(key) {
@@ -82,8 +82,7 @@ App.pageLoaders = {
   dashboard: loadDashboard,
   ddns: loadDdns,
   ssl: loadCert,
-  nginx: loadNginx,
-  proxy: loadProxy,
+  nginx: () => { loadNginx(); /* proxy 在切换标签时懒加载 */ },
   port: loadPort,
   pm2: loadPM2,
   log: loadLog,

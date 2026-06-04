@@ -1,56 +1,154 @@
-// DDNS 页面
+// DDNS 页面 - 支持 IPv4 + IPv6
 let ddnsLoaded = false;
 
 async function loadDdns() {
   const tbody = document.getElementById('ddnsTbody');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="6">加载中...</td></tr>';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="7">加载中...</td></tr>';
 
   try {
     const res = await Api.get('/ddns');
     if (!res.success) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
       return;
     }
 
     const records = res.data?.records || [];
-    const publicIp = res.data?.publicIp || '--';
+    const ipv4 = res.data?.publicIpv4 || '--';
+    const ipv6 = res.data?.publicIpv6 || '--';
 
     // 更新公网 IP 显示
     const ipEl = document.getElementById('ddnsPublicIp');
-    if (ipEl) ipEl.innerHTML = `🌐 公网 IP: <strong>${publicIp}</strong>`;
+    if (ipEl) {
+      ipEl.innerHTML = `🌐 IPv4: <strong>${ipv4}</strong>${ipv6 && ipv6 !== '--' ? ` &nbsp;|&nbsp; 🔷 IPv6: <strong><span title="${ipv6}">${ipv6.length>20 ? ipv6.slice(0,20)+'...' : ipv6}</span></strong>` : ''}`;
+    }
 
     if (records.length === 0) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">暂无 DDNS 记录<br><small>公网 IP: <strong>${publicIp}</strong> | 点击「添加域名」开始配置</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
       return;
     }
 
     tbody.innerHTML = records.map(r => {
       if (r.error) {
-        return `<tr><td colspan="6" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
+        return `<tr><td colspan="7" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
       }
+
       const needsUpdate = r.needsUpdate;
+      const typeClass = r.recordType === 'AAAA' ? 'type-badge-ipv6' : 'type-badge';
+      const enabled = r.enabled !== false;
+
       return `
-        <tr>
+        <tr style="${enabled ? '' : 'opacity:0.5'}">
           <td><strong>${r.domain}</strong></td>
-          <td><span class="type-badge">${r.recordType || 'A'}</span></td>
-          <td><code>${r.ip || '--'}</code>${needsUpdate ? ` → <code style="color:var(--warning)">${r.currentPublicIp}</code>` : ''}</td>
-          <td>${formatDate(r.updatedAt)}</td>
-          <td><span class="status-badge ${r.status === 'ENABLE' ? 'online' : needsUpdate ? 'pending' : 'online'}">${needsUpdate ? '需更新' : r.status === 'ENABLE' ? '生效中' : '已停用'}</span></td>
+          <td><span class="${typeClass}">${r.recordType || 'A'}</span></td>
+          <td><code style="${needsUpdate ? 'color:var(--warning)' : ''}">${r.ip || '--'}</code></td>
+          <td><code style="font-size:12px;${needsUpdate ? 'color:var(--warning)' : 'color:var(--text-secondary)'}">${needsUpdate ? (r.currentPublicIp || '?') : '—'}</code></td>
+          <td><small>${formatDate(r.updatedAt)}</small></td>
           <td>
-            ${needsUpdate ? `<button class="btn btn-sm btn-warning" onclick="refreshDdnsRecord('${r.id}')">🔄 更新</button>` : '<span class="text-muted">最新</span>'}
-            <button class="btn btn-sm btn-danger" onclick="deleteDdns('${encodeURIComponent(r.domain)}', '${r.id}')">删除</button>
+            <span class="status-badge ${enabled ? (needsUpdate ? 'pending' : 'online') : 'offline'}">
+              ${enabled ? (needsUpdate ? '需更新' : '生效中') : '已停用'}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-sm ${enabled ? 'btn-secondary' : 'btn-success'}" onclick="toggleDdnsRecord('${r.id}', '${enabled}')" title="${enabled ? '停用' : '启用'}">${enabled ? '⏸ 停用' : '▶ 启用'}</button>
+            <button class="btn btn-sm btn-primary" onclick="editDdnsRecord('${r.id}')">✏ 编辑</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteDdnsRecord('${r.id}', '${r.domain}')">🗑 删除</button>
           </td>
         </tr>
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">加载失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">加载失败: ${err.message}</td></tr>`;
   }
 }
 
-// 全局刷新所有 DDNS
+// 启停记录
+window.toggleDdnsRecord = async (recordId, currentlyEnabled) => {
+  const newStatus = currentlyEnabled === 'true' || currentlyEnabled === true ? 'DISABLE' : 'ENABLE';
+  Utils.notify(`正在${newStatus === 'ENABLE' ? '启用' : '停用'}...`, 'info');
+  const res = await Api.post(`/ddns/record/${recordId}/toggle`, { status: newStatus });
+  if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
+  else Utils.notify(res.message || '操作失败', 'error');
+};
+
+// 编辑记录
+window.editDdnsRecord = (recordId) => {
+  // 先从已加载的数据中找记录
+  const rows = document.querySelectorAll('#ddnsTbody tr');
+  let record = null;
+  for (const row of rows) {
+    const btns = row.querySelectorAll('button');
+    for (const btn of btns) {
+      if (btn.getAttribute('onclick')?.includes(recordId)) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 3) {
+          const domain = cells[0].textContent.trim();
+          const type = cells[1].textContent.trim();
+          const ip = cells[2].querySelector('code')?.textContent.trim() || '';
+          const ttlEl = row.querySelector('[data-ttl]');
+          record = { id: recordId, domain, type, ip, ttl: 600 };
+        }
+        break;
+      }
+    }
+    if (record) break;
+  }
+
+  if (!record) { Utils.notify('未找到记录信息', 'error'); return; }
+
+  const body = `
+    <div class="form-group">
+      <label>域名</label>
+      <code style="font-size:14px;">${record.domain}</code>
+    </div>
+    <div class="form-group">
+      <label>记录类型</label>
+      <select id="ddnsEditType" class="form-input">
+        <option value="A" ${record.type === 'A' ? 'selected' : ''}>A (IPv4)</option>
+        <option value="AAAA" ${record.type === 'AAAA' ? 'selected' : ''}>AAAA (IPv6)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>记录值 (IP)</label>
+      <input type="text" id="ddnsEditValue" class="form-input" value="${record.ip}" placeholder="IP 地址">
+    </div>
+    <div class="form-group">
+      <label>TTL (秒)</label>
+      <input type="number" id="ddnsEditTtl" class="form-input" value="${record.ttl || 600}" min="60" max="86400">
+    </div>
+  `;
+  const footer = `
+    <button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>
+    <button class="btn btn-primary" id="ddnsEditSave">💾 保存</button>
+  `;
+  Utils.openModal('编辑 DNS 记录', body, footer);
+
+  document.getElementById('ddnsEditSave').addEventListener('click', async () => {
+    const type = document.getElementById('ddnsEditType').value;
+    const value = document.getElementById('ddnsEditValue').value.trim();
+    const ttl = parseInt(document.getElementById('ddnsEditTtl').value) || 600;
+
+    if (!value) { Utils.notify('IP 地址不能为空', 'error'); return; }
+
+    Utils.closeModal();
+    Utils.notify('正在更新...', 'info');
+    const res = await Api.put(`/ddns/record/${recordId}`, { type, value, ttl });
+    if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
+    else Utils.notify(res.message || '更新失败', 'error');
+  });
+};
+
+// 删除 DNS 记录（从阿里云删除）
+window.deleteDdnsRecord = (recordId, domain) => {
+  Utils.confirm('删除 DNS 记录', `确定要删除「${domain}」的 DNS 解析记录吗？<br><small style="color:var(--danger)">此操作将从阿里云 DNS 中删除该记录，不可撤销</small>`, async () => {
+    const res = await Api.del(`/ddns/record/${recordId}`);
+    if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
+    else Utils.notify(res.message || '删除失败', 'error');
+  });
+};
+
+// 全局刷新
 window.refreshAllDdns = async () => {
   Utils.notify('正在检测公网 IP 并刷新所有 DDNS 记录...', 'info');
   const res = await Api.post('/ddns/refresh');
@@ -62,36 +160,7 @@ window.refreshAllDdns = async () => {
   }
 };
 
-// 单条刷新（已废弃，走全局刷新）
-window.refreshDdnsRecord = async (recordId) => {
-  Utils.notify('正在更新...', 'info');
-  const res = await Api.post('/ddns/refresh');
-  if (res.success) {
-    Utils.notify(res.message, 'success');
-    loadDdns();
-  } else {
-    Utils.notify(res.message || '更新失败', 'error');
-  }
-};
-
-// 删除 DDNS 域名
-window.deleteDdns = async (domain, recordId) => {
-  Utils.confirm('删除 DDNS 配置', `确定要删除 "${decodeURIComponent(domain)}" 吗？<br><small>仅删除本面板配置，不会删除阿里云上的 DNS 记录</small>`, async () => {
-    // 从配置中移除
-    const parts = decodeURIComponent(domain).split('.');
-    let subdomain = '@', name = decodeURIComponent(domain);
-    if (parts.length > 2) {
-      name = parts.slice(-2).join('.');
-      subdomain = parts.slice(0, -2).join('.');
-    }
-
-    const res = await Api.del('/ddns/domains', { name, subdomain });
-    if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
-    else Utils.notify(res.message || '删除失败', 'error');
-  });
-};
-
-// 添加域名弹窗
+// 添加域名
 window.showAddDdnsModal = () => {
   const body = `
     <div class="form-group">
@@ -100,7 +169,7 @@ window.showAddDdnsModal = () => {
     </div>
     <div class="form-group">
       <label>子域名（@ 表示根域名）</label>
-      <input type="text" id="ddnsAddSub" class="form-input" placeholder="例如：www 或 @">
+      <input type="text" id="ddnsAddSub" class="form-input" value="@">
     </div>
     <div class="form-group">
       <label>记录类型</label>
@@ -112,6 +181,10 @@ window.showAddDdnsModal = () => {
     <div class="form-group">
       <label>TTL (秒)</label>
       <input type="number" id="ddnsAddTtl" class="form-input" value="600" min="60" max="86400">
+    </div>
+    <div class="form-group">
+      <label>IP 地址 (留空自动获取公网 IP)</label>
+      <input type="text" id="ddnsAddValue" class="form-input" placeholder="留空自动获取公网 IP">
     </div>
   `;
   const footer = `
@@ -125,36 +198,37 @@ window.showAddDdnsModal = () => {
     const subdomain = document.getElementById('ddnsAddSub').value.trim() || '@';
     const recordType = document.getElementById('ddnsAddType').value;
     const ttl = parseInt(document.getElementById('ddnsAddTtl').value) || 600;
+    const value = document.getElementById('ddnsAddValue').value.trim() || undefined;
 
     if (!name) { Utils.notify('请输入主域名', 'error'); return; }
 
     Utils.closeModal();
-    Utils.notify(`正在添加 ${subdomain === '@' ? name : subdomain + '.' + name}...`, 'info');
+    Utils.notify(`正在添加 ${subdomain === '@' ? name : subdomain + '.' + name} (${recordType})...`, 'info');
 
-    const res = await Api.post('/ddns/domains', { name, subdomain, recordType, ttl });
+    const res = await Api.post('/ddns/domains', { name, subdomain, recordType, ttl, value });
     if (res.success) {
       Utils.notify(res.message, 'success');
       loadDdns();
-      // 添加后自动刷新一次 DDNS
-      setTimeout(() => Api.post('/ddns/refresh'), 1000);
+      // 添加后自动刷新
+      setTimeout(() => Api.post('/ddns/refresh'), 1500);
     } else {
       Utils.notify(res.message || '添加失败', 'error');
     }
   });
 };
 
-// 按钮事件绑定
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
   const refreshBtn = document.getElementById('btnDdnsRefresh');
   const addBtn = document.getElementById('btnDdnsAdd');
 
-  // 在工具栏插入公网 IP 显示
+  // 在工具栏右侧插入 IP 显示
   const toolbar = document.querySelector('#page-ddns .page-toolbar');
   if (toolbar && !document.getElementById('ddnsPublicIp')) {
     const ipSpan = document.createElement('span');
     ipSpan.id = 'ddnsPublicIp';
-    ipSpan.style.cssText = 'margin-left:auto;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;';
-    ipSpan.innerHTML = '🌐 公网 IP: <strong>检测中...</strong>';
+    ipSpan.style.cssText = 'margin-left:auto;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;';
+    ipSpan.innerHTML = '🌐 检测中...';
     toolbar.appendChild(ipSpan);
   }
 

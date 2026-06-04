@@ -146,16 +146,22 @@ class SslService {
       throw new Error('阿里云密钥未配置，DNS 验证需要密钥');
     }
 
+    // 规范化域名：去除前端可能传入的 *. 前缀，后端统一处理
+    let cleanDomain = domain.replace(/^\*+\./g, '');
+    if (!cleanDomain || cleanDomain.includes('*')) {
+      throw new Error('域名格式无效，通配符仅支持 *.example.com 格式');
+    }
+
+    const domains = [cleanDomain];
+    if (options.wildcard) {
+      domains.push(`*.${cleanDomain}`);
+    }
+
     const args = [
       '--issue',
       '--dns', 'dns_ali',
-      '-d', domain
+      ...domains.map(d => ['-d', d]).flat()
     ];
-
-    // 支持通配符证书
-    if (options.wildcard) {
-      args.push('-d', `*.${domain}`);
-    }
 
     const env = {
       ...process.env,
@@ -165,8 +171,8 @@ class SslService {
 
     try {
       const result = await this._execAcme(args.join(' '), env);
-      this._addCertConfig(domain, { alias: options.alias || domain, wildcard: options.wildcard });
-      return { success: true, domain, message: `证书申请成功: ${domain}`, output: result };
+      this._addCertConfig(cleanDomain, { alias: options.alias || cleanDomain, wildcard: options.wildcard });
+      return { success: true, domain: cleanDomain, message: `证书申请成功: ${cleanDomain}`, output: result };
     } catch (err) {
       throw new Error(`证书申请失败: ${err.message}`);
     }

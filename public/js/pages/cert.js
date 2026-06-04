@@ -74,7 +74,7 @@ window.showIssueCertModal = () => {
   const body = `
     <div class="form-group">
       <label>域名 *</label>
-      <input type="text" id="certIssueDomain" class="form-input" placeholder="例如：example.com">
+      <input type="text" id="certIssueDomain" class="form-input" placeholder="例如：example.com 或 *.example.com">
       <small style="color:var(--text-secondary)">支持通配符证书：输入 *.example.com 或勾选下方选项</small>
     </div>
     <div class="form-group">
@@ -97,15 +97,34 @@ window.showIssueCertModal = () => {
   Utils.openModal('申请 Let\'s Encrypt 证书', body, footer);
 
   document.getElementById('certIssueConfirm').addEventListener('click', async () => {
-    const domain = document.getElementById('certIssueDomain').value.trim();
+    let domain = document.getElementById('certIssueDomain').value.trim();
     const wildcard = document.getElementById('certWildcard').checked;
     const email = document.getElementById('certIssueEmail').value.trim();
 
     if (!domain) { Utils.notify('请输入域名', 'error'); return; }
+
+    // 前端规范化：去除 *. 前缀（后端统一加回）
+    if (domain.startsWith('*.')) {
+      domain = domain.replace(/^\*+\./g, '');
+      document.getElementById('certWildcard').checked = true;  // 自动勾选通配符
+    }
+
+    // 禁止多级通配符 *.*.xxx
+    if (domain.includes('*')) {
+      Utils.notify('域名格式无效：通配符仅支持 *.example.com（单级）', 'error');
+      return;
+    }
+
+    if (!/^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(domain)) {
+      Utils.notify('请输入有效的域名格式，如 example.com', 'error');
+      return;
+    }
+
     if (email) localStorage.setItem('acmeEmail', email);
 
     Utils.closeModal();
-    Utils.notify(`正在为 ${domain} 申请证书，请稍候（DNS 验证约需 10-60 秒）...`, 'info');
+    const displayName = wildcard ? `*.${domain}` : domain;
+    Utils.notify(`正在为 ${displayName} 申请证书，请稍候（DNS 验证约需 10-60 秒）...`, 'info');
 
     try {
       const res = await Api.post('/cert/issue', { domain, wildcard });

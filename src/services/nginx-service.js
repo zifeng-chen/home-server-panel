@@ -285,22 +285,33 @@ class NginxService {
 
   async _getPid() {
     try {
-      // Try reading PID from file first
+      // Try reading PID from file first (may fail with EACCES)
       const pidPaths = [
+        '/run/nginx.pid',
         '/var/run/nginx.pid',
         '/opt/homebrew/var/run/nginx.pid',
         '/usr/local/var/run/nginx.pid'
       ];
       for (const pidPath of pidPaths) {
-        if (fs.existsSync(pidPath)) {
-          const pid = fs.readFileSync(pidPath, 'utf-8').trim();
-          if (pid && await this._pidAlive(pid)) return parseInt(pid);
-        }
+        try {
+          if (fs.existsSync(pidPath)) {
+            const pid = fs.readFileSync(pidPath, 'utf-8').trim();
+            if (pid && await this._pidAlive(pid)) return parseInt(pid);
+          }
+        } catch (e) { /* EACCES, 继续下一个 */ }
       }
-      // Fallback to pgrep
-      const result = await this._exec('pgrep nginx 2>/dev/null || echo ""');
-      const pids = result.trim().split('\n').filter(Boolean);
-      if (pids.length > 0) return parseInt(pids[0]);
+      // Fallback: use systemd MainPID (most accurate for systemd systems)
+      try {
+        const mp = await this._exec('systemctl show nginx -p MainPID --value 2>/dev/null');
+        const mainPid = parseInt(mp.trim());
+        if (mainPid > 0 && await this._pidAlive(mainPid)) return mainPid;
+      } catch (e) { /* 非 systemd 系统 */ }
+      // Last fallback: pgrep (may return wrong nginx in Docker env)
+      try {
+        const result = await this._exec('pgrep -f "/usr/sbin/nginx" 2>/dev/null || echo ""');
+        const pids = result.trim().split('\n').filter(Boolean);
+        if (pids.length > 0) return parseInt(pids[0]);
+      } catch (e) { /* pgrep not available */ }
       return null;
     } catch {
       return null;
@@ -444,7 +455,12 @@ class NginxService {
     return new Promise((resolve, reject) => {
       exec(command, { timeout: options.timeout || 10000, ...options }, (err, stdout, stderr) => {
         if (err && !options.ignoreError) {
-          return reject(new Error(stderr || stdout || err.message));
+          // sudo commands often write to stderr on success; check exit code not just stderr presence
+          const msg = (stderr + stdout).trim();
+          if (command.startsWith('sudo ') && err.code === 0) {
+            return resolve(msg);
+          }
+          return reject(new Error(msg || err.message));
         }
         resolve((stdout + stderr).trim());
       });

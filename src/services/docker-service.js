@@ -308,7 +308,7 @@ class DockerService {
 
       child.on('close', () => { if (buffer.trim()) send('output', { text: buffer.trim() }); send('done', {}); res.end(); });
       child.on('error', (err) => { send('error', { message: err.message }); res.end(); });
-      req?.on?.('close', () => child.kill());
+      res?.on?.('close', () => child.kill());
     });
   }
 

@@ -30,7 +30,34 @@ app.use('/api/auth', (req, res, next) => {
   next();
 }, authRouter);
 
+// Setup 路由（无需认证）
+app.use('/api/setup', require('./routes/setup'));
+
 // ===== 以下所有路由都需要认证 =====
+
+// 安装检查中间件：未安装则跳转到安装页面
+app.use((req, res, next) => {
+  const skipPaths = ['/install.html', '/login.html'];
+  const skipPrefixes = ['/api/setup', '/api/auth', '/css/', '/js/', '/favicon'];
+  const path = req.path;
+
+  if (skipPaths.includes(path) || skipPrefixes.some(p => path.startsWith(p))) {
+    return next();
+  }
+
+  // 检查 .env 中 ADMIN_PASS 是否为默认值
+  try {
+    const envFile = require('fs').readFileSync(require('path').join(__dirname, '..', '.env'), 'utf-8');
+    const match = envFile.match(/^ADMIN_PASS=(.+)$/m);
+    if (!match || match[1] === 'admin123' || match[1] === 'your_admin_password') {
+      return res.redirect('/install.html');
+    }
+  } catch (e) {
+    // .env 不存在，重定向到安装页面
+    return res.redirect('/install.html');
+  }
+  next();
+});
 
 // Auth 中间件
 app.use(auth.middleware());

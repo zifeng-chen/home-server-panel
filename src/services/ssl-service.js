@@ -1,5 +1,6 @@
 // SSL 证书服务 - Let's Encrypt ACME 自动化 (via acme.sh)
 const { execFile } = require('child_process');
+const Core = require('@alicloud/pop-core');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -133,6 +134,49 @@ class SslService {
     });
   }
 
+  // ========== DNS TXT 记录清理（避免重复申请冲突） ==========
+
+  async _cleanDnsTxtRecords(domain, accessKeyId, accessKeySecret) {
+    const client = new Core({
+      accessKeyId,
+      accessKeySecret,
+      endpoint: 'https://alidns.aliyuncs.com',
+      apiVersion: '2015-01-09'
+    });
+
+    try {
+      // 1. 查询主域名对应的 Hosted Zone
+      const zones = await client.request('DescribeDomains', { KeyWord: domain, SearchMode: 'EXACT' }, { method: 'POST' });
+      const zoneList = zones.Domains?.Domain || [];
+      if (zoneList.length === 0) return [];
+
+      const cleaned = [];
+      for (const zone of zoneList) {
+        // 2. 查找 _acme-challenge 开头的 TXT 记录
+        const records = await client.request('DescribeDomainRecords', {
+          DomainName: zone.DomainName,
+          RRKeyWord: '_acme-challenge',
+          TypeKeyWord: 'TXT',
+          SearchMode: 'EXACT'
+        }, { method: 'POST' });
+
+        const recordList = records.DomainRecords?.Record || [];
+        for (const rec of recordList) {
+          try {
+            await client.request('DeleteDomainRecord', { RecordId: rec.RecordId }, { method: 'POST' });
+            cleaned.push(`${rec.RR}.${zone.DomainName}`);
+          } catch (e) {
+            // 单条删除失败，继续清理下一条
+          }
+        }
+      }
+      return cleaned;
+    } catch (e) {
+      // DNS 清理失败不阻塞主流程（可能密钥无 DNS 权限）
+      return [];
+    }
+  }
+
   // ========== 证书申请 ==========
 
   async issueCertificate(domain, options = {}) {
@@ -170,6 +214,12 @@ class SslService {
     };
 
     try {
+      // 清理上次申请可能残留的 DNS TXT 记录
+      const cleaned = await this._cleanDnsTxtRecords(cleanDomain, accessKeyId, accessKeySecret);
+      if (cleaned.length > 0) {
+        console.log(`[SSL] 清理了 ${cleaned.length} 条残留 TXT 记录: ${cleaned.join(', ')}`);
+      }
+
       const result = await this._execAcme(args.join(' '), env);
       this._addCertConfig(cleanDomain, { alias: options.alias || cleanDomain, wildcard: options.wildcard });
       return { success: true, domain: cleanDomain, message: `证书申请成功: ${cleanDomain}`, output: result };

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Server Panel - 引导安装</title>
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --bg-tertiary: #334155;
+  --border: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --brand-primary: #6366f1;
+  --brand-hover: #818cf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --error: #f87171;
+  --radius: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Canvas background */
+canvas#bgCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 36px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* Brand */
+.brand {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.brand-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+.brand h1 {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand-hover), var(--brand-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.brand p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* Steps indicator */
+.steps {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0 28px;
+}
+.step-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s;
+}
+.step-dot.active { background: var(--brand-primary); box-shadow: 0 0 8px var(--brand-primary); }
+.step-dot.done { background: var(--success); }
+
+/* Forms */
+.form-group {
+  margin-bottom: 18px;
+}
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input:focus, .form-select:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+.form-input::placeholder { color: #64748b; }
+.form-select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-hover), var(--brand-primary));
+  color: white;
+  width: 100%;
+}
+.btn-primary:hover {
+  box-shadow: 0 0 20px rgba(99,102,241,0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.btn-secondary:hover { background: #475569; }
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.btn-group .btn { flex: 1; }
+
+/* DB mode cards */
+.db-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 8px 0;
+}
+.db-mode-card {
+  padding: 20px 16px;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.db-mode-card:hover { border-color: var(--brand-primary); }
+.db-mode-card.selected {
+  border-color: var(--brand-primary);
+  background: rgba(99,102,241,0.08);
+  box-shadow: 0 0 12px rgba(99,102,241,0.15);
+}
+.db-mode-icon { font-size: 32px; margin-bottom: 8px; }
+.db-mode-title { font-size: 15px; font-weight: 600; }
+.db-mode-desc { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Test result */
+.test-result {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+  display: none;
+}
+.test-result.success { display: block; background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+.test-result.error { display: block; background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); }
+
+/* Pwd toggle */
+.pwd-wrapper { position: relative; }
+.pwd-wrapper .form-input { padding-right: 40px; }
+.pwd-toggle {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+/* Alert */
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.alert-info { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: var(--brand-hover); }
+.alert-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: var(--warning); }
+
+/* Success page */
+.success-icon {
+  font-size: 64px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.success-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.success-desc {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.config-preview {
+  background: var(--bg-input);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: 'Menlo', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.config-preview .key { color: var(--brand-hover); }
+.config-preview .val { color: var(--success); }
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 500px) {
+  .card { padding: 28px 20px; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .db-modes { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<div class="container">
+  <div class="card">
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-icon">🖥️</div>
+      <h1>Home Server Panel</h1>
+      <p>服务器管理面板 · 引导安装</p>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps">
+      <div class="step-dot active" data-step="0"></div>
+      <div class="step-dot" data-step="1"></div>
+      <div class="step-dot" data-step="2"></div>
+    </div>
+
+    <!-- Step 0: Database Mode -->
+    <div id="step-0">
+      <div class="alert alert-info">💡 选择数据存储方式。本地模式无需额外配置，即可开箱使用；MySQL 适合已有数据库服务器的场景。</div>
+      <div class="db-modes">
+        <div class="db-mode-card selected" data-mode="local" onclick="selectDbMode('local')">
+          <div class="db-mode-icon">📁</div>
+          <div class="db-mode-title">本地文件</div>
+          <div class="db-mode-desc">JSON 文件存储<br>开箱即用 · 零配置</div>
+        </div>
+        <div class="db-mode-card" data-mode="mysql" onclick="selectDbMode('mysql')">
+          <div class="db-mode-icon">🐬</div>
+          <div class="db-mode-title">MySQL</div>
+          <div class="db-mode-desc">外部数据库<br>高性能 · 集中管理</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nextStep()">下一步 →</button>
+    </div>
+
+    <!-- Step 1: MySQL Config (shown only if mysql) -->
+    <div id="step-1" style="display:none">
+      <div class="alert alert-info">🔗 配置 MySQL 数据库连接信息</div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">主机地址</label>
+          <input class="form-input" id="dbHost" placeholder="192.168.100.110" value="192.168.100.110">
+        </div>
+        <div class="form-group">
+          <label class="form-label">端口</label>
+          <input class="form-input" id="dbPort" value="3306" placeholder="3306">
+        </div>
+        <div class="form-group">
+          <label class="form-label">数据库名</label>
+          <input class="form-input" id="dbName" placeholder="server_panel" value="server_panel">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">用户名</label>
+          <input class="form-input" id="dbUser" placeholder="root" value="root">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <div class="pwd-wrapper">
+            <input class="form-input" type="password" id="dbPass" placeholder="数据库密码" value="CHAOYUE8feng">
+            <button class="pwd-toggle" onclick="togglePwd('dbPass', this)">👁</button>
+          </div>
+        </div>
+      </div>
+      <div class="test-result" id="testResult"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-secondary" onclick="testConnection()">🔍 测试连接</button>
+        <button class="btn btn-primary" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Admin Account -->
+    <div id="step-2" style="display:none">
+      <div class="alert alert-info">👤 设置管理员账号</div>
+      <div class="form-group">
+        <label class="form-label">用户名</label>
+        <input class="form-input" id="adminUser" placeholder="管理员用户名" value="admin">
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码</label>
+        <div class="pwd-wrapper">
+          <input class="form-input" type="password" id="adminPass" placeholder="至少6位密码" value="admin123">
+          <button class="pwd-toggle" onclick="togglePwd('adminPass', this)">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">确认密码</label>
+        <input class="form-input" type="password" id="adminPass2" placeholder="再次输入密码" value="admin123">
+      </div>
+      <div id="installError" class="test-result error"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-primary" id="installBtn" onclick="doInstall()">🚀 完成安装</button>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div id="step-3" style="display:none">
+      <div class="success-icon">✅</div>
+      <div class="success-title">安装完成！</div>
+      <div class="success-desc">服务器管理面板已就绪</div>
+      <div class="config-preview" id="configPreview"></div>
+      <button class="btn btn-primary" onclick="goToPanel()">🚀 进入管理面板</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== 背景动画 ======
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [], animId;
+  
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 初始化粒子
+  const count = Math.min(60, Math.floor(w * h / 15000));
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 2 + 0.5
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    
+    // 网格
+    ctx.strokeStyle = 'rgba(51,65,85,0.15)';
+    ctx.lineWidth = 0.5;
+    const spacing = 50;
+    for (let x = spacing; x < w; x += spacing) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let y = spacing; y < h; y += spacing) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // 粒子
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(99,102,241,0.2)';
+      ctx.fill();
+    });
+
+    // 连线
+    particles.forEach((a, i) => {
+      particles.slice(i + 1).forEach(b => {
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(99,102,241,${0.06 * (1 - dist/120)})`;
+          ctx.stroke();
+        }
+      });
+    });
+
+    animId = requestAnimationFrame(draw);
+  }
+  draw();
+
+  // 标签页不可见时暂停
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { cancelAnimationFrame(animId); }
+    else { draw(); }
+  });
+})();
+
+// ====== 向导逻辑 ======
+let currentStep = 0;
+let dbMode = 'local';
+const totalSteps = 3;
+
+function selectDbMode(mode) {
+  dbMode = mode;
+  document.querySelectorAll('.db-mode-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.db-mode-card[data-mode="${mode}"]`).classList.add('selected');
+}
+
+function updateSteps() {
+  document.querySelectorAll('.step-dot').forEach((dot, i) => {
+    dot.classList.remove('active', 'done');
+    if (i < currentStep) dot.classList.add('done');
+    if (i === currentStep) dot.classList.add('active');
+  });
+}
+
+function showStep(n) {
+  currentStep = Math.max(0, Math.min(n, totalSteps));
+  updateSteps();
+  document.querySelectorAll('[id^="step-"]').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(`step-${currentStep}`);
+  if (target) target.style.display = 'block';
+}
+
+function nextStep() {
+  // Validate DB connection when going from step 1 → 2
+  if (dbMode === 'mysql' && currentStep === 1) {
+    const testDiv = document.getElementById('testResult');
+    if (!testDiv.classList.contains('success')) {
+      testDiv.textContent = '⚠️ 请先测试数据库连接';
+      testDiv.className = 'test-result error';
+      return;
+    }
+  }
+  showStep(currentStep + 1);
+}
+
+function prevStep() {
+  showStep(currentStep - 1);
+}
+
+// ====== 密码显隐切换 ======
+function togglePwd(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.textContent = isPassword ? '🙈' : '👁';
+}
+
+// ====== 测试 MySQL 连接 ======
+async function testConnection() {
+  const host = document.getElementById('dbHost').value.trim();
+  const port = document.getElementById('dbPort').value.trim();
+  const user = document.getElementById('dbUser').value.trim();
+  const pass = document.getElementById('dbPass').value;
+  const db = document.getElementById('dbName').value.trim();
+  const resultDiv = document.getElementById('testResult');
+
+  if (!host || !user) {
+    resultDiv.textContent = '❌ 请输入主机地址和用户名';
+    resultDiv.className = 'test-result error';
+    return;
+  }
+
+  resultDiv.textContent = '🔄 正在连接...';
+  resultDiv.className = 'test-result';
+  resultDiv.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/setup/test-db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, port: parseInt(port) || 3306, user, password: pass, database: db })
+    });
+    const data = await res.json();
+    if (data.success) {
+      resultDiv.textContent = data.dbExists 
+        ? `✅ 连接成功！数据库 "${db}" 已存在，将直接使用` 
+        : `✅ 连接成功！数据库 "${db}" 将在安装时自动创建`;
+      resultDiv.className = 'test-result success';
+    } else {
+      resultDiv.textContent = '❌ ' + (data.message || '连接失败');
+      resultDiv.className = 'test-result error';
+    }
+  } catch (err) {
+    resultDiv.textContent = '❌ 无法连接安装服务，请确认服务已启动';
+    resultDiv.className = 'test-result error';
+  }
+}
+
+// ====== 执行安装 ======
+async function doInstall() {
+  const adminUser = document.getElementById('adminUser').value.trim();
+  const adminPass = document.getElementById('adminPass').value;
+  const adminPass2 = document.getElementById('adminPass2').value;
+  const errorDiv = document.getElementById('installError');
+  const btn = document.getElementById('installBtn');
+
+  if (!adminUser) { showError('请输入管理员用户名'); return; }
+  if (adminPass.length < 6) { showError('密码至少6位'); return; }
+  if (adminPass !== adminPass2) { showError('两次密码输入不一致'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 安装中...';
+
+  const payload = {
+    dbMode,
+    adminUser,
+    adminPass
+  };
+
+  if (dbMode === 'mysql') {
+    payload.dbHost = document.getElementById('dbHost').value.trim();
+    payload.dbPort = parseInt(document.getElementById('dbPort').value.trim()) || 3306;
+    payload.dbUser = document.getElementById('dbUser').value.trim();
+    payload.dbPass = document.getElementById('dbPass').value;
+    payload.dbName = document.getElementById('dbName').value.trim();
+  }
+
+  try {
+    const res = await fetch('/api/setup/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      // 显示配置预览
+      let preview = '';
+      if (dbMode === 'mysql') {
+        preview += `<span class="key">DB_HOST</span>=<span class="val">${payload.dbHost}</span>\n`;
+        preview += `<span class="key">DB_PORT</span>=<span class="val">${payload.dbPort}</span>\n`;
+        preview += `<span class="key">DB_USER</span>=<span class="val">${payload.dbUser}</span>\n`;
+        preview += `<span class="key">DB_NAME</span>=<span class="val">${payload.dbName}</span>\n`;
+      }
+      preview += `<span class="key">DB_MODE</span>=<span class="val">${dbMode}</span>\n`;
+      preview += `<span class="key">ADMIN_USER</span>=<span class="val">${adminUser}</span>`;
+      document.getElementById('configPreview').innerHTML = preview;
+      showStep(3);
+    } else {
+      showError(data.message || '安装失败');
+    }
+  } catch (err) {
+    showError('安装请求失败: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🚀 完成安装';
+  }
+}
+
+function showError(msg) {
+  const errorDiv = document.getElementById('installError');
+  errorDiv.textContent = '❌ ' + msg;
+  errorDiv.className = 'test-result error';
+  errorDiv.style.display = 'block';
+}
+
+function goToPanel() {
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

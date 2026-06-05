@@ -228,6 +228,90 @@ class SslService {
     }
   }
 
+  // SSE 实时证书申请（带进度回调）
+  async issueCertificateSSE(domain, options, onProgress) {
+    if (!fs.existsSync(ACME_BIN)) {
+      onProgress('error', { message: 'acme.sh 未安装，请先安装' });
+      return { success: false, message: 'acme.sh 未安装' };
+    }
+
+    const accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID;
+    const accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET;
+    if (!accessKeyId || !accessKeySecret) {
+      onProgress('error', { message: '阿里云密钥未配置' });
+      return { success: false, message: '阿里云密钥未配置' };
+    }
+
+    let cleanDomain = domain.replace(/^\*+\./g, '');
+    if (!cleanDomain || cleanDomain.includes('*')) {
+      onProgress('error', { message: '域名格式无效' });
+      return { success: false, message: '域名格式无效' };
+    }
+
+    const domains = [cleanDomain];
+    if (options.wildcard) domains.push(`*.${cleanDomain}`);
+
+    const args = [
+      '--issue',
+      '--dns', 'dns_ali',
+      ...domains.map(d => ['-d', d]).flat()
+    ];
+
+    const env = {
+      ...process.env,
+      Ali_Key: accessKeyId,
+      Ali_Secret: accessKeySecret
+    };
+
+    onProgress('step', { text: `🔍 清理残留 DNS 记录: ${cleanDomain}...` });
+    try {
+      const cleaned = await this._cleanDnsTxtRecords(cleanDomain, accessKeyId, accessKeySecret);
+      if (cleaned.length > 0) {
+        onProgress('output', { text: `已清理 ${cleaned.length} 条残留 TXT 记录: ${cleaned.join(', ')}` });
+      }
+    } catch (e) {
+      onProgress('output', { text: 'DNS 清理跳过: ' + e.message });
+    }
+
+    onProgress('step', { text: `📜 正在为 ${domains.join(', ')} 申请证书...` });
+    onProgress('output', { text: '$ ' + ACME_BIN + ' ' + args.join(' ') });
+
+    return new Promise((resolve, reject) => {
+      const { execFile } = require('child_process');
+      const proc = execFile(ACME_BIN, args, {
+        env,
+        timeout: 180000,
+        maxBuffer: 1024 * 1024
+      });
+
+      proc.stdout.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text) onProgress('output', { text });
+      });
+
+      proc.stderr.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text) onProgress('output', { text });
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          onProgress('step', { text: '✅ 证书申请成功！' });
+          this._addCertConfig(cleanDomain, { alias: options.alias || cleanDomain, wildcard: options.wildcard });
+          resolve({ success: true, domain: cleanDomain, message: `证书申请成功: ${cleanDomain}` });
+        } else {
+          onProgress('error', { message: `证书申请失败 (exit code: ${code})` });
+          resolve({ success: false, message: `证书申请失败 (exit code: ${code})` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        onProgress('error', { message: err.message });
+        resolve({ success: false, message: err.message });
+      });
+    });
+  }
+
   // ========== 证书续期 ==========
 
   async renewCertificate(domain) {
@@ -380,25 +464,35 @@ class SslService {
     const certificates = [];
     
     for (const line of lines) {
-      if (!line.includes('|') || line.includes('Main_Domain')) continue;
-      
-      const parts = line.split('|').map(s => s.trim());
-      if (parts.length < 5) continue;
+      if (!line.trim() || line.includes('Main_Domain')) continue;
 
-      // 格式: Main_Domain | KeyLength | SAN_Domains | CA | Created | Renew
-      const expiresAt = this._parseAcmeDate(parts[5]);
+      // acme.sh --list 输出列间以连续空格分隔，部分列可能为空
+      // 列顺序: Main_Domain, KeyLength, SAN_Domains, Profile(空), CA, Created, Renew
+      const parts = line.split(/\s{2,}/).map(s => s.trim()).filter(Boolean);
+      if (parts.length < 4) continue;
+
+      // parts[0]=域名, parts[1]="ec-256", parts[2]=SAN域名, parts[3]=CA
+      // parts[4]=Created(可能), parts[5]=Renew(可能)
+      const mainDomain = parts[0];
+      const keyLength = parts[1].replace(/"/g, '');
+      const rawSanDomains = parts[2] || '';
+      const ca = parts[3] || 'ZeroSSL.com';
+      const createdStr = parts.length >= 5 ? parts[4] : '';
+      const renewStr = parts.length >= 6 ? parts[5] : '';
+
+      const expiresAt = this._parseAcmeDate(renewStr);
       const daysRemaining = this._daysUntil(expiresAt);
 
       certificates.push({
-        mainDomain: parts[0],
-        keyLength: parts[1],
-        sanDomains: (parts[2] || '')
+        mainDomain,
+        keyLength,
+        sanDomains: rawSanDomains
           .replace(/DNS:/g, '')
           .split(',')
           .map(s => s.trim())
           .filter(Boolean),
-        ca: parts[3],
-        createdAt: this._parseAcmeDate(parts[4]),
+        ca,
+        createdAt: this._parseAcmeDate(createdStr),
         expiresAt,
         daysRemaining
       });
@@ -437,6 +531,8 @@ class SslService {
 
   _saveConfig() {
     try {
+      const dir = path.dirname(CONFIG_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
     } catch (err) {
       console.error('[SSL] 配置文件保存失败:', err.message);

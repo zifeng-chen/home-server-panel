@@ -83,6 +83,40 @@ router.post('/issue', async (req, res) => {
   }
 });
 
+// GET /api/cert/issue/stream - SSE 实时证书申请进度
+router.get('/issue/stream', async (req, res) => {
+  const domain = req.query.domain;
+  const wildcard = req.query.wildcard === 'true';
+
+  if (!domain) {
+    return res.status(400).json({ success: false, message: '域名不能为空' });
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  const send = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+  };
+
+  try {
+    send('start', { message: `开始为 ${domain} 申请证书...` });
+    const result = await sslService.issueCertificateSSE(domain, { wildcard }, (type, data) => send(type, data));
+    if (result.success) {
+      send('done', { message: result.message || '证书申请完成' });
+    } else {
+      send('error', { message: result.message || '证书申请失败' });
+    }
+  } catch (err) {
+    send('error', { message: err.message });
+  }
+  res.end();
+});
+
 // POST /api/cert/renew - 续期证书
 router.post('/renew', async (req, res) => {
   try {

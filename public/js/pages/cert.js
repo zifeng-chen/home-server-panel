@@ -82,10 +82,6 @@ window.showIssueCertModal = () => {
         <input type="checkbox" id="certWildcard"> 申请通配符证书 (*.domain.com)
       </label>
     </div>
-    <div class="form-group">
-      <label>联系邮箱（留空则用系统配置）</label>
-      <input type="email" id="certIssueEmail" class="form-input" placeholder="admin@example.com" value="${localStorage.getItem('acmeEmail') || ''}">
-    </div>
     <div class="info-box" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:12px;font-size:12px;color:var(--text-secondary);margin-top:12px;">
       ℹ️ 使用阿里云 DNS (alidns) 自动验证，请确保已在「系统设置」中配置阿里云 AccessKey
     </div>
@@ -99,17 +95,15 @@ window.showIssueCertModal = () => {
   document.getElementById('certIssueConfirm').addEventListener('click', async () => {
     let domain = document.getElementById('certIssueDomain').value.trim();
     const wildcard = document.getElementById('certWildcard').checked;
-    const email = document.getElementById('certIssueEmail').value.trim();
 
     if (!domain) { Utils.notify('请输入域名', 'error'); return; }
 
     // 前端规范化：去除 *. 前缀（后端统一加回）
     if (domain.startsWith('*.')) {
       domain = domain.replace(/^\*+\./g, '');
-      document.getElementById('certWildcard').checked = true;  // 自动勾选通配符
+      document.getElementById('certWildcard').checked = true;
     }
 
-    // 禁止多级通配符 *.*.xxx
     if (domain.includes('*')) {
       Utils.notify('域名格式无效：通配符仅支持 *.example.com（单级）', 'error');
       return;
@@ -120,24 +114,78 @@ window.showIssueCertModal = () => {
       return;
     }
 
-    if (email) localStorage.setItem('acmeEmail', email);
-
     Utils.closeModal();
     const displayName = wildcard ? `*.${domain}` : domain;
-    Utils.notify(`正在为 ${displayName} 申请证书，请稍候（DNS 验证约需 10-60 秒）...`, 'info');
+    startCertIssueProgress(domain, wildcard, displayName);
+  });
+};
 
+// SSE 证书申请进度浮窗
+window.startCertIssueProgress = (domain, wildcard, displayName) => {
+  const body = `
+    <div id="certIssueProgress">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span id="certIssueStatus">⏳ 正在为 ${displayName} 申请证书...</span>
+        <div class="spinner" style="width:16px;height:16px;border:2px solid var(--text-secondary);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+      </div>
+      <pre id="certIssueLog" style="max-height:300px;overflow-y:auto;background:var(--bg-tertiary);color:#e0e0e0;padding:12px;border-radius:8px;font-size:12px;font-family:Menlo,monospace;white-space:pre-wrap;word-break:break-all;margin:0"></pre>
+    </div>
+  `;
+  const footer = `
+    <button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>
+  `;
+  Utils.openModal(`📜 申请证书: ${displayName}`, body, footer);
+
+  const statusSpan = document.getElementById('certIssueStatus');
+  const logDiv = document.getElementById('certIssueLog');
+  if (!statusSpan || !logDiv) return;
+
+  const token = localStorage.getItem('hsp_token');
+  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&token=${encodeURIComponent(token)}`);
+  let killed = false;
+
+  es.addEventListener('message', (e) => {
     try {
-      const res = await Api.post('/cert/issue', { domain, wildcard });
-      if (res.success) {
-        Utils.notify(`✅ ${res.message}`, 'success');
-        loadCert();
-      } else {
-        Utils.notify(res.message || '申请失败', 'error');
+      const msg = JSON.parse(e.data);
+      switch (msg.type) {
+        case 'start':
+          statusSpan.textContent = '⏳ ' + msg.message;
+          break;
+        case 'step':
+          statusSpan.textContent = msg.text;
+          logDiv.textContent += msg.text + '\n';
+          logDiv.scrollTop = logDiv.scrollHeight;
+          break;
+        case 'output':
+          logDiv.textContent += msg.text + '\n';
+          logDiv.scrollTop = logDiv.scrollHeight;
+          break;
+        case 'done':
+          statusSpan.textContent = '✅ ' + msg.message;
+          statusSpan.style.color = 'var(--success)';
+          statusSpan.parentElement.querySelector('.spinner').style.display = 'none';
+          es.close();
+          setTimeout(() => { Utils.closeModal(); loadCert(); }, 2000);
+          break;
+        case 'error':
+          statusSpan.textContent = '❌ ' + msg.message;
+          statusSpan.style.color = 'var(--danger)';
+          statusSpan.parentElement.querySelector('.spinner').style.display = 'none';
+          es.close();
+          break;
       }
-    } catch (err) {
-      Utils.notify('申请失败: ' + err.message, 'error');
+    } catch (parseErr) {
+      logDiv.textContent += '[解析错误] ' + e.data + '\n';
     }
   });
+
+  es.onerror = () => {
+    if (!killed) { statusSpan.textContent = '❌ 连接中断'; statusSpan.style.color = 'var(--danger)'; }
+    es.close();
+  };
+
+  const closeBtn = document.querySelector('#hsp-modal .btn-secondary');
+  if (closeBtn) closeBtn.addEventListener('click', () => { killed = true; es.close(); }, { once: true });
 };
 
 // 安装 acme.sh（SSE 实时进度）

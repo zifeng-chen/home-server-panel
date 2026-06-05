@@ -507,6 +507,11 @@ function showStep(n) {
 }
 
 function nextStep() {
+  // 本地文件模式：跳过数据库配置步骤
+  if (dbMode === 'local' && currentStep === 0) {
+    showStep(2);
+    return;
+  }
   // Validate DB connection when going from step 1 → 2
   if (dbMode === 'mysql' && currentStep === 1) {
     const testDiv = document.getElementById('testResult');
@@ -520,6 +525,11 @@ function nextStep() {
 }
 
 function prevStep() {
+  // 本地文件模式：从管理员配置回退时跳过数据库步骤
+  if (dbMode === 'local' && currentStep === 2) {
+    showStep(0);
+    return;
+  }
   showStep(currentStep - 1);
 }
 

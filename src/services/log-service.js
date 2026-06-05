@@ -46,13 +46,17 @@ class LogService {
         const duration = Date.now() - start;
         const path = req.originalUrl || req.url;
         if (!path.startsWith("/api/")) return origJson(obj);
-        const module = path.split("/").slice(2, 3)[0] || "system";
+        let module = path.split("/").slice(2, 3)[0] || "system";
+        // 模块名映射
+        const moduleMap = { cert: 'ssl', certificate: 'ssl' };
+        module = moduleMap[module] || module;
+
         let level = "info", message = req.method + " " + module;
         if (res.statusCode >= 500) { level = "error"; message = obj.message || "服务器错误"; }
         else if (res.statusCode >= 400) { level = "warn"; message = obj.message || "请求被拒绝"; }
         else if (obj && obj.success === true) { level = "success"; message = obj.message || module + " 成功"; }
         else if (obj && obj.success === false) { level = "warn"; message = obj.message || "操作失败"; }
-        self.log({ module, action: req.method + " " + path, level, message, detail: req.method + " " + path + " " + res.statusCode + " (" + duration + "ms)" });
+        self.log({ module, action: req.method + " " + path, level, message, detail: duration + "ms" });
         return origJson(obj);
       };
       next();

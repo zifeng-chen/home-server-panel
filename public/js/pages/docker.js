@@ -116,7 +116,7 @@ function renderDockerPage(data) {
     ${info?.available ? `
     <div class="footer-actions">
       <button class="btn btn-secondary" onclick="loadDocker()">🔄 刷新</button>
-      <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="Utils.showPageDiagLog('Docker', 'docker')">📋 日志</button>
+      <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="Utils.showOpLog('docker', 'Docker')">📋 日志</button>
       <small style="color:var(--text-secondary);margin-left:12px">Docker ${info.version} | ${info.driver}</small>
     </div>
     ` : ''}

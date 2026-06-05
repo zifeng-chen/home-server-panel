@@ -73,6 +73,69 @@ const Utils = (window.Utils = {
     }
   },
 
+  // 显示操作日志弹窗（从后端 /api/log 查询）
+  async showOpLog(module, title) {
+    const body = `
+      <div id="opLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
+      <pre id="opLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+      <div id="opLogSummary" style="display:none;margin-top:8px;font-size:11px;color:var(--text-secondary);"></div>
+    `;
+    const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyOpLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
+    Utils.openModal('📋 操作日志 - ' + (title || module), body, footer);
+
+    try {
+      const api = window.Api;
+      const res = await (api ? api.get('/log?module=' + encodeURIComponent(module || 'all') + '&limit=200') : fetch('/api/log?module=' + encodeURIComponent(module || 'all') + '&limit=200').then(r => r.json()));
+      const loaderEl = document.getElementById('opLogLoader');
+      const contentEl = document.getElementById('opLogContent');
+      const summaryEl = document.getElementById('opLogSummary');
+
+      if (contentEl && loaderEl) {
+        loaderEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+        if (res.success && res.data && res.data.list) {
+          const list = res.data.list;
+          if (list.length === 0) {
+            contentEl.innerHTML = '<span style="color:var(--text-secondary);">暂无操作日志</span>';
+            window._hspOpLogText = '';
+          } else {
+            const levelIcon = { success: '✅', info: 'ℹ️', warn: '⚠️', error: '❌' };
+            const lines = list.map(e => {
+              const time = (e.time || '').replace('T', ' ').substring(0, 19);
+              const icon = levelIcon[e.level] || '📝';
+              return `[${time}] ${icon} [${e.module}] ${e.action}: ${e.message}${e.detail ? ' (' + e.detail + ')' : ''}`;
+            });
+            contentEl.textContent = lines.join('\n');
+            summaryEl.style.display = 'block';
+            summaryEl.textContent = `共 ${res.data.total || list.length} 条操作日志`;
+            window._hspOpLogText = lines.join('\n');
+          }
+        } else {
+          contentEl.innerHTML = '<span style="color:var(--danger);">' + (res.message || '加载失败') + '</span>';
+          window._hspOpLogText = '';
+        }
+      }
+    } catch (err) {
+      const loaderEl = document.getElementById('opLogLoader');
+      if (loaderEl) loaderEl.textContent = '❌ 加载失败: ' + err.message;
+      window._hspOpLogText = '';
+    }
+  },
+
+  copyOpLog() {
+    const text = window._hspOpLogText || '';
+    if (!text) { this.notify('没有可复制的日志', 'warn'); return; }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => this.notify('✅ 日志已复制', 'success')).catch(() => this.notify('复制失败', 'error'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); this.notify('✅ 日志已复制', 'success');
+    }
+  },
+
   // 显示页面 API 诊断日志
   showPageDiagLog(title, pageFilter) {
     const filter = pageFilter || (window.Api ? Api._currentPage : 'dashboard');

@@ -59,6 +59,7 @@ async function loadCert() {
           <td><span class="status-badge ${c.status === 'valid' ? 'online' : c.status === 'expired' ? 'offline' : 'pending'}">${statusText}</span></td>
           <td>
             <button class="btn btn-sm btn-primary" onclick="renewCert('${c.domain}')">续期</button>
+            <button class="btn btn-sm btn-secondary" onclick="exportCert('${c.domain}')">导出</button>
             <button class="btn btn-sm btn-danger" onclick="deleteCertConfig('${c.domain}')">移除</button>
           </td>
         </tr>
@@ -300,7 +301,32 @@ window.uninstallAcme = async () => {
   });
 };
 
-// 续期证书
+// 导出证书
+window.exportCert = (domain) => {
+  const body = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button class="btn btn-primary" onclick="doExportCert('${domain}','fullchain')">📜 完整证书链<br><small>fullchain.cer</small></button>
+      <button class="btn btn-primary" onclick="doExportCert('${domain}','cert')">📄 域名证书<br><small>${domain}.cer</small></button>
+      <button class="btn btn-warning" onclick="doExportCert('${domain}','key')">🔑 私钥<br><small>${domain}.key</small></button>
+      <button class="btn btn-secondary" onclick="doExportCert('${domain}','ca')">🏛 CA证书<br><small>ca.cer</small></button>
+    </div>
+    <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="doExportCert('${domain}','all')">📦 打包下载全部</button>
+  `;
+  const footer = `<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>`;
+  Utils.openModal('📥 导出证书: ' + domain, body, footer);
+};
+
+window.doExportCert = (domain, format) => {
+  const token = localStorage.getItem('hsp_token');
+  const url = `/api/cert/export/${encodeURIComponent(domain)}?format=${format}&token=${encodeURIComponent(token)}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  Utils.notify('开始下载...', 'info');
+};
 window.renewCert = async (domain) => {
   Utils.notify(`正在为 ${domain} 续期证书...`, 'info');
   const res = await Api.post('/cert/renew', { domain });
@@ -338,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (applyBtn) applyBtn.addEventListener('click', showIssueCertModal);
-  if (logBtn) logBtn.addEventListener('click', () => Utils.showPageDiagLog('SSL 证书', 'ssl'));
+  if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ssl', 'SSL 证书'));
 
   // 在工具栏插入「安装/卸载 acme.sh」按钮
   if (toolbar) {

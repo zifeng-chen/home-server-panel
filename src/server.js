@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const auth = require('./services/auth');
 const logService = require('./services/log-service');
+const dbService = require('./services/db-service');
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 3456;
@@ -124,6 +125,7 @@ app.use('/api/cron', require('./routes/cron'));
 app.use('/api/pm2', require('./routes/pm2'));
 app.use('/api/docker', require('./routes/docker'));
 app.use('/api/ssh', require('./routes/ssh'));
+app.use('/api/db', require('./routes/db'));
 
 // SPA fallback
 app.use((req, res, next) => {

@@ -369,8 +369,74 @@
             <button class="btn btn-primary" id="btnSaveSettings">💾 保存设置</button>
             <button class="btn btn-secondary" id="btnTestPushplus">📢 测试推送</button>
           </div>
-          <!-- 诊断日志 -->
+
+          <!-- 数据库管理 -->
           <div class="settings-card" style="margin-top:20px;">
+            <h3 style="display:flex;justify-content:space-between;align-items:center;">
+              🗄️ 数据库管理
+              <span style="display:flex;gap:8px;align-items:center;">
+                <span id="dbStatusText" style="font-size:13px;font-weight:normal;">📁 本地 JSON 文件存储</span>
+                <button class="btn btn-sm btn-secondary" id="dbActionBtn" onclick="toggleDbConfig()">配置 MySQL</button>
+                <button class="btn btn-sm btn-success" id="btnMigrate" style="display:none" onclick="startMigration()">📦 迁移数据</button>
+              </span>
+            </h3>
+            <div id="cardDbConfig" style="display:none;margin-top:12px;">
+              <div class="form-row-3" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
+                <div class="form-group">
+                  <label class="form-label">主机地址</label>
+                  <input class="form-input" id="dbHost" placeholder="192.168.100.110" value="192.168.100.110">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">端口</label>
+                  <input class="form-input" id="dbPort" value="3306" placeholder="3306">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">数据库名</label>
+                  <input class="form-input" id="dbName" placeholder="server_panel" value="server_panel">
+                </div>
+              </div>
+              <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                  <label class="form-label">用户名</label>
+                  <input class="form-input" id="dbUser" placeholder="root" value="root">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">密码</label>
+                  <input class="form-input" type="password" id="dbPass" placeholder="数据库密码">
+                </div>
+              </div>
+              <div class="test-result" id="dbTestResult" style="display:none;padding:8px 12px;border-radius:6px;font-size:12px;margin:8px 0;"></div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-sm btn-secondary" onclick="testDbConnection()">🔍 测试连接</button>
+                <button class="btn btn-sm btn-primary" id="btnDbConnect" onclick="connectDb()">🔗 连接 MySQL</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作日志 -->
+          <div class="settings-card" style="margin-top:20px;">
+            <h3 style="display:flex;justify-content:space-between;align-items:center;">
+              📋 操作日志
+              <span style="display:flex;gap:8px;align-items:center;">
+                <select id="opLogModuleFilter" class="form-input" style="width:auto;padding:2px 8px;font-size:12px;">
+                  <option value="all">全部模块</option>
+                  <option value="ddns">DDNS</option>
+                  <option value="ssl">SSL证书</option>
+                  <option value="nginx">Nginx</option>
+                  <option value="proxy">反向代理</option>
+                  <option value="port">端口管理</option>
+                  <option value="pm2">PM2</option>
+                  <option value="docker">Docker</option>
+                  <option value="ssh">SSH终端</option>
+                  <option value="system">系统</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="showSettingsOpLog()">🔍 查看日志</button>
+              </span>
+            </h3>
+          </div>
+
+          <!-- 诊断日志（隐藏） -->
+          <div class="settings-card" style="margin-top:20px;opacity:0.5">
             <h3 style="display:flex;justify-content:space-between;align-items:center;">
               🔍 系统诊断日志
               <span style="display:flex;gap:8px;">
@@ -390,8 +456,8 @@
                 <button class="btn btn-sm btn-secondary" onclick="Api.clearDiagLog();renderDiagLog();">🗑️ 清除</button>
               </span>
             </h3>
-            <div id="diagLogContainer" style="background:var(--bg-primary);border-radius:8px;padding:10px;max-height:400px;overflow-y:auto;font:11px/1.6 monospace;white-space:pre-wrap;word-break:break-all;">
-              <span style="color:var(--text-secondary);">暂无诊断日志<br>切换到其他页面触发 API 请求后回到这里查看</span>
+            <div id="diagLogContainer" style="background:var(--bg-primary);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;font:11px/1.6 monospace;white-space:pre-wrap;word-break:break-all;">
+              <span style="color:var(--text-secondary);">诊断日志（仅用于调试，日常使用请查看上方操作日志）</span>
             </div>
           </div>
         </section>

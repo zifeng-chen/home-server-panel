@@ -167,4 +167,62 @@ router.delete('/domains/:domain', (req, res) => {
   res.json({ success: true, message: '域名已从配置中移除' });
 });
 
+// GET /api/cert/export/:domain - 导出证书文件
+router.get('/export/:domain', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const domain = req.params.domain.replace(/[^a-zA-Z0-9.*_-]/g, '');
+    const format = req.query.format || 'fullchain';
+
+    // acme.sh 证书目录: ~/.acme.sh/<domain>_ecc/ 或 ~/.acme.sh/<domain>/
+    const acmeHome = path.join(os.homedir(), '.acme.sh');
+    let certDir = path.join(acmeHome, domain + '_ecc');
+    if (!fs.existsSync(certDir)) certDir = path.join(acmeHome, domain);
+    if (!fs.existsSync(certDir)) {
+      return res.status(404).json({ success: false, message: '证书目录不存在: ' + domain });
+    }
+
+    const fileMap = {
+      cert: domain + '.cer',
+      key: domain + '.key',
+      fullchain: 'fullchain.cer',
+      ca: 'ca.cer'
+    };
+
+    if (format === 'zip' || format === 'all') {
+      // 打包为 tar.gz
+      const { execSync } = require('child_process');
+      const tmpFile = `/tmp/cert-export-${domain}-${Date.now()}.tar.gz`;
+      const files = [fileMap.cert, fileMap.key, fileMap.fullchain, fileMap.ca].filter(f => fs.existsSync(path.join(certDir, f)));
+      execSync(`cd "${certDir}" && tar -czf "${tmpFile}" ${files.join(' ')}`, { timeout: 10000 });
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', `attachment; filename="${domain}-certs.tar.gz"`);
+      const stream = fs.createReadStream(tmpFile);
+      stream.pipe(res);
+      stream.on('end', () => fs.unlink(tmpFile, () => {}));
+      return;
+    }
+
+    const fileName = fileMap[format];
+    if (!fileName) {
+      return res.status(400).json({ success: false, message: '无效的文件类型: ' + format + '，支持: cert, key, fullchain, ca, all' });
+    }
+
+    const filePath = path.join(certDir, fileName);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: '文件不存在: ' + fileName });
+    }
+
+    const mimeTypes = { '.cer': 'application/x-pem-file', '.key': 'application/x-pem-file', '.pem': 'application/x-pem-file' };
+    const ext = path.extname(fileName);
+    res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${domain}-${fileName}"`);
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ success: false, message: '导出失败: ' + err.message });
+  }
+});
+
 module.exports = router;

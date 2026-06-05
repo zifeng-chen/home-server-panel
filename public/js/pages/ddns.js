@@ -235,5 +235,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (refreshBtn) refreshBtn.addEventListener('click', refreshAllDdns);
   if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
-  if (logBtn) logBtn.addEventListener('click', () => Utils.showPageDiagLog('DDNS', 'ddns'));
+  if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ddns', 'DDNS'));
 });

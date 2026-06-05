@@ -219,7 +219,11 @@ router.get('/export/:domain', (req, res) => {
     const ext = path.extname(fileName);
     res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${domain}-${fileName}"`);
-    res.sendFile(filePath);
+    // 使用 readFile + send 替代 sendFile 避免中文路径问题
+    fs.readFile(filePath, (err, data) => {
+      if (err) return res.status(500).json({ success: false, message: '读取证书文件失败' });
+      res.send(data);
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: '导出失败: ' + err.message });
   }

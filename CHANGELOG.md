@@ -223,6 +223,143 @@
 - public/js/pages/nginx.js
 - public/css/style.css (spinner 动画)
 
+## v1.11.0 - 2026-06-05 17:01
+
+### 🗄️ MySQL 双模式存储 + 📋 操作日志审计 + 🔒 SSL 证书导出
+
+**MySQL 数据库支撑：**
+- ✅ db-service.js: MySQL 连接池 (mysql2)、双模式 (local/mysql)
+- ✅ Schema 自动初始化 (config/logs/cert_domains/ddns_records 表)
+- ✅ JSON → MySQL 数据迁移引擎
+- ✅ 系统设置页: 数据库管理卡片 (配置/测试连接/迁移)
+
+**操作日志系统升级：**
+- ✅ 模块名映射 (cert→ssl 等)、按 module/level/search 分页查询
+- ✅ 操作日志查看器 (系统设置页 + 各模块日志按钮)
+- ✅ 日志记录上限 500 条 (data/logs/current.json)
+
+**SSL 证书多格式导出：**
+- ✅ GET /api/cert/export/:domain?format=cert|key|fullchain|ca|all
+- ✅ 单文件下载 (PEM) + 打包下载 (tar.gz)
+- ✅ 前端导出弹窗 (完整证书链/域名证书/私钥/CA)
+
+### 📁 文件变更
+- new: src/services/db-service.js, src/routes/db.js
+- mod: src/services/log-service.js, cert.js, server.js
+- mod: public/js/utils.js, pages/cert.js, ddns.js, docker.js, settings.js
+
+---
+
+## v1.10.0 - 2026-06-04
+
+### 🏗️ 引导安装页 + 🎨 五项 UI 优化
+
+**引导安装页面：**
+- ✅ install.html: 深色主题三步安装向导 (数据库/管理员/完成)
+- ✅ 支持本地 JSON / MySQL 双模式
+- ✅ POST /api/setup/install (skipSchema 参数跳过已有数据库)
+- ✅ 安装中间件: 检测 .env 是否存在决定重定向
+
+**五项全局 UI 优化：**
+- ✅ 登录页密码显示/隐藏切换按钮
+- ✅ 全局错误弹窗 (showError + 一键复制)
+- ✅ API 层自动错误弹窗 (支持 modal/notify 模式)
+- ✅ Nginx 页左右分栏 (左 Nginx 管理 / 右反向代理规则)
+- ✅ 移除操作日志页面 (合并至系统设置)
+
+### 🐛 修复
+- SSL 通配符域名: 阻止 `*.*.xxx`、自动剥离 `*.` 前缀
+- SSL DNS 清理: 新增 `_cleanDnsTxtRecords()` 清除残留 TXT 记录
+- 退出登录: POST /api/auth/logout → 清除 localStorage → 跳转登录页
+
+---
+
+## v1.9.0 - 2026-06-04
+
+### 📡 DDNS IPv6 + 🌐 Nginx/Proxy 合并
+
+**DDNS IPv6 升级：**
+- ✅ IPv6 公网检测 (5 服务 + 网卡 fallback)
+- ✅ AAAA 记录支持: 添加/编辑/启用/停用
+- ✅ getAllRecords() 同时返回 A + AAAA 记录
+
+**Nginx + 反向代理合并：**
+- ✅ 移除独立 #page-proxy、合并至 nginx.js 双标签页
+- ✅ Nginx 管理 / 反向代理规则同页切换
+
+---
+
+## v1.8.7 - 2026-06-03
+
+### 🎨 Port + Diag + UI 增强
+
+**端口管理增强：**
+- ✅ UDP 协议支持 (netstat -u)
+- ✅ 去重改为 port+protocol 维度
+
+**诊断栏优化：**
+- ✅ 可折叠 (默认隐藏, 右上角 24×24 小图标)
+- ✅ 系统设置页新增诊断日志面板 (按页面筛选)
+
+**UI 优化：**
+- ✅ 弹窗 z-index 提升至 10001
+- ✅ 通知栏居中 (fade-in 动画)
+- ✅ 按钮/下拉框美化 (.btn-sm 紧凑样式)
+
+### 🐛 修复
+- api.js baseUrl '' → '/api' (Dashboard 所有 API 返回 HTML 根因)
+
+---
+
+## v1.8.5 - 2026-06-02
+
+### 💻 Web SSH 终端 + 🔒 acme.sh SSE 安装
+
+**Web SSH 终端：**
+- ✅ ws + ssh2 + xterm.js 架构
+- ✅ WebSocket 认证 (URL query token 参数)
+- ✅ SSH 凭据仅内存存储不落盘
+- ✅ CDN 动态加载 xterm.js
+
+**acme.sh 管理：**
+- ✅ SSE 多步进度流安装/卸载
+- ✅ Gitee 镜像下载 (GitHub 超时 fallback)
+- ✅ ZeroSSL CA 注册
+
+**Dashboard 修复链：**
+- ✅ MIME 类型显式设置 (NAS Express 5 返回 text/plain)
+- ✅ BUILD_ID 永久缓存爆破方案
+- ✅ HTML 内联诊断脚本 (cookie/localStorage/buildId 检测)
+
+---
+
+## v1.8.2 - 2026-06-01
+
+### 🐳 Docker 容器管理模块
+
+**Docker 管理：**
+- ✅ 容器列表/启停/重启/日志/Stats/Images
+- ✅ 批量 docker stats 避免事件循环阻塞
+
+**PM2 安装引导：**
+- ✅ 4 步安装指引 (命令可点击复制)
+
+---
+
+## v1.8.0 - 2026-06-01
+
+### 🌐 Nginx SSE 安装 + 修复
+
+**SSE 安装进度：**
+- ✅ Nginx 一键安装 + 实时进度流
+
+**修复：**
+- ✅ Nginx 配置测试 sudo 权限 fallback
+- ✅ 反向代理字段兼容双格式
+- ✅ 系统设置 .env 写入
+
+---
+
 ## v1.8.1 - 2026-06-01
 
 ### 🐛 修复

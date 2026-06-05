@@ -45,15 +45,9 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // 检查 .env 中 ADMIN_PASS 是否为默认值
-  try {
-    const envFile = require('fs').readFileSync(require('path').join(__dirname, '..', '.env'), 'utf-8');
-    const match = envFile.match(/^ADMIN_PASS=(.+)$/m);
-    if (!match || match[1] === 'admin123' || match[1] === 'your_admin_password') {
-      return res.redirect('/install.html');
-    }
-  } catch (e) {
-    // .env 不存在，重定向到安装页面
+  // 检查 .env 是否存在（不存在 = 未安装）
+  const envPath = require('path').join(__dirname, '..', '.env');
+  if (!require('fs').existsSync(envPath)) {
     return res.redirect('/install.html');
   }
   next();

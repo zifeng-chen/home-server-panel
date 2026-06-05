@@ -38,9 +38,10 @@ class Auth {
 
   middleware() {
     return (req, res, next) => {
-      const publicPaths = ['/login.html'];
+      const publicPaths = ['/login.html', '/install.html'];
+      const publicPrefixes = ['/api/setup'];
 
-      if (publicPaths.includes(req.path)) return next();
+      if (publicPaths.includes(req.path) || publicPrefixes.some(p => req.path.startsWith(p))) return next();
 
       const token =
         req.headers['x-auth-token'] ||

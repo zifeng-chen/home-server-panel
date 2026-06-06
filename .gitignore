@@ -3,6 +3,8 @@ logs/
 .env
 data/sessions.json
 data/proxy-config.json
+data/panel.db
+data/*.bak
 .DS_Store
 *.log
 *.swp

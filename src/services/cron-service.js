@@ -1,9 +1,7 @@
 // 定时任务调度
 const { exec } = require("child_process");
-const fs = require("fs");
-const path = require("path");
 
-const CONFIG_FILE = path.join(__dirname, "..", "..", "data", "cron-jobs.json");
+const sqliteService = require('./sqlite-service');
 
 class CronService {
   constructor() {
@@ -60,18 +58,11 @@ class CronService {
   }
 
   _load() {
-    try {
-      if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-    } catch (e) {}
-    return [];
+    return sqliteService.getCronJobs();
   }
 
   _save() {
-    try {
-      const dir = path.dirname(CONFIG_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.jobs, null, 2), "utf8");
-    } catch (e) {}
+    sqliteService.setCronJobs(this.jobs);
   }
 }
 

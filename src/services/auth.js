@@ -1,9 +1,7 @@
 // 认证中间件 - Session + Token 双重验证（单例模式）
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 
-const SESSIONS_FILE = path.join(__dirname, '..', '..', 'data', 'sessions.json');
+const sqliteService = require('./sqlite-service');
 
 // 管理员账号
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -63,7 +61,7 @@ class Auth {
 
   logout(token) {
     delete this.sessions[token];
-    this._saveSessions();
+    sqliteService.deleteSession(token);
     return { success: true };
   }
 
@@ -78,7 +76,7 @@ class Auth {
       username: ADMIN_USER,
       createdAt: Date.now()
     };
-    this._saveSessions();
+    sqliteService.createSession(token, ADMIN_USER);
   }
 
   _cleanSessions() {
@@ -91,28 +89,13 @@ class Auth {
         changed = true;
       }
     }
-    if (changed) this._saveSessions();
+    if (changed) {
+      sqliteService.deleteExpiredSessions(maxAge);
+    }
   }
 
   _loadSessions() {
-    try {
-      if (fs.existsSync(SESSIONS_FILE)) {
-        return JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
-      }
-    } catch (err) {
-      console.error('[Auth] Sessions 加载失败:', err.message);
-    }
-    return {};
-  }
-
-  _saveSessions() {
-    try {
-      const dir = path.dirname(SESSIONS_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(this.sessions, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[Auth] Sessions 保存失败:', err.message);
-    }
+    return sqliteService.getAllSessions();
   }
 }
 

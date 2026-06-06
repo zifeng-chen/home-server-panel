@@ -3,11 +3,8 @@ const Core = require('@alicloud/pop-core');
 const https = require('https');
 const http = require('http');
 const dns = require('dns');
-const fs = require('fs');
-const path = require('path');
 
-// 配置文件路径
-const CONFIG_FILE = path.join(__dirname, '..', '..', 'data', 'ddns-config.json');
+const sqliteService = require('./sqlite-service');
 
 class DdnsService {
   constructor() {
@@ -361,59 +358,34 @@ class DdnsService {
 
   // 配置管理
   _loadConfig() {
-    try {
-      if (fs.existsSync(CONFIG_FILE)) {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      }
-    } catch (err) {
-      console.error('[DDNS] 配置文件读取失败:', err.message);
-    }
-    return { domains: [], lastRefresh: null };
+    const domains = sqliteService.getDdnsDomains();
+    const lastRefresh = sqliteService.getDdnsLastRefresh();
+    return { domains, lastRefresh };
   }
 
   _saveConfig() {
     this.config.lastRefresh = new Date().toISOString();
-    try {
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[DDNS] 配置文件保存失败:', err.message);
-    }
+    sqliteService.setDdnsDomains(this.config.domains);
+    sqliteService.setDdnsLastRefresh(this.config.lastRefresh);
   }
 
-  getDomains() { return this.config.domains || []; }
+  getDomains() { return sqliteService.getDdnsDomains(); }
 
   setDomains(domains) {
-    this.config.domains = domains;
-    this._saveConfig();
+    sqliteService.setDdnsDomains(domains);
+    this.config.domains = sqliteService.getDdnsDomains();
     return this.config.domains;
   }
 
   addDomain(domain) {
-    if (!this.config.domains) this.config.domains = [];
-    const exists = this.config.domains.find(
-      d => d.name === domain.name && d.subdomain === (domain.subdomain || '@') && d.recordType === (domain.recordType || 'A')
-    );
-    if (exists) throw new Error('该域名 + 记录类型组合已存在');
-
-    this.config.domains.push({
-      name: domain.name,
-      subdomain: domain.subdomain || '@',
-      recordType: domain.recordType || 'A',
-      ttl: domain.ttl || 600,
-      line: domain.line || 'default',
-      createdAt: new Date().toISOString(),
-      lastUpdate: null,
-      lastIp: null
-    });
-    this._saveConfig();
+    sqliteService.addDdnsDomain(domain);
+    this.config.domains = sqliteService.getDdnsDomains();
     return this.config.domains;
   }
 
   removeDomain(name, subdomain = '@', recordType) {
-    this.config.domains = (this.config.domains || []).filter(
-      d => !(d.name === name && d.subdomain === subdomain && (!recordType || d.recordType === recordType))
-    );
-    this._saveConfig();
+    sqliteService.removeDdnsDomain(name, subdomain, recordType);
+    this.config.domains = sqliteService.getDdnsDomains();
     return this.config.domains;
   }
 }

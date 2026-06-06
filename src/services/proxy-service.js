@@ -2,21 +2,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG_FILE = path.join(__dirname, '..', '..', 'data', 'proxy-config.json');
+const sqliteService = require('./sqlite-service');
 
 class ProxyService {
   constructor() {
-    this.config = this._loadConfig();
+    // SQLite is the source of truth
   }
 
   // ========== 规则 CRUD ==========
 
   listRules() {
-    return this.config.rules || [];
+    return sqliteService.getProxyRules();
   }
 
   getRule(id) {
-    return (this.config.rules || []).find(r => r.id === id);
+    return sqliteService.getProxyRule(id);
   }
 
   addRule(rule) {
@@ -24,61 +24,33 @@ class ProxyService {
       throw new Error('来源域名和目标地址不能为空');
     }
 
-    if (!this.config.rules) this.config.rules = [];
-
     const newRule = {
       id: this._generateId(),
       name: rule.name || `${rule.sourceHost} → ${rule.targetHost}`,
       description: rule.description || '',
       enabled: rule.enabled !== false,
-      // 来源
       sourceProtocol: rule.sourceProtocol || 'http',
       sourceHost: rule.sourceHost,
       sourcePort: parseInt(rule.sourcePort) || 80,
-      // 目标
       targetProtocol: rule.targetProtocol || 'http',
       targetHost: rule.targetHost,
       targetPort: parseInt(rule.targetPort) || 80,
-      // 高级
       ssl: rule.ssl || false,
       sslCert: rule.sslCert || null,
       sslKey: rule.sslKey || null,
       websocket: rule.websocket || false,
-      customHeaders: rule.customHeaders || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      customHeaders: rule.customHeaders || []
     };
 
-    this.config.rules.push(newRule);
-    this._saveConfig();
-    return newRule;
+    return sqliteService.addProxyRule(newRule);
   }
 
   updateRule(id, updates) {
-    const idx = (this.config.rules || []).findIndex(r => r.id === id);
-    if (idx === -1) throw new Error('规则不存在');
-
-    const rule = this.config.rules[idx];
-    const allowed = [
-      'name', 'description', 'enabled',
-      'sourceProtocol', 'sourceHost', 'sourcePort',
-      'targetProtocol', 'targetHost', 'targetPort',
-      'ssl', 'sslCert', 'sslKey', 'websocket', 'customHeaders'
-    ];
-
-    for (const key of allowed) {
-      if (updates[key] !== undefined) rule[key] = updates[key];
-    }
-    rule.updatedAt = new Date().toISOString();
-
-    this.config.rules[idx] = rule;
-    this._saveConfig();
-    return rule;
+    return sqliteService.updateProxyRule(id, updates);
   }
 
   deleteRule(id) {
-    this.config.rules = (this.config.rules || []).filter(r => r.id !== id);
-    this._saveConfig();
+    sqliteService.deleteProxyRule(id);
   }
 
   toggleRule(id) {
@@ -158,7 +130,7 @@ class ProxyService {
   }
 
   generateAllConfig() {
-    const rules = this.config.rules || [];
+    const rules = this.listRules();
     const enabled = rules.filter(r => r.enabled);
     
     const parts = [
@@ -186,21 +158,13 @@ class ProxyService {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(filePath, config, 'utf-8');
-    return { path: filePath, size: config.length, rules: (this.config.rules || []).filter(r => r.enabled).length };
+    return { path: filePath, size: config.length, rules: this.listRules().filter(r => r.enabled).length };
   }
 
   // ========== 统计 ==========
 
   getStats() {
-    const rules = this.config.rules || [];
-    return {
-      total: rules.length,
-      enabled: rules.filter(r => r.enabled).length,
-      disabled: rules.filter(r => !r.enabled).length,
-      http: rules.filter(r => r.sourceProtocol === 'http').length,
-      https: rules.filter(r => r.ssl).length,
-      websocket: rules.filter(r => r.websocket).length
-    };
+    return sqliteService.getProxyStats();
   }
 
   // ========== 内部 ==========
@@ -212,24 +176,6 @@ class ProxyService {
     return id;
   }
 
-  _loadConfig() {
-    try {
-      if (fs.existsSync(CONFIG_FILE)) {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      }
-    } catch (err) {
-      console.error('[Proxy] 配置文件读取失败:', err.message);
-    }
-    return { rules: [] };
-  }
-
-  _saveConfig() {
-    try {
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[Proxy] 配置文件保存失败:', err.message);
-    }
-  }
 }
 
 module.exports = new ProxyService();

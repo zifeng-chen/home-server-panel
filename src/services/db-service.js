@@ -1,4 +1,4 @@
-// 数据库抽象层 - 支持本地 JSON + MySQL 双模式
+// 数据库抽象层 - 支持本地 JSON + SQLite + MySQL 多模式
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
@@ -180,13 +180,16 @@ class DbService {
 
   // ========== 导入/导出/迁移 ==========
 
-  // 从 JSON 文件迁移到 MySQL
+  // 从 SQLite/JSON 迁移到 MySQL
   async migrateFromLocal() {
     if (this.mode !== 'mysql' || !this._pool) {
       throw new Error('MySQL 未连接，无法迁移');
     }
 
     const results = { migrated: [], skipped: [], errors: [] };
+
+    // 优先从 SQLite 读取，如果不存在则从 JSON 读取
+    const sqliteService = require('./sqlite-service');
 
     // 1. 迁移 settings
     try {
@@ -206,58 +209,97 @@ class DbService {
       results.migrated.push(`settings (${Object.keys(envConfig).length} 项)`);
     } catch (e) { results.errors.push(`settings: ${e.message}`); }
 
-    // 2. 迁移 DDNS records
-    const ddnsFile = path.join(DATA_DIR, 'ddns-config.json');
-    if (fs.existsSync(ddnsFile)) {
-      try {
-        const ddnsData = JSON.parse(fs.readFileSync(ddnsFile, 'utf-8'));
-        const records = ddnsData.records || ddnsData || [];
-        if (Array.isArray(records)) {
+    // 2. 迁移 DDNS records (从 SQLite)
+    try {
+      const ddnsDomains = sqliteService.getDdnsDomains();
+      if (ddnsDomains.length > 0) {
+        for (const r of ddnsDomains) {
+          await this._pool.execute(
+            'INSERT INTO ddns_records (domain, type, value, enabled) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), enabled=VALUES(enabled)',
+            [r.name, r.recordType || 'A', r.lastIp || '', 1]
+          );
+        }
+        results.migrated.push(`ddns_records (${ddnsDomains.length} 条)`);
+      } else {
+        // 回退到 JSON 文件
+        const ddnsFile = path.join(DATA_DIR, 'ddns-config.json');
+        if (fs.existsSync(ddnsFile)) {
+          const ddnsData = JSON.parse(fs.readFileSync(ddnsFile, 'utf-8'));
+          const records = ddnsData.domains || [];
           for (const r of records) {
             await this._pool.execute(
-              'INSERT INTO ddns_records (domain, type, value, enabled) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), enabled=VALUES(enabled)',
-              [r.domain || r.Domain, r.type || 'A', r.value || r.Value || '', r.enabled !== false ? 1 : 0]
+              'INSERT INTO ddns_records (domain, type, value, enabled) VALUES (?, ?, ?, ?)',
+              [r.name, r.recordType || 'A', r.lastIp || '', 1]
             );
           }
-          results.migrated.push(`ddns_records (${records.length} 条)`);
+          results.migrated.push(`ddns_records (${records.length} 条, from JSON)`);
+        } else {
+          results.skipped.push('ddns_records (无数据)');
         }
-      } catch (e) { results.errors.push(`ddns_records: ${e.message}`); }
-    } else { results.skipped.push('ddns_records (无数据)'); }
+      }
+    } catch (e) { results.errors.push(`ddns_records: ${e.message}`); }
 
-    // 3. 迁移 Proxy rules
-    const proxyFile = path.join(DATA_DIR, 'proxy-config.json');
-    if (fs.existsSync(proxyFile)) {
-      try {
-        const proxyData = JSON.parse(fs.readFileSync(proxyFile, 'utf-8'));
-        const rules = proxyData.rules || proxyData || [];
-        if (Array.isArray(rules)) {
+    // 3. 迁移 Proxy rules (从 SQLite)
+    try {
+      const proxyRules = sqliteService.getProxyRules();
+      if (proxyRules.length > 0) {
+        for (const r of proxyRules) {
+          await this._pool.execute(
+            `INSERT INTO proxy_rules (source, source_host, target_host, target, port, ssl, websocket, enabled, remark)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
+          );
+        }
+        results.migrated.push(`proxy_rules (${proxyRules.length} 条)`);
+      } else {
+        // 回退到 JSON 文件
+        const proxyFile = path.join(DATA_DIR, 'proxy-config.json');
+        if (fs.existsSync(proxyFile)) {
+          const proxyData = JSON.parse(fs.readFileSync(proxyFile, 'utf-8'));
+          const rules = proxyData.rules || [];
           for (const r of rules) {
             await this._pool.execute(
               `INSERT INTO proxy_rules (source, source_host, target_host, target, port, ssl, websocket, enabled, remark)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              [r.source || r.domain || '', r.sourceHost || r.source_host || '', r.targetHost || r.target_host || '', r.target || '', r.port || null, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled !== false ? 1 : 0, r.remark || '']
+              [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
             );
           }
-          results.migrated.push(`proxy_rules (${rules.length} 条)`);
+          results.migrated.push(`proxy_rules (${rules.length} 条, from JSON)`);
+        } else {
+          results.skipped.push('proxy_rules (无数据)');
         }
-      } catch (e) { results.errors.push(`proxy_rules: ${e.message}`); }
-    } else { results.skipped.push('proxy_rules (无数据)'); }
+      }
+    } catch (e) { results.errors.push(`proxy_rules: ${e.message}`); }
 
-    // 4. 迁移 SSL certs
-    const sslFile = path.join(DATA_DIR, 'ssl-config.json');
-    if (fs.existsSync(sslFile)) {
-      try {
-        const sslData = JSON.parse(fs.readFileSync(sslFile, 'utf-8'));
-        const domains = sslData.domains || [];
-        for (const d of domains) {
+    // 4. 迁移 SSL certs (从 SQLite)
+    try {
+      const sslDomains = sqliteService.getSslDomains();
+      if (sslDomains.length > 0) {
+        for (const d of sslDomains) {
           await this._pool.execute(
             'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
             [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
           );
         }
-        results.migrated.push(`ssl_certs (${domains.length} 条)`);
-      } catch (e) { results.errors.push(`ssl_certs: ${e.message}`); }
-    } else { results.skipped.push('ssl_certs (无数据)'); }
+        results.migrated.push(`ssl_certs (${sslDomains.length} 条)`);
+      } else {
+        // 回退到 JSON 文件
+        const sslFile = path.join(DATA_DIR, 'ssl-config.json');
+        if (fs.existsSync(sslFile)) {
+          const sslData = JSON.parse(fs.readFileSync(sslFile, 'utf-8'));
+          const domains = sslData.domains || [];
+          for (const d of domains) {
+            await this._pool.execute(
+              'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
+              [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
+            );
+          }
+          results.migrated.push(`ssl_certs (${domains.length} 条, from JSON)`);
+        } else {
+          results.skipped.push('ssl_certs (无数据)');
+        }
+      }
+    } catch (e) { results.errors.push(`ssl_certs: ${e.message}`); }
 
     return results;
   }

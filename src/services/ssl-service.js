@@ -5,13 +5,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const CONFIG_FILE = path.join(__dirname, '..', '..', 'data', 'ssl-config.json');
+const sqliteService = require('./sqlite-service');
 const ACME_HOME = path.join(os.homedir(), '.acme.sh');
 const ACME_BIN = path.join(ACME_HOME, 'acme.sh');
 
 class SslService {
   constructor() {
-    this.config = this._loadConfig();
+    // SQLite is the source of truth
   }
 
   // ========== acme.sh 检测与安装 ==========
@@ -337,7 +337,7 @@ class SslService {
     if (!fs.existsSync(ACME_BIN)) throw new Error('acme.sh 未安装');
 
     const results = [];
-    const domains = this.config.domains || [];
+    const domains = this.getConfigDomains();
     
     for (const d of domains) {
       try {
@@ -362,7 +362,7 @@ class SslService {
       const certificates = this._parseListOutput(output);
       
       // 合并配置信息
-      const configuredDomains = (this.config.domains || []).map(d => d.domain);
+      const configuredDomains = this.getConfigDomains().map(d => d.domain);
       
       return {
         certificates: certificates.map(cert => {
@@ -415,26 +415,15 @@ class SslService {
   // ========== 配置管理 ==========
 
   _addCertConfig(domain, opts = {}) {
-    if (!this.config.domains) this.config.domains = [];
-    const exists = this.config.domains.find(d => d.domain === domain);
-    if (!exists) {
-      this.config.domains.push({
-        domain,
-        alias: opts.alias || domain,
-        wildcard: opts.wildcard || false,
-        createdAt: new Date().toISOString()
-      });
-      this._saveConfig();
-    }
+    sqliteService.addSslDomain(domain, { alias: opts.alias || domain, wildcard: opts.wildcard || false });
   }
 
   getConfigDomains() {
-    return this.config.domains || [];
+    return sqliteService.getSslDomains();
   }
 
   removeConfigDomain(domain) {
-    this.config.domains = (this.config.domains || []).filter(d => d.domain !== domain);
-    this._saveConfig();
+    sqliteService.removeSslDomain(domain);
   }
 
   // ========== 内部方法 ==========
@@ -516,27 +505,6 @@ class SslService {
     const target = new Date(dateStr);
     if (isNaN(target.getTime())) return null;
     return Math.ceil((target - new Date()) / (1000 * 60 * 60 * 24));
-  }
-
-  _loadConfig() {
-    try {
-      if (fs.existsSync(CONFIG_FILE)) {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      }
-    } catch (err) {
-      console.error('[SSL] 配置文件读取失败:', err.message);
-    }
-    return { domains: [] };
-  }
-
-  _saveConfig() {
-    try {
-      const dir = path.dirname(CONFIG_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[SSL] 配置文件保存失败:', err.message);
-    }
   }
 }
 

@@ -530,6 +530,26 @@ class SqliteService {
     this.db.prepare('DELETE FROM cron_jobs WHERE id = ?').run(id);
   }
 
+  /** 批量替换所有定时任务 */
+  setCronJobs(jobs) {
+    const tx = this.db.transaction((list) => {
+      this.db.prepare('DELETE FROM cron_jobs').run();
+      const insert = this.db.prepare(
+        'INSERT INTO cron_jobs (id, name, interval_ms, enabled, type, last_run, last_result, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      );
+      const now = new Date().toISOString();
+      for (const j of list) {
+        insert.run(
+          j.id, j.name || '', j.interval || 3600000,
+          j.enabled !== false ? 1 : 0, j.type || 'manual',
+          j.lastRun || null, j.lastResult ? JSON.stringify(j.lastResult) : null,
+          j.createdAt || now
+        );
+      }
+    });
+    tx(jobs || []);
+  }
+
   // ==================== 统计 ====================
 
   getProxyStats() {

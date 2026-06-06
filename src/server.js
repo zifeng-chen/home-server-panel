@@ -26,10 +26,9 @@ console.log('🔑 构建版本: ' + BUILD_ID);
 // Cookie 解析
 app.use(cookieParser());
 
-// Body parser + 操作日志
+// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(logService.middleware());
 
 // Auth 路由（无需认证）
 const authRouter = require('./routes/auth');
@@ -64,6 +63,9 @@ app.use((req, res, next) => {
 
 // Auth 中间件
 app.use(auth.middleware());
+
+// 操作日志中间件（仅在认证后记录）
+app.use(logService.middleware());
 
 // 缓存爆破中间件：拦截 index.html 请求，注入 BUILD_ID
 app.use((req, res, next) => {

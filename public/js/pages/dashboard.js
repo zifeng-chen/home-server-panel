@@ -3,8 +3,6 @@ let dashboardLoaded = false;
 let dashboardInProgress = false;
 
 async function loadDashboard() {
-  // 🔍 诊断标记
-  try { document.getElementById('page-diag') && (function(d){d.innerHTML+= '<br><span style="color:#fbbf24">📊 loadDashboard() 开始执行...</span>';})(document.getElementById('page-diag')); } catch(e){}
   const grid = document.getElementById('statsGrid');
   if (!grid) { console.error('statsGrid not found'); return; }
 
@@ -109,18 +107,11 @@ async function loadDashboard() {
     var upEl = document.getElementById('uptime');
     if (verEl) verEl.textContent = 'v' + App.version;
     if (upEl) upEl.textContent = up || '--';
-    
-    // 🔍 诊断
-    try {
-      var dg = document.getElementById('page-diag');
-      if (dg) dg.innerHTML += '<br><span style="color:#4ade80">✅ 渲染完成: ' + cards.length + ' 卡片, up=' + up + '</span>';
-    } catch(e){}
 
     dashboardLoaded = true;
 
   } catch (err) {
     console.error('[Dashboard] 渲染失败:', err);
-    try { var dg = document.getElementById('page-diag'); if (dg) dg.innerHTML += '<br><span style="color:#f87171">💥 崩溃: ' + (err.message || '未知') + '</span>'; } catch(e){}
     grid.innerHTML = '<div class="stat-card" style="grid-column:1/-1;text-align:center;color:var(--danger);padding:24px;">⚠️ Dashboard 加载失败: ' + (err.message || '未知错误') + '<br><small>请刷新页面或检查控制台</small></div>';
   } finally {
     dashboardInProgress = false;

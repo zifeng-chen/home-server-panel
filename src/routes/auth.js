@@ -9,7 +9,8 @@ router.post('/login', (req, res) => {
     return res.json({ success: false, message: '用户名和密码不能为空' });
   }
 
-  const result = auth.verifyLogin(username, password);
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+  const result = auth.verifyLogin(username, password, clientIp);
   if (result.success) {
     res.cookie('hsp_token', result.token, {
       httpOnly: true,

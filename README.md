@@ -1,8 +1,10 @@
 # Home Server Panel - 家庭服务器运维管理面板
 
-**版本**: v1.7.1 | **技术栈**: Node.js + Express + 原生 HTML/CSS/JS | **许可**: MIT
+**版本**: v1.11.0 | **技术栈**: Node.js + Express + SQLite + 原生 HTML/CSS/JS | **许可**: MIT
 
-一个轻量级的家庭服务器运维管理面板，无需数据库，开箱即用。支持群晖 (Synology)、绿联 (UGREEN)、Linux/UNIX 系统。
+轻量级家庭服务器运维管理面板，支持 SQLite/MySQL 双模式存储。支持群晖 (Synology)、绿联 (UGREEN)、iStoreOS、Linux/UNIX 系统。
+
+> 🎯 **亮点**: Web SSH 终端 · Docker 管理 · DDNS v4/v6 · SSL 证书导出 · 操作日志 · MySQL/SQLite · 反向代理 · Nginx 管理
 
 ---
 
@@ -10,18 +12,21 @@
 
 | 模块 | 功能 | 状态 |
 |------|------|------|
-| 📊 **仪表盘** | 系统概览 (CPU/内存/负载/运行时长) | ✅ v1.0 |
-| 📡 **DDNS 解析** | 阿里云 DNS 动态域名解析 | ✅ v1.2 |
-| 🔒 **SSL 证书** | Let's Encrypt 自动申请/续期/管理 | ✅ v1.3 |
-| 🌐 **Nginx 管理** | 安装检测/启停/重载/站点解析 | ✅ v1.4 |
-| 🔄 **反向代理** | 类群晖 DSM Reverse Proxy | ✅ v1.5 |
-| 🔌 **端口管理** | 端口扫描/状态检测/进程识别 | ✅ v1.5 |
-| 📢 **通知推送** | PushPlus 微信通知 (DDNS变化/SSL到期/服务异常) | ✅ v1.5 |
-| 📋 **操作日志** | API 请求日志/审计追踪 | ✅ v1.5 |
+| 📊 **仪表盘** | 系统概览 (卡片点击跳转) | ✅ v1.12 |
+| 📡 **DDNS 解析** | 阿里云 DNS (IPv4/IPv6/批量/推送) | ✅ v1.12 |
+| 🔒 **SSL 证书** | Let's Encrypt (申请/续期/导出/到期通知) | ✅ v1.12 |
+| 🌐 **Nginx 管理** | 安装/启停/重载/SSE 进度/日志 | ✅ v1.8 |
+| 🔄 **反向代理** | 群晖风格 Nginx Reverse Proxy | ✅ v1.5 |
+| 🔌 **端口管理** | TCP+UDP 全状态扫描 | ✅ v1.8 |
+| 📢 **通知推送** | PushPlus 微信通知 | ✅ v1.5 |
+| 📋 **操作日志** | 按模块查询/审计追踪 | ✅ v1.11 |
 | ⏰ **定时任务** | DDNS 自动更新/SSL 自动续期 | ✅ v1.6 |
-| 🔄 **进程管理** | PM2 进程列表/启停/重启/CPU/内存 | ✅ v1.7 |
-| 🔐 **认证系统** | 双通道认证 (Cookie + x-auth-token) / bcryptjs | ✅ v1.1 |
-| ⚙️ **系统设置** | 密钥配置/推送设置/模块开关 | ✅ v1.5 |
+| 🔄 **进程管理** | PM2 进程列表/启停/安装引导 | ✅ v1.7 |
+| 🐳 **Docker 管理** | 容器/镜像/Stats/日志 | ✅ v1.8 |
+| 💻 **Web SSH** | xterm.js 浏览器终端 | ✅ v1.8 |
+| 🗄️ **数据存储** | SQLite 本地 / MySQL 远程双模式 | ✅ v1.12 |
+| 🔐 **认证系统** | Cookie + Token 双通道 / bcryptjs | ✅ v1.1 |
+| ⚙️ **系统设置** | 配置/数据库/导入导出/诊断 | ✅ v1.12 |
 
 ---
 
@@ -100,55 +105,28 @@ services:
 ```
 home-server-panel/
 ├── src/
-│   ├── server.js           # 入口文件 + 中间件配置
-│   ├── routes/             # API 路由 (10个模块)
-│   │   ├── auth.js         #   认证
-│   │   ├── ddns.js         #   DDNS
-│   │   ├── cert.js         #   SSL证书
-│   │   ├── nginx.js        #   Nginx管理
-│   │   ├── proxy.js        #   反向代理
-│   │   ├── port.js         #   端口管理
-│   │   ├── notify.js       #   通知推送
-│   │   ├── log.js          #   操作日志
-│   │   ├── cron.js         #   定时任务
-│   │   ├── pm2.js          #   进程管理
-│   │   └── system.js       #   系统信息
-│   ├── services/           # 业务逻辑层 (10个服务)
-│   │   ├── auth.js         #   JWT + Cookie 认证
-│   │   ├── ddns-service.js #   阿里云 DNS API
-│   │   ├── ssl-service.js  #   ACME 证书管理
-│   │   ├── nginx-service.js#   Nginx 启停/配置解析
-│   │   ├── proxy-service.js#   反向代理规则
-│   │   ├── port-service.js #   lsof/netstat 端口扫描
-│   │   ├── notify-service.js#  PushPlus API
-│   │   ├── log-service.js  #   请求日志中间件
-│   │   ├── cron-service.js #   定时任务调度
-│   │   └── pm2-service.js  #   PM2 CLI 封装
-│   └── utils/
-├── public/                 # 前端 (原生 HTML/CSS/JS)
-│   ├── index.html          #   SPA 入口
-│   ├── css/style.css       #   暗色主题样式
-│   └── js/
-│       ├── api.js          #   API 通信 + 认证拦截
-│       ├── utils.js        #   工具函数
-│       ├── app.js          #   应用入口 + 路由
-│       └── pages/          #   11个页面模块
-│           ├── dashboard.js
-│           ├── ddns.js
-│           ├── cert.js
-│           ├── nginx.js
-│           ├── proxy.js
-│           ├── port.js
-│           ├── log.js
-│           ├── cron.js
-│           ├── pm2.js
-│           └── settings.js
-├── data/                   # 持久化数据 (JSON)
-├── logs/                   # 服务日志
-├── .env.example            # 环境变量模板
-├── CHANGELOG.md            # 更新日志
-├── TASKS.md                # 开发任务
-└── deploy.exp              # 自动部署脚本
+│   ├── server.js           # 入口文件 + 中间件
+│   ├── routes/             # API 路由 (15个)
+│   │   ├── auth.js, ddns.js, cert.js, nginx.js, proxy.js
+│   │   ├── port.js, notify.js, log.js, cron.js, pm2.js
+│   │   ├── docker.js, ssh.js, system.js, setup.js, db.js
+│   ├── services/           # 业务逻辑层 (15个)
+│   │   ├── sqlite-service.js#  SQLite 数据库引擎
+│   │   ├── ddns-service.js #  阿里云 DNS (A+AAAA)
+│   │   ├── ssl-service.js  #  ACME 证书管理
+│   │   ├── nginx-service.js#  Nginx 启停/配置
+│   │   ├── proxy-service.js#  反向代理规则
+│   │   ├── docker-service.js#  Docker API 封装
+│   │   ├── ssh-service.js  #  SSH2 + WebSocket
+│   │   ├── db-service.js   #  MySQL 连接池
+│   │   └── ...
+├── public/                 # 前端 SPA
+│   ├── index.html, install.html, login.html
+│   ├── css/style.css
+│   └── js/api.js, utils.js, app.js, pages/*.js
+├── data/                   # SQLite 数据库文件
+├── .env.example
+├── CHANGELOG.md, README.md
 ```
 
 ---
@@ -162,31 +140,41 @@ home-server-panel/
 | POST | `/api/auth/change-password` | 修改密码 |
 | GET  | `/api/system/info` | 系统信息 |
 | GET  | `/api/system/uptime` | 运行时长 |
-| GET  | `/api/system/config` | 配置(脱敏) |
 | GET  | `/api/ddns` | DDNS 记录列表 |
-| POST | `/api/ddns/update` | 手动更新 DDNS |
+| POST | `/api/ddns/record` | 添加记录 |
+| PUT  | `/api/ddns/record/:id` | 编辑记录 |
+| POST | `/api/ddns/record/:id/toggle` | 启停记录 |
+| DELETE | `/api/ddns/record/:id` | 删除记录(本地) |
+| POST | `/api/ddns/batch-update` | 批量更新 |
 | GET  | `/api/cert` | SSL 证书列表 |
 | POST | `/api/cert/issue` | 申请证书 |
+| GET  | `/api/cert/issue/stream` | 申请进度 (SSE) |
 | POST | `/api/cert/renew` | 续期证书 |
+| DELETE | `/api/cert/:domain` | 删除证书(含文件) |
+| GET  | `/api/cert/export/:domain` | 导出证书 |
 | GET  | `/api/nginx` | Nginx 状态 |
 | POST | `/api/nginx/start` | 启动 Nginx |
 | POST | `/api/nginx/stop` | 停止 Nginx |
-| POST | `/api/nginx/reload` | 重载配置 |
+| POST | `/api/nginx/reload` | 重载 |
+| POST | `/api/nginx/config-test` | 配置测试 |
 | GET  | `/api/nginx/sites` | 站点列表 |
-| GET  | `/api/nginx/logs` | Nginx 日志 |
-| GET  | `/api/proxy` | 代理规则列表 |
+| GET  | `/api/nginx/logs` | 日志 |
+| GET  | `/api/nginx/sse-install` | 安装进度 (SSE) |
+| GET  | `/api/proxy` | 代理规则 |
 | POST | `/api/proxy` | 添加规则 |
+| PUT  | `/api/proxy/:id` | 编辑规则 |
 | DELETE | `/api/proxy/:id` | 删除规则 |
 | GET  | `/api/port` | 端口扫描 |
-| GET  | `/api/notify` | 通知状态 |
-| POST | `/api/notify/test` | 测试推送 |
 | GET  | `/api/log` | 操作日志 |
-| GET  | `/api/cron` | 定时任务 |
-| GET  | `/api/pm2` | PM2 进程列表 |
-| POST | `/api/pm2/:name/restart` | 重启进程 |
-| POST | `/api/pm2/:name/stop` | 停止进程 |
-| POST | `/api/pm2/:name/start` | 启动进程 |
-| DELETE | `/api/pm2/:name` | 删除进程 |
+| GET  | `/api/pm2` | PM2 进程 |
+| GET  | `/api/docker/containers` | Docker 容器 |
+| POST | `/api/setup/install` | 引导安装 |
+| GET  | `/api/db/status` | 数据库状态 |
+| POST | `/api/db/migrate` | 数据迁移 |
+| POST | `/api/db/import` | 导入数据 |
+| GET  | `/api/db/export` | 导出数据 |
+| GET  | `/api/db/settings` | 获取存储设置 |
+| PUT  | `/api/db/settings` | 更新存储设置 |
 
 ---
 
@@ -208,19 +196,22 @@ home-server-panel/
 
 ---
 
-## 🛠️ 部署到 NAS
+## 🛠️ 部署 (iStoreOS / Linux)
 
 ```bash
-# 一键部署 (需要 SSH 访问)
-expect deploy.exp
-
-# 或手动部署
-cd /volume4/Individual\ Sport
-curl -sLO http://<MAC_IP>:8899/hsp-latest.tar.gz
-tar -xzf hsp-latest.tar.gz
+# 克隆项目
+git clone https://github.com/zifeng-chen/home-server-panel.git
 cd home-server-panel && npm install
-node src/server.js &
+
+# 配置环境
+cp .env.example .env && vim .env
+
+# 启动 (PM2 推荐)
+pm2 start src/server.js --name home-panel
+pm2 save && pm2 startup
 ```
+
+访问: http://服务器IP:3456 | 默认: admin / admin123
 
 ---
 

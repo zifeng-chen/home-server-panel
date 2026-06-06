@@ -29,14 +29,15 @@ class SqliteService {
       if (fs.existsSync(DB_PATH)) {
         const buffer = fs.readFileSync(DB_PATH);
         this._db = new SQL.Database(buffer);
+        this._ready = true;
+        this._db.run('PRAGMA foreign_keys = ON');
       } else {
         this._db = new SQL.Database();
+        this._ready = true;
+        this._db.run('PRAGMA foreign_keys = ON');
+        this._createTables();
+        this._migrateFromJsonIfNeeded();
       }
-
-      this._db.run('PRAGMA foreign_keys = ON');
-      this._createTables();
-      this._migrateFromJsonIfNeeded();
-      this._ready = true;
       this._initPromise = null;
       console.log('[SQLite] 数据库初始化完成');
     })();

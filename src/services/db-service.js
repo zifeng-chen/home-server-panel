@@ -68,7 +68,7 @@ class DbService {
         target_host VARCHAR(255),
         target VARCHAR(1024),
         port INT,
-        `ssl` TINYINT(1) DEFAULT 0,
+        \`ssl\` TINYINT(1) DEFAULT 0,
         websocket TINYINT(1) DEFAULT 0,
         enabled TINYINT(1) DEFAULT 1,
         remark VARCHAR(500),

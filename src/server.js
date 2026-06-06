@@ -1,8 +1,16 @@
 require('dotenv').config();
+
+async function main() {
+
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
+
+// 初始化 SQLite 数据库（必须在加载其他服务之前完成）
+const sqliteService = require('./services/sqlite-service');
+await sqliteService.init();
+
 const auth = require('./services/auth');
 const logService = require('./services/log-service');
 const dbService = require('./services/db-service');
@@ -153,5 +161,11 @@ server.listen(PORT, () => {
   console.log(`👤 默认账号: admin / admin123`);
   console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron PM2 Docker SSH`);
   require('./services/cron-service'); // 启动定时任务
+});
 
+} // end async main()
+
+main().catch(err => {
+  console.error('❌ 服务启动失败:', err);
+  process.exit(1);
 });

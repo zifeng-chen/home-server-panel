@@ -22,12 +22,12 @@
     "@alicloud/alidns20150109": "^4.4.1",
     "@alicloud/openapi-client": "^0.4.15",
     "@alicloud/pop-core": "^1.8.0",
-    "better-sqlite3": "^12.10.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "mysql2": "^3.22.4",
+    "sql.js": "^1.14.1",
     "ssh2": "^1.17.0",
     "ws": "^8.21.0"
   }

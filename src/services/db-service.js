@@ -22,8 +22,9 @@ class DbService {
 
     try {
       // 先连接（不指定数据库）来创建数据库
+      // 用 query() 不用 execute()：CREATE DATABASE 不适合 MySQL 预处理
       const tmpPool = mysql.createPool({ host, port, user, password, waitForConnections: true, connectionLimit: 2 });
-      await tmpPool.execute(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+      await tmpPool.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
       await tmpPool.end();
 
       // 用指定数据库重新连接
@@ -112,7 +113,7 @@ class DbService {
     ];
 
     for (const sql of tables) {
-      await this._pool.execute(sql);
+      await this._pool.query(sql);
     }
   }
 
@@ -123,19 +124,21 @@ class DbService {
     const password = config.password || process.env.DB_PASSWORD || '';
     const database = config.database || process.env.DB_NAME || 'server_panel';
 
+    let tmpPool;
     try {
-      const tmpPool = mysql.createPool({ host, port, user, password, waitForConnections: true, connectionLimit: 1 });
-      const [rows] = await tmpPool.execute('SELECT 1 AS ok');
-      await tmpPool.end();
+      // 用 query() 不用 execute()：避免 MySQL 预处理语句对 SHOW/CREATE 等不支持
+      tmpPool = mysql.createPool({ host, port, user, password, waitForConnections: true, connectionLimit: 1 });
+      await tmpPool.query('SELECT 1 AS ok');
 
-      // 检查数据库是否存在
-      const tmpPool2 = mysql.createPool({ host, port, user, password, waitForConnections: true, connectionLimit: 1 });
-      const [dbs] = await tmpPool2.execute('SHOW DATABASES LIKE ?', [database]);
-      await tmpPool2.end();
+      // SHOW DATABASES 不支持参数化预处理，用 query() 直接拼接
+      const safeDb = database.replace(/[^a-zA-Z0-9_]/g, '');
+      const [dbs] = await tmpPool.query(`SHOW DATABASES LIKE '${safeDb}'`);
 
       return { success: true, dbExists: dbs.length > 0 };
     } catch (err) {
       return { success: false, message: '连接失败: ' + err.message };
+    } finally {
+      if (tmpPool) { try { await tmpPool.end(); } catch (e) {} }
     }
   }
 
@@ -147,7 +150,7 @@ class DbService {
   async addLog(entry) {
     if (this.mode === 'mysql' && this._pool) {
       try {
-        await this._pool.execute(
+        await this._pool.query(
           `INSERT INTO operation_logs (module, action, level, message, detail, \`user\`) VALUES (?, ?, ?, ?, ?, ?)`,
           [entry.module || 'system', entry.action || 'unknown', entry.level || 'info', entry.message || '', entry.detail || '', entry.user || 'admin']
         );
@@ -158,24 +161,27 @@ class DbService {
   async queryLogs({ module, level, search, limit = 100, offset = 0 } = {}) {
     if (this.mode === 'mysql' && this._pool) {
       try {
-        let sql = 'SELECT * FROM operation_logs WHERE 1=1';
+        const conditions = [];
         const params = [];
-        if (module && module !== 'all') { sql += ' AND module = ?'; params.push(module); }
-        if (level && level !== 'all') { sql += ' AND level = ?'; params.push(level); }
-        if (search) { sql += ' AND (message LIKE ? OR action LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
-        sql += ' ORDER BY time DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        if (module && module !== 'all') { conditions.push('module = ?'); params.push(module); }
+        if (level && level !== 'all') { conditions.push('level = ?'); params.push(level); }
+        if (search) { conditions.push('(message LIKE ? OR action LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
 
-        const countSql = sql.substring(0, sql.indexOf('ORDER BY')).replace('SELECT *', 'SELECT COUNT(*) AS total');
-        const [rows] = await this._pool.execute(sql.replace('SELECT *', 'SELECT time, module, action, level, message, detail, user').replace(/OFFSET \?/, (m) => { params.pop(); params.pop(); return m; }), params);
-        const [countResult] = await this._pool.query(countSql.replace('LIMIT ? OFFSET ?', ''), params.slice(0, -2));
+        const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+        const countSql = `SELECT COUNT(*) AS total FROM operation_logs${where}`;
+        const [countResult] = await this._pool.query(countSql, params);
+
+        const dataSql = `SELECT time, module, action, level, message, detail, user FROM operation_logs${where} ORDER BY time DESC LIMIT ? OFFSET ?`;
+        const dataParams = [...params, limit, offset];
+        const [rows] = await this._pool.query(dataSql, dataParams);
 
         return { total: countResult[0]?.total || 0, list: rows };
       } catch (e) {
         console.error('[DB] 日志查询失败:', e.message);
       }
     }
-    return null; // 返回 null 表示回退到本地日志
+    return null;
   }
 
   // ========== 导入/导出/迁移 ==========
@@ -201,7 +207,7 @@ class DbService {
         acmeDnsProvider: process.env.ACME_DNS_PROVIDER || ''
       };
       for (const [key, value] of Object.entries(envConfig)) {
-        await this._pool.execute(
+        await this._pool.query(
           'INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
           [key, value]
         );
@@ -214,7 +220,7 @@ class DbService {
       const ddnsDomains = sqliteService.getDdnsDomains();
       if (ddnsDomains.length > 0) {
         for (const r of ddnsDomains) {
-          await this._pool.execute(
+          await this._pool.query(
             'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), \`enabled\`=VALUES(\`enabled\`)',
             [r.name, r.recordType || 'A', r.lastIp || '', 1]
           );
@@ -227,7 +233,7 @@ class DbService {
           const ddnsData = JSON.parse(fs.readFileSync(ddnsFile, 'utf-8'));
           const records = ddnsData.domains || [];
           for (const r of records) {
-            await this._pool.execute(
+            await this._pool.query(
               'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?)',
               [r.name, r.recordType || 'A', r.lastIp || '', 1]
             );
@@ -244,7 +250,7 @@ class DbService {
       const proxyRules = sqliteService.getProxyRules();
       if (proxyRules.length > 0) {
         for (const r of proxyRules) {
-          await this._pool.execute(
+          await this._pool.query(
             `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
@@ -258,7 +264,7 @@ class DbService {
           const proxyData = JSON.parse(fs.readFileSync(proxyFile, 'utf-8'));
           const rules = proxyData.rules || [];
           for (const r of rules) {
-            await this._pool.execute(
+            await this._pool.query(
               `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
@@ -276,7 +282,7 @@ class DbService {
       const sslDomains = sqliteService.getSslDomains();
       if (sslDomains.length > 0) {
         for (const d of sslDomains) {
-          await this._pool.execute(
+          await this._pool.query(
             'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
             [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
           );
@@ -289,7 +295,7 @@ class DbService {
           const sslData = JSON.parse(fs.readFileSync(sslFile, 'utf-8'));
           const domains = sslData.domains || [];
           for (const d of domains) {
-            await this._pool.execute(
+            await this._pool.query(
               'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
               [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
             );
@@ -310,9 +316,9 @@ class DbService {
       return { ready: false, message: 'MySQL 未连接' };
     }
     try {
-      const [ddns] = await this._pool.execute('SELECT COUNT(*) AS cnt FROM ddns_records');
-      const [proxy] = await this._pool.execute('SELECT COUNT(*) AS cnt FROM proxy_rules');
-      const [ssl] = await this._pool.execute('SELECT COUNT(*) AS cnt FROM ssl_certs');
+      const [ddns] = await this._pool.query('SELECT COUNT(*) AS cnt FROM ddns_records');
+      const [proxy] = await this._pool.query('SELECT COUNT(*) AS cnt FROM proxy_rules');
+      const [ssl] = await this._pool.query('SELECT COUNT(*) AS cnt FROM ssl_certs');
       return {
         ready: true,
         tables: {

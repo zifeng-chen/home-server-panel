@@ -56,7 +56,7 @@ class DbService {
         domain VARCHAR(255) NOT NULL,
         type ENUM('A','AAAA') DEFAULT 'A',
         value VARCHAR(255),
-        enabled TINYINT(1) DEFAULT 1,
+        \`enabled\` TINYINT(1) DEFAULT 1,
         last_updated TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -69,8 +69,8 @@ class DbService {
         target VARCHAR(1024),
         port INT,
         \`ssl\` TINYINT(1) DEFAULT 0,
-        websocket TINYINT(1) DEFAULT 0,
-        enabled TINYINT(1) DEFAULT 1,
+        \`websocket\` TINYINT(1) DEFAULT 0,
+        \`enabled\` TINYINT(1) DEFAULT 1,
         remark VARCHAR(500),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -215,7 +215,7 @@ class DbService {
       if (ddnsDomains.length > 0) {
         for (const r of ddnsDomains) {
           await this._pool.execute(
-            'INSERT INTO ddns_records (domain, type, value, enabled) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), enabled=VALUES(enabled)',
+            'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), \`enabled\`=VALUES(\`enabled\`)',
             [r.name, r.recordType || 'A', r.lastIp || '', 1]
           );
         }
@@ -228,7 +228,7 @@ class DbService {
           const records = ddnsData.domains || [];
           for (const r of records) {
             await this._pool.execute(
-              'INSERT INTO ddns_records (domain, type, value, enabled) VALUES (?, ?, ?, ?)',
+              'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?)',
               [r.name, r.recordType || 'A', r.lastIp || '', 1]
             );
           }
@@ -245,7 +245,7 @@ class DbService {
       if (proxyRules.length > 0) {
         for (const r of proxyRules) {
           await this._pool.execute(
-            `INSERT INTO proxy_rules (source, source_host, target_host, target, port, ssl, websocket, enabled, remark)
+            `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
           );
@@ -259,7 +259,7 @@ class DbService {
           const rules = proxyData.rules || [];
           for (const r of rules) {
             await this._pool.execute(
-              `INSERT INTO proxy_rules (source, source_host, target_host, target, port, ssl, websocket, enabled, remark)
+              `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
             );

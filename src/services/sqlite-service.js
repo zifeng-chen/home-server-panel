@@ -31,10 +31,16 @@ class SqliteService {
         this._db = new SQL.Database(buffer);
         this._ready = true;
         this._db.run('PRAGMA foreign_keys = ON');
+        this._db.run('PRAGMA journal_mode = WAL');
+        this._db.run('PRAGMA synchronous = NORMAL');
+        this._db.run('PRAGMA cache_size = -8000');
       } else {
         this._db = new SQL.Database();
         this._ready = true;
         this._db.run('PRAGMA foreign_keys = ON');
+        this._db.run('PRAGMA journal_mode = WAL');
+        this._db.run('PRAGMA synchronous = NORMAL');
+        this._db.run('PRAGMA cache_size = -8000');
         this._createTables();
         this._migrateFromJsonIfNeeded();
       }
@@ -146,6 +152,7 @@ class SqliteService {
         domain TEXT NOT NULL,
         alias TEXT,
         wildcard INTEGER DEFAULT 0,
+        notified_at INTEGER,
         created_at TEXT
       )
     `);
@@ -448,6 +455,13 @@ class SqliteService {
   }
 
   removeSslDomain(domain) { this._run('DELETE FROM ssl_config WHERE domain = ?', [domain]); }
+  getSslNotifiedAt(domain) {
+    const row = this._get('SELECT notified_at FROM ssl_config WHERE domain = ?', [domain]);
+    return row?.notified_at || null;
+  }
+  setSslNotifiedAt(domain, timestamp) {
+    this._run('UPDATE ssl_config SET notified_at = ? WHERE domain = ?', [timestamp, domain]);
+  }
 
   // ==================== 会话 ====================
 

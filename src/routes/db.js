@@ -64,23 +64,57 @@ router.post('/disconnect', async (req, res) => {
   }
 });
 
-// GET /api/db/export - 导出所有数据
+// GET /api/db/export - 导出 SQLite 数据库文件 (.db)
 router.get('/export', (req, res) => {
   try {
-    const data = sqliteService.exportAll();
-    res.json({ success: true, data });
+    const path = require('path');
+    const fs = require('fs');
+    const dbPath = path.join(__dirname, '..', '..', 'data', 'panel.db');
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ success: false, message: '数据库文件不存在' });
+    }
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="home-server-panel.db"');
+    fs.readFile(dbPath, (err, data) => {
+      if (err) return res.status(500).json({ success: false, message: '读取数据库文件失败' });
+      res.send(data);
+    });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
 });
 
-// POST /api/db/import - 导入数据
-router.post('/import', (req, res) => {
+// POST /api/db/import - 导入数据（支持 .db / .json）
+const multer = require('multer');
+const upload = multer({ dest: '/tmp/' });
+router.post('/import', upload.single('file'), (req, res) => {
   try {
-    sqliteService.importAll(req.body);
-    res.json({ success: true, message: '数据导入成功' });
+    const fs = require('fs');
+    const path = require('path');
+    if (!req.file) {
+      return res.json({ success: false, message: '请上传文件' });
+    }
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (ext === '.db') {
+      // 直接替换 SQLite 数据库文件
+      const dbPath = path.join(__dirname, '..', '..', 'data', 'panel.db');
+      const backupPath = dbPath + '.backup.' + Date.now();
+      if (fs.existsSync(dbPath)) fs.copyFileSync(dbPath, backupPath);
+      fs.copyFileSync(req.file.path, dbPath);
+      fs.unlinkSync(req.file.path);
+      res.json({ success: true, message: 'SQLite 数据库导入成功，请重启服务以生效' });
+    } else if (ext === '.json') {
+      const data = JSON.parse(fs.readFileSync(req.file.path, 'utf-8'));
+      sqliteService.importAll(data);
+      fs.unlinkSync(req.file.path);
+      res.json({ success: true, message: 'JSON 数据导入成功' });
+    } else {
+      fs.unlinkSync(req.file.path);
+      res.json({ success: false, message: '不支持的文件格式，请上传 .db 或 .json 文件' });
+    }
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    if (req.file) { try { require('fs').unlinkSync(req.file.path); } catch(e){} }
+    res.json({ success: false, message: '导入失败: ' + err.message });
   }
 });
 

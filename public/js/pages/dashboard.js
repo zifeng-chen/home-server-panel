@@ -82,16 +82,17 @@ async function loadDashboard() {
       { icon: '🏗️', label: 'CPU 核心', value: cpu },
       { icon: '📊', label: '系统负载', value: loadStr },
       { icon: '📦', label: 'Node.js', value: sys.nodeVersion || '--' },
-      { icon: '📡', label: 'DDNS 域名', value: ddnsCount + ' 个', color: ddnsCount > 0 ? 'var(--success)' : 'var(--text-secondary)' },
-      { icon: '🔒', label: 'SSL 证书', value: certCount + ' 个', color: certCount > 0 ? 'var(--success)' : 'var(--text-secondary)' },
-      { icon: '🌐', label: 'Nginx', value: nginxRunning ? '运行中 🟢' : '未运行', color: nginxRunning ? 'var(--success)' : 'var(--text-secondary)' },
-      { icon: '🔄', label: '代理规则', value: proxyCount + ' 条启用', color: proxyCount > 0 ? 'var(--success)' : 'var(--text-secondary)' },
-      { icon: '🔌', label: '监听端口', value: portCount + ' 个', color: portCount > 0 ? 'var(--success)' : 'var(--text-secondary)' }
+      { icon: '📡', label: 'DDNS 域名', value: ddnsCount + ' 个', color: ddnsCount > 0 ? 'var(--success)' : 'var(--text-secondary)', nav: 'ddns' },
+      { icon: '🔒', label: 'SSL 证书', value: certCount + ' 个', color: certCount > 0 ? 'var(--success)' : 'var(--text-secondary)', nav: 'ssl' },
+      { icon: '🌐', label: 'Nginx', value: nginxRunning ? '运行中 🟢' : '未运行', color: nginxRunning ? 'var(--success)' : 'var(--text-secondary)', nav: 'nginx' },
+      { icon: '🔄', label: '代理规则', value: proxyCount + ' 条启用', color: proxyCount > 0 ? 'var(--success)' : 'var(--text-secondary)', nav: 'nginx' },
+      { icon: '🔌', label: '监听端口', value: portCount + ' 个', color: portCount > 0 ? 'var(--success)' : 'var(--text-secondary)', nav: 'port' }
     ];
 
     grid.innerHTML = cards.map(function(c) {
       var colorAttr = c.color ? ' style="color:' + c.color + '"' : '';
-      return '<div class="stat-card">'
+      var onclickAttr = c.nav ? ' onclick="window.location.hash=\'' + c.nav + '\'" style="cursor:pointer" title="点击查看详情"' : '';
+      return '<div class="stat-card"' + onclickAttr + '>'
         + '<div class="stat-icon">' + c.icon + '</div>'
         + '<div class="stat-info">'
           + '<span class="stat-label">' + c.label + '</span>'

@@ -80,8 +80,22 @@ router.put('/record/:recordId', async (req, res) => {
 // DELETE /api/ddns/record/:recordId - 删除 DNS 解析记录
 router.delete('/record/:recordId', async (req, res) => {
   try {
-    await ddnsService.deleteRecord(req.params.recordId);
-    res.json({ success: true, message: 'DNS 记录已删除' });
+    const localOnly = req.query.localOnly === 'true';
+    if (localOnly) {
+      // Task 12: 仅从面板移除，不删除阿里云记录
+      // 通过 recordId 找到对应域名并从本地配置移除
+      const records = (await ddnsService.getAllRecords()).records;
+      const record = records.find(r => r.id === req.params.recordId);
+      if (!record) return res.json({ success: false, message: '记录不存在' });
+      // 从域名提取主域名和子域名，从本地配置移除
+      const parts = record.domain.split('.');
+      // 简单处理：移除该域名（通过名字匹配）
+      ddnsService.removeDomain(record.domain, '@', record.recordType);
+      res.json({ success: true, message: '已从面板移除（阿里云 DNS 记录保留）' });
+    } else {
+      await ddnsService.deleteRecord(req.params.recordId);
+      res.json({ success: true, message: 'DNS 记录已从阿里云删除' });
+    }
   } catch (err) {
     res.json({ success: false, message: err.message });
   }

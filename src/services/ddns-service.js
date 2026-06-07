@@ -310,6 +310,8 @@ class DdnsService {
             console.log(`[DDNS] 更新: ${rec.RR}.${domain.name} (${rec.Type}) ${rec.Value} → ${currentIp}`);
             await this.updateRecord(rec.RecordId, rec.RR, rec.Type, currentIp, rec.TTL);
             results.push({ domain: `${rec.RR}.${domain.name}`, type: rec.Type, oldIp: rec.Value, newIp: currentIp, updated: true });
+            // Task 10: PushPlus 通知
+            this._notifyChange(rec.RR, domain.name, rec.Type, rec.Value, currentIp);
           } else {
             results.push({ domain: `${rec.RR}.${domain.name}`, type: rec.Type, currentIp, updated: false, reason: 'IP 未变化' });
           }
@@ -387,6 +389,21 @@ class DdnsService {
     sqliteService.removeDdnsDomain(name, subdomain, recordType);
     this.config.domains = sqliteService.getDdnsDomains();
     return this.config.domains;
+  }
+
+  // PushPlus 推送 DDNS IP 变更通知
+  async _notifyChange(rr, domainName, recordType, oldIp, newIp) {
+    try {
+      const notifyService = require('./notify-service');
+      const hostname = rr === '@' ? domainName : `${rr}.${domainName}`;
+      await notifyService.notifyDdnsChange([{
+        domain: `${hostname} (${recordType})`,
+        oldIp,
+        newIp
+      }]);
+    } catch (err) {
+      console.warn('[DDNS] 推送通知失败:', err.message);
+    }
   }
 }
 

@@ -161,10 +161,11 @@ router.get('/domains', (req, res) => {
   res.json({ success: true, data: { domains } });
 });
 
-// DELETE /api/cert/domains/:domain - 删除配置的域名
+// DELETE /api/cert/domains/:domain - 删除域名及证书文件
 router.delete('/domains/:domain', (req, res) => {
-  sslService.removeConfigDomain(req.params.domain);
-  res.json({ success: true, message: '域名已从配置中移除' });
+  const deleteFiles = req.query.deleteFiles === 'true';
+  sslService.removeConfigDomain(req.params.domain, deleteFiles);
+  res.json({ success: true, message: deleteFiles ? '域名及证书文件已删除' : '域名已从配置中移除（证书文件保留）' });
 });
 
 // GET /api/cert/export/:domain - 导出证书文件
@@ -185,18 +186,26 @@ router.get('/export/:domain', (req, res) => {
     }
 
     const fileMap = {
-      cert: domain + '.cer',
-      key: domain + '.key',
-      fullchain: 'fullchain.cer',
-      ca: 'ca.cer'
+      cert: [domain + '.cer', domain + '.pem', 'fullchain.cer', 'fullchain.pem'],
+      key: [domain + '.key', domain + '.key.pem'],
+      fullchain: ['fullchain.cer', 'fullchain.pem'],
+      ca: ['ca.cer', 'ca.cer.pem']
     };
 
     if (format === 'zip' || format === 'all') {
       // 打包为 tar.gz
       const { execSync } = require('child_process');
       const tmpFile = `/tmp/cert-export-${domain}-${Date.now()}.tar.gz`;
-      const files = [fileMap.cert, fileMap.key, fileMap.fullchain, fileMap.ca].filter(f => fs.existsSync(path.join(certDir, f)));
-      execSync(`cd "${certDir}" && tar -czf "${tmpFile}" ${files.join(' ')}`, { timeout: 10000 });
+      const allFiles = [];
+      for (const key of Object.keys(fileMap)) {
+        for (const f of fileMap[key]) {
+          if (fs.existsSync(path.join(certDir, f))) { allFiles.push(f); break; }
+        }
+      }
+      if (allFiles.length === 0) {
+        return res.status(404).json({ success: false, message: '证书目录为空' });
+      }
+      execSync(`cd "${certDir}" && tar -czf "${tmpFile}" ${allFiles.join(' ')}`, { timeout: 10000 });
       res.setHeader('Content-Type', 'application/gzip');
       res.setHeader('Content-Disposition', `attachment; filename="${domain}-certs.tar.gz"`);
       const stream = fs.createReadStream(tmpFile);
@@ -205,14 +214,20 @@ router.get('/export/:domain', (req, res) => {
       return;
     }
 
-    const fileName = fileMap[format];
-    if (!fileName) {
+    const candidates = fileMap[format];
+    if (!candidates) {
       return res.status(400).json({ success: false, message: '无效的文件类型: ' + format + '，支持: cert, key, fullchain, ca, all' });
     }
 
-    const filePath = path.join(certDir, fileName);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: '文件不存在: ' + fileName });
+    let filePath = null;
+    let fileName = null;
+    for (const f of candidates) {
+      const fp = path.join(certDir, f);
+      if (fs.existsSync(fp)) { filePath = fp; fileName = f; break; }
+    }
+
+    if (!filePath) {
+      return res.status(404).json({ success: false, message: '文件不存在，尝试的文件: ' + candidates.join(', ') });
     }
 
     const mimeTypes = { '.cer': 'application/x-pem-file', '.key': 'application/x-pem-file', '.pem': 'application/x-pem-file' };

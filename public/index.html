@@ -77,8 +77,7 @@
       <div class="sidebar-footer">
         <span id="version">v1.10.0</span>
         <span id="uptime">--</span>
-        <a href="#" id="btnLogout" title="退出登录" style="color:var(--text-secondary);text-decoration:none;font-size:14px;margin-top:8px;display:block">🚪 退出</a>
-        <a href="/install.html" title="重新安装" style="color:var(--text-secondary);text-decoration:none;font-size:12px;margin-top:4px;display:block;opacity:0.5">🔧 重装向导</a>
+        <a href="#" id="btnLogout" title="退出登录" style="color:var(--text-secondary);text-decoration:none;font-size:13px;margin-top:6px;display:block;opacity:0.6;text-align:center">🚪 退出登录</a>
       </div>
     </aside>
 
@@ -124,7 +123,7 @@
                   <th>域名</th>
                   <th>类型</th>
                   <th>当前 IP</th>
-                  <th>公网 IP</th>
+                  <th>添加日期</th>
                   <th>最后更新</th>
                   <th>状态</th>
                   <th>操作</th>
@@ -360,42 +359,16 @@
           <div class="settings-card" style="margin-top:20px;">
             <h3 style="display:flex;justify-content:space-between;align-items:center;">
               🗄️ 数据库管理
-              <span style="display:flex;gap:8px;align-items:center;">
-                <span id="dbStatusText" style="font-size:13px;font-weight:normal;">📁 本地 JSON 文件存储</span>
-                <button class="btn btn-sm btn-secondary" id="dbActionBtn" onclick="toggleDbConfig()">配置 MySQL</button>
-                <button class="btn btn-sm btn-success" id="btnMigrate" style="display:none" onclick="startMigration()">📦 迁移数据</button>
-              </span>
+              <span id="dbStatusText" style="font-size:13px;font-weight:normal;">🗄️ SQLite 本地存储</span>
             </h3>
-            <div id="cardDbConfig" style="display:none;margin-top:12px;">
-              <div class="form-row-3" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
-                <div class="form-group">
-                  <label class="form-label">主机地址</label>
-                  <input class="form-input" id="dbHost" placeholder="192.168.100.110" value="192.168.100.110">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">端口</label>
-                  <input class="form-input" id="dbPort" value="3306" placeholder="3306">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">数据库名</label>
-                  <input class="form-input" id="dbName" placeholder="server_panel" value="server_panel">
-                </div>
-              </div>
-              <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div class="form-group">
-                  <label class="form-label">用户名</label>
-                  <input class="form-input" id="dbUser" placeholder="root" value="root">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">密码</label>
-                  <input class="form-input" type="password" id="dbPass" placeholder="数据库密码">
-                </div>
-              </div>
-              <div class="test-result" id="dbTestResult" style="display:none;padding:8px 12px;border-radius:6px;font-size:12px;margin:8px 0;"></div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn btn-sm btn-secondary" onclick="testDbConnection()">🔍 测试连接</button>
-                <button class="btn btn-sm btn-primary" id="btnDbConnect" onclick="connectDb()">🔗 连接 MySQL</button>
-              </div>
+            <div id="dbMigrateSection" style="margin-top:8px;">
+              <button class="btn btn-sm btn-primary" onclick="showDbConfigModal()">🚀 迁移至 MySQL</button>
+            </div>
+            <button class="btn btn-sm btn-danger" id="btnDbSwitch" style="display:none;margin-top:8px;" onclick="toggleDbConfig()">断开连接，切回 SQLite</button>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+              <button class="btn btn-sm btn-secondary" id="btnExportData">📤 导出数据</button>
+              <button class="btn btn-sm btn-secondary" id="btnImportData">📥 导入数据</button>
+              <button class="btn btn-sm btn-danger" id="btnReinstall" style="margin-left:auto">🔧 重装向导</button>
             </div>
           </div>
 

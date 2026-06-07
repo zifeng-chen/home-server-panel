@@ -1,0 +1,15 @@
+{
+  "domains": [
+    {
+      "name": "izifeng.cn",
+      "subdomain": "@",
+      "recordType": "A",
+      "ttl": 600,
+      "line": "default",
+      "createdAt": "2026-05-30T15:32:34.227Z",
+      "lastUpdate": null,
+      "lastIp": null
+    }
+  ],
+  "lastRefresh": "2026-05-30T15:32:34.227Z"
+}

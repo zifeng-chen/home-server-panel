@@ -5,12 +5,12 @@ async function loadDdns() {
   const tbody = document.getElementById('ddnsTbody');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="7">加载中...</td></tr>';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="8">加载中...</td></tr>';
 
   try {
     const res = await Api.get('/ddns');
     if (!res.success) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
       return;
     }
 
@@ -21,17 +21,17 @@ async function loadDdns() {
     // 更新公网 IP 显示
     const ipEl = document.getElementById('ddnsPublicIp');
     if (ipEl) {
-      ipEl.innerHTML = `🌐 IPv4: <strong>${ipv4}</strong>${ipv6 && ipv6 !== '--' ? ` &nbsp;|&nbsp; 🔷 IPv6: <strong><span title="${ipv6}">${ipv6.length>20 ? ipv6.slice(0,20)+'...' : ipv6}</span></strong>` : ''}`;
+      ipEl.innerHTML = `<span style="margin-right:16px">🌐 IPv4: <strong>${ipv4}</strong></span>${ipv6 && ipv6 !== '--' ? `<span title="${ipv6}">🔷 IPv6: <strong>${ipv6}</strong></span>` : '<span style="color:var(--text-secondary)">🔷 IPv6: 无</span>'}`;
     }
 
     if (records.length === 0) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
       return;
     }
 
     tbody.innerHTML = records.map(r => {
       if (r.error) {
-        return `<tr><td colspan="7" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
+        return `<tr><td colspan="8" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
       }
 
       const needsUpdate = r.needsUpdate;
@@ -43,7 +43,7 @@ async function loadDdns() {
           <td><strong>${r.domain}</strong></td>
           <td><span class="${typeClass}">${r.recordType || 'A'}</span></td>
           <td><code style="${needsUpdate ? 'color:var(--warning)' : ''}">${r.ip || '--'}</code></td>
-          <td><code style="font-size:12px;${needsUpdate ? 'color:var(--warning)' : 'color:var(--text-secondary)'}">${needsUpdate ? (r.currentPublicIp || '?') : '—'}</code></td>
+          <td><small>${formatDate(r.createdAt) || '—'}</small></td>
           <td><small>${formatDate(r.updatedAt)}</small></td>
           <td>
             <span class="status-badge ${enabled ? (needsUpdate ? 'pending' : 'online') : 'offline'}">
@@ -53,13 +53,13 @@ async function loadDdns() {
           <td>
             <button class="btn btn-sm ${enabled ? 'btn-secondary' : 'btn-success'}" onclick="toggleDdnsRecord('${r.id}', '${enabled}')" title="${enabled ? '停用' : '启用'}">${enabled ? '⏸ 停用' : '▶ 启用'}</button>
             <button class="btn btn-sm btn-primary" onclick="editDdnsRecord('${r.id}')">✏ 编辑</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteDdnsRecord('${r.id}', '${r.domain}')">🗑 删除</button>
+            <button class="btn btn-sm btn-danger" onclick="removeDdnsRecord('${r.id}', '${r.domain}')">🗑 移除</button>
           </td>
         </tr>
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">加载失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">加载失败: ${err.message}</td></tr>`;
   }
 }
 
@@ -139,12 +139,12 @@ window.editDdnsRecord = (recordId) => {
   });
 };
 
-// 删除 DNS 记录（从阿里云删除）
-window.deleteDdnsRecord = (recordId, domain) => {
-  Utils.confirm('删除 DNS 记录', `确定要删除「${domain}」的 DNS 解析记录吗？<br><small style="color:var(--danger)">此操作将从阿里云 DNS 中删除该记录，不可撤销</small>`, async () => {
-    const res = await Api.del(`/ddns/record/${recordId}`);
+// 移除记录（仅从面板移除，不删除阿里云 DNS 记录）
+window.removeDdnsRecord = (recordId, domain) => {
+  Utils.confirm('移除记录', `确定从面板中移除「${domain}」的跟踪吗？<br><small style="color:var(--warning)">仅从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>`, async () => {
+    const res = await Api.del(`/ddns/record/${recordId}?localOnly=true`);
     if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
-    else Utils.notify(res.message || '删除失败', 'error');
+    else Utils.notify(res.message || '移除失败', 'error');
   });
 };
 
@@ -160,6 +160,47 @@ window.refreshAllDdns = async () => {
   }
 };
 
+// IPv6 类型切换时自动获取 /64 前缀
+window.onDdnsTypeChange = () => {
+  const type = document.getElementById('ddnsAddType')?.value;
+  const ipv6PrefixEl = document.getElementById('ddnsIpv6Prefix');
+  if (!ipv6PrefixEl) return;
+  if (type === 'AAAA') {
+    ipv6PrefixEl.style.display = 'block';
+    // 尝试从当前公网 IPv6 获取 /64 前缀
+    tryLoadIpv6Prefix();
+  } else {
+    ipv6PrefixEl.style.display = 'none';
+  }
+};
+
+window.tryLoadIpv6Prefix = async () => {
+  const inputEl = document.getElementById('ddnsAddIp');
+  const prefixEl = document.getElementById('ddnsIpv6PrefixValue');
+  if (!inputEl || !prefixEl) return;
+  try {
+    // 先尝试从已缓存的公网 IPv6 获取
+    const ipDisplay = document.getElementById('ddnsPublicIp');
+    const ipv6Text = ipDisplay?.innerText || '';
+    const ipv6Match = ipv6Text.match(/IPv6:\s*([a-fA-F0-9:]+)/);
+    if (ipv6Match && ipv6Match[1].includes(':')) {
+      const parts = ipv6Match[1].split(':');
+      const prefix = parts.slice(0, 4).join(':');  // /64 = first 4 groups
+      prefixEl.textContent = prefix;
+      if (!inputEl.value) inputEl.value = prefix + '::';
+      return;
+    }
+    // 如果没有缓存，从服务器获取
+    const res = await Api.get('/ddns/ipv6');
+    if (res.success && res.data?.ip) {
+      const parts = res.data.ip.split(':');
+      const prefix = parts.slice(0, 4).join(':');
+      prefixEl.textContent = prefix;
+      if (!inputEl.value) inputEl.value = prefix + '::';
+    }
+  } catch (e) {}
+};
+
 // 添加域名
 window.showAddDdnsModal = () => {
   const body = `
@@ -173,7 +214,7 @@ window.showAddDdnsModal = () => {
     </div>
     <div class="form-group">
       <label>记录类型</label>
-      <select id="ddnsAddType" class="form-input">
+      <select id="ddnsAddType" class="form-input" onchange="onDdnsTypeChange()">
         <option value="A">A (IPv4)</option>
         <option value="AAAA">AAAA (IPv6)</option>
       </select>
@@ -182,9 +223,12 @@ window.showAddDdnsModal = () => {
       <label>TTL (秒)</label>
       <input type="number" id="ddnsAddTtl" class="form-input" value="600" min="60" max="86400">
     </div>
+    <div id="ddnsIpv6Prefix" style="display:none;margin-bottom:8px;padding:8px;background:rgba(99,102,241,0.08);border-radius:8px;border:1px solid rgba(99,102,241,0.2);font-size:12px;color:var(--text-secondary)">
+      📡 IPv6 /64 前缀: <code id="ddnsIpv6PrefixValue" style="color:var(--primary);font-size:13px">—</code>
+    </div>
     <div class="form-group">
       <label>IP 地址 (留空自动获取公网 IP)</label>
-      <input type="text" id="ddnsAddValue" class="form-input" placeholder="留空自动获取公网 IP">
+      <input type="text" id="ddnsAddIp" class="form-input" placeholder="留空自动获取公网 IP">
     </div>
   `;
   const footer = `
@@ -198,7 +242,7 @@ window.showAddDdnsModal = () => {
     const subdomain = document.getElementById('ddnsAddSub').value.trim() || '@';
     const recordType = document.getElementById('ddnsAddType').value;
     const ttl = parseInt(document.getElementById('ddnsAddTtl').value) || 600;
-    const value = document.getElementById('ddnsAddValue').value.trim() || undefined;
+    const value = document.getElementById('ddnsAddIp').value.trim() || undefined;
 
     if (!name) { Utils.notify('请输入主域名', 'error'); return; }
 

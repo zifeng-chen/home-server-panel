@@ -60,7 +60,8 @@ async function loadCert() {
           <td>
             <button class="btn btn-sm btn-primary" onclick="renewCert('${c.domain}')">续期</button>
             <button class="btn btn-sm btn-secondary" onclick="exportCert('${c.domain}')">导出</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteCertConfig('${c.domain}')">移除</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteCertFiles('${c.domain}')">🗑 删除文件</button>
+            <button class="btn btn-sm btn-warning" onclick="deleteCertConfig('${c.domain}')">移除</button>
           </td>
         </tr>
       `;
@@ -338,13 +339,31 @@ window.renewCert = async (domain) => {
   }
 };
 
-// 删除证书配置（从本面板移除，不删除 acme.sh 中的证书）
+// 删除证书配置（从本面板移除）
 window.deleteCertConfig = async (domain) => {
-  Utils.confirm('移除证书配置', `确定从面板中移除 "${domain}" 的证书跟踪吗？<br><small>不会删除 acme.sh 中的实际证书文件</small>`, async () => {
+  Utils.confirm('移除证书', `确定从面板移除「${domain}」吗？<br><small style="color:var(--warning)">仅从面板移除，证书文件保留</small>`, async () => {
     const res = await Api.del(`/cert/domains/${encodeURIComponent(domain)}`);
     if (res.success) { Utils.notify(res.message, 'success'); loadCert(); }
     else Utils.notify(res.message || '移除失败', 'error');
   });
+};
+
+// Task 13: 彻底删除证书（含文件）
+window.deleteCertFiles = (domain) => {
+  Utils.confirm('⚠️ 删除证书文件', 
+    `<div style="text-align:left"><strong style="color:var(--danger)">此操作不可撤销！</strong><br><br>` +
+    `将彻底删除「${domain}」的证书文件，包括：<br>` +
+    `• 证书文件 (.cer/.pem)<br>` +
+    `• 私钥文件 (.key)<br>` +
+    `• CA 证书<br><br>` +
+    `删除后需重新申请证书。</div>`,
+    async () => {
+      Utils.notify('正在删除证书文件...', 'info');
+      const res = await Api.del(`/cert/domains/${encodeURIComponent(domain)}?deleteFiles=true`);
+      if (res.success) { Utils.notify('✅ ' + res.message, 'success'); loadCert(); }
+      else Utils.notify(res.message || '删除失败', 'error');
+    }, '确认删除', '取消'
+  );
 };
 
 // 页面加载

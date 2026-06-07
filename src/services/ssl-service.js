@@ -371,10 +371,15 @@ class SslService {
           let warning = null;
           if (days !== null && days < 0) status = 'expired';
           else if (days !== null && days < 7) status = 'expiring';
-          else if (days !== null && days < 30) status = 'warning';
+          else if (days !== null && days < 90) status = 'warning';
 
-          if (days !== null && days <= 30) {
-            warning = days < 0 ? `已过期 ${Math.abs(days)} 天` : `剩余 ${days} 天`;
+          if (days !== null && days < 90) {
+            warning = days < 0 ? `已过期 ${Math.abs(days)} 天` : `剩余 ${days} 天 (${days < 7 ? '紧急' : days < 30 ? '需关注' : '90天内到期'})`;
+          }
+
+          // Task 14: 到期时发送 PushPlus 提醒
+          if (days !== null && days >= 0 && days <= 90) {
+            this._maybeNotifyExpiry(mainDomain, days);
           }
 
           return {
@@ -422,8 +427,59 @@ class SslService {
     return sqliteService.getSslDomains();
   }
 
-  removeConfigDomain(domain) {
+  // 从面板移除域名，同时可选择删除实际证书文件
+  removeConfigDomain(domain, deleteFiles = false) {
     sqliteService.removeSslDomain(domain);
+    if (deleteFiles) {
+      this._deleteCertFiles(domain);
+    }
+  }
+
+  // Task 13: 删除 acme.sh 中实际的证书文件
+  _deleteCertFiles(domain) {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const fs = require('fs');
+      const acmeHome = path.join(os.homedir(), '.acme.sh');
+      let certDir = path.join(acmeHome, domain + '_ecc');
+      if (!fs.existsSync(certDir)) certDir = path.join(acmeHome, domain);
+      
+      if (fs.existsSync(certDir)) {
+        // 使用 acme.sh --remove 来清理证书
+        const { execSync } = require('child_process');
+        const acmeBin = path.join(os.homedir(), '.acme.sh', 'acme.sh');
+        if (fs.existsSync(acmeBin)) {
+          execSync(`bash "${acmeBin}" --remove -d "${domain}"`, { timeout: 10000 });
+          console.log(`[SSL] 已删除证书文件: ${domain}`);
+        } else {
+          fs.rmSync(certDir, { recursive: true, force: true });
+          console.log(`[SSL] 已手动删除证书目录: ${certDir}`);
+        }
+      }
+    } catch (err) {
+      console.warn(`[SSL] 删除证书文件失败: ${domain}`, err.message);
+    }
+  }
+
+  // Task 14: 证书到期推送通知 (同域名每天最多推送一次)
+  async _maybeNotifyExpiry(domain, days) {
+    try {
+      const lastNotified = sqliteService.getSslNotifiedAt(domain);
+      const now = Date.now();
+      if (lastNotified && (now - lastNotified) < 86400000) return; // 24小时内不重复
+
+      const notifyService = require('./notify-service');
+      sqliteService.setSslNotifiedAt(domain, now);
+
+      await notifyService.notifySslExpiry({
+        domain,
+        daysRemaining: days,
+        expiresAt: new Date(Date.now() + days * 86400000).toISOString()
+      });
+    } catch (err) {
+      console.warn(`[SSL] 到期推送失败: ${domain}`, err.message);
+    }
   }
 
   // ========== 内部方法 ==========

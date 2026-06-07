@@ -178,7 +178,7 @@ class DdnsService {
         const dnsRecords = await this.getDomainRecords(domain.name);
         for (const rec of dnsRecords) {
           const isMatch = (domain.subdomain === '@' && rec.RR === '@')
-            || (domain.subdomain === '*' && rec.RR !== '@')
+            || (domain.subdomain === '*' && rec.RR === '*')
             || (rec.RR === domain.subdomain);
 
           if (!isMatch) continue;
@@ -287,7 +287,7 @@ class DdnsService {
         const dnsRecords = await this.getDomainRecords(domain.name);
         for (const rec of dnsRecords) {
           const isMatch = (domain.subdomain === '@' && rec.RR === '@')
-            || (domain.subdomain === '*' && rec.RR !== '@')
+            || (domain.subdomain === '*' && rec.RR === '*')
             || (rec.RR === domain.subdomain);
           if (!isMatch) continue;
 

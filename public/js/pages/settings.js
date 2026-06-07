@@ -292,9 +292,20 @@ document.addEventListener('DOMContentLoaded', () => {
       '请先导出数据备份，再执行重装。<br><br>' +
       '重装后将跳转到安装向导页面重新配置系统。</div>',
       async () => {
-        // Export data before reinstall
-        Utils.notify('准备重装...', 'info');
-        window.location.href = '/install.html';
+        // 调用 reset API 清除所有数据
+        Utils.notify('正在清除数据...', 'info');
+        try {
+          const res = await Api.post('/setup/reset');
+          if (res.success) {
+            Utils.notify('系统已重置，即将跳转...', 'success');
+            setTimeout(() => { window.location.href = '/install.html'; }, 1500);
+          } else {
+            Utils.notify(res.message || '重置失败', 'error');
+          }
+        } catch (e) {
+          // 降级：直接跳转
+          window.location.href = '/install.html';
+        }
       }, '确认重装', '取消'
     );
   });

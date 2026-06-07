@@ -52,3 +52,31 @@ router.post('/install', async (req, res) => {
 });
 
 module.exports = router;
+
+// POST /api/setup/reset - 清除所有数据，重装系统
+router.post('/reset', (req, res) => {
+  try {
+    const envPath = path.join(__dirname, '..', '..', '.env');
+    const dataDir = path.join(__dirname, '..', '..', 'data');
+    
+    // 删除 .env 文件
+    if (fs.existsSync(envPath)) {
+      fs.unlinkSync(envPath);
+    }
+    
+    // 清空 data 目录（保留目录本身）
+    if (fs.existsSync(dataDir)) {
+      const files = fs.readdirSync(dataDir);
+      for (const file of files) {
+        const fp = path.join(dataDir, file);
+        if (fs.statSync(fp).isFile()) {
+          fs.unlinkSync(fp);
+        }
+      }
+    }
+    
+    res.json({ success: true, message: '系统已重置，请重新安装' });
+  } catch (err) {
+    res.json({ success: false, message: '重置失败: ' + err.message });
+  }
+});

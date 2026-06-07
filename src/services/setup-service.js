@@ -14,8 +14,8 @@ class SetupService {
     try {
       // 先尝试连接（不指定数据库）
       conn = await mysql.createConnection({ host, port, user, password, connectTimeout: 5000 });
-      // 检查数据库是否存在
-      const [rows] = await conn.execute(
+      // 检查数据库是否存在（用 query 避免 INFORMATION_SCHEMA 预处理兼容问题）
+      const [rows] = await conn.query(
         'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
         [database]
       );
@@ -106,8 +106,8 @@ class SetupService {
         connectTimeout: 5000
       });
 
-      // 创建数据库（如不存在）
-      await conn.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+      // 创建数据库（如不存在）— 用 query 避免预处理兼容问题
+      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
       // 切换到目标数据库
       await conn.query(`USE \`${DB_NAME}\``);
@@ -125,7 +125,7 @@ class SetupService {
 
   async _createTables(conn) {
     // 系统设置表
-    await conn.execute(`
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS settings (
         \`key\` VARCHAR(64) PRIMARY KEY,
         \`value\` TEXT,
@@ -134,7 +134,7 @@ class SetupService {
     `);
 
     // 操作日志表（后续功能使用）
-    await conn.execute(`
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         action VARCHAR(64) NOT NULL,
@@ -145,7 +145,7 @@ class SetupService {
     `);
 
     // DDNS 记录表
-    await conn.execute(`
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS ddns_records (
         id INT AUTO_INCREMENT PRIMARY KEY,
         domain VARCHAR(255) NOT NULL,
@@ -158,7 +158,7 @@ class SetupService {
     `);
 
     // 反向代理规则表
-    await conn.execute(`
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS proxy_rules (
         id INT AUTO_INCREMENT PRIMARY KEY,
         domain VARCHAR(255) NOT NULL,

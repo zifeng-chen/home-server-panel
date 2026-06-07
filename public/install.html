@@ -319,8 +319,8 @@ canvas#bgCanvas {
       <div class="db-modes">
         <div class="db-mode-card selected" data-mode="local" onclick="selectDbMode('local')">
           <div class="db-mode-icon">📁</div>
-          <div class="db-mode-title">本地文件</div>
-          <div class="db-mode-desc">JSON 文件存储<br>开箱即用 · 零配置</div>
+          <div class="db-mode-title">SQLite</div>
+          <div class="db-mode-desc">本地数据库<br>开箱即用 · 零配置</div>
         </div>
         <div class="db-mode-card" data-mode="mysql" onclick="selectDbMode('mysql')">
           <div class="db-mode-icon">🐬</div>
@@ -483,6 +483,28 @@ canvas#bgCanvas {
 let currentStep = 0;
 let dbMode = 'local';
 const totalSteps = 3;
+let systemInstalled = false;
+
+// 页面加载时检查是否已安装
+(async function checkInstalled() {
+  try {
+    const res = await fetch('/api/setup/status');
+    const data = await res.json();
+    if (data.success && data.data && data.data.installed) {
+      systemInstalled = true;
+      document.querySelector('.container .card').innerHTML = `
+        <div class="brand">
+          <div class="brand-icon">✅</div>
+          <h1>系统已安装</h1>
+          <p>服务器管理面板已配置完成，无需重复安装</p>
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='/login.html'" style="margin-top:20px">🔑 前往登录</button>
+        <button class="btn btn-secondary" onclick="window.location.href='/'" style="margin-top:10px;width:100%">🏠 前往仪表盘</button>
+      `;
+      document.querySelector('.steps')?.style.setProperty('display', 'none');
+    }
+  } catch(e) { /* 网络错误忽略 */ }
+})();
 
 function selectDbMode(mode) {
   dbMode = mode;
@@ -650,7 +672,7 @@ function showError(msg) {
 }
 
 function goToPanel() {
-  window.location.href = '/';
+  window.location.href = '/login.html';
 }
 </script>
 </body>

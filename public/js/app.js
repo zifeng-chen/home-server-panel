@@ -1,7 +1,7 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.10.0',
-  NOTIFY_DURATION: 3000,
+  version: '1.12.0',
+  NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
     if (this._pending[key]) return true;
@@ -21,6 +21,33 @@ const App = window.App = {
 };
 
 // DOM ready
+// Hash 路由：支持仪表盘卡片点击跳转
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.replace('#', '');
+  if (!hash) return;
+  const navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', settings: 'settings' };
+  const pageName = navMap[hash];
+  if (!pageName) return;
+  // 切换侧边栏激活状态
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === pageName);
+  });
+  // 切换页面
+  const pageMap = {};
+  document.querySelectorAll('.page').forEach(p => {
+    if (p.id && p.id.startsWith('page-')) pageMap[p.id.replace('page-', '')] = p;
+  });
+  Object.values(pageMap).forEach(p => p.classList.add('hidden'));
+  const target = pageMap[pageName];
+  if (target) {
+    target.classList.remove('hidden');
+    if (typeof Api !== 'undefined') Api._currentPage = pageName;
+    (App.pageLoaders || {})[pageName]?.();
+  }
+  // 清除 hash
+  history.replaceState(null, '', window.location.pathname);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSidebarToggle();

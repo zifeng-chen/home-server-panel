@@ -566,3 +566,70 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
   background: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
 }
+/* ====== 系统监控页面 ====== */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.monitor-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 220px;
+  transition: border-color .2s;
+}
+.monitor-card:hover { border-color: var(--primary); }
+.monitor-card-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.monitor-card-val {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.monitor-card-info { grid-column: span 1; }
+.monitor-chart {
+  width: 100%;
+  border-radius: 8px;
+}
+.monitor-disk-list { margin-top: 8px; }
+.disk-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.disk-mount { color: var(--text-primary); min-width: 80px; }
+.disk-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: rgba(51,65,85,0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.disk-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .6s ease;
+}
+.disk-info { color: var(--text-tertiary); font-size: 11px; min-width: 80px; text-align: right; }
+.monitor-info { margin-top: 4px; }
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(51,65,85,0.2);
+  font-size: 13px;
+}
+.info-row:last-child { border: none; }
+.info-row span:first-child { color: var(--text-tertiary); }
+.info-row span:last-child { color: var(--text-primary); font-weight: 500; }

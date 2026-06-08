@@ -152,13 +152,25 @@ class ProxyService {
   // ========== 导出配置到文件 ==========
 
   exportToFile(filePath) {
+    // 安全检查：仅允许写入项目目录或 /tmp
+    const safeDirs = [
+      path.resolve(__dirname, '..', '..'),
+      '/tmp',
+      '/var/tmp',
+      '/opt/home-server-panel'
+    ];
+    const resolved = path.resolve(filePath);
+    const allowed = safeDirs.some(dir => resolved.startsWith(path.resolve(dir)));
+    if (!allowed) {
+      throw new Error('安全限制：仅允许写入项目目录或 /tmp，请使用默认路径');
+    }
     const config = this.generateAllConfig();
-    const dir = path.dirname(filePath);
+    const dir = path.dirname(resolved);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, config, 'utf-8');
-    return { path: filePath, size: config.length, rules: this.listRules().filter(r => r.enabled).length };
+    fs.writeFileSync(resolved, config, 'utf-8');
+    return { path: resolved, size: config.length, rules: this.listRules().filter(r => r.enabled).length };
   }
 
   // ========== 统计 ==========

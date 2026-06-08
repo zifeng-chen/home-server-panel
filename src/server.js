@@ -26,6 +26,15 @@ console.log('🔑 构建版本: ' + BUILD_ID);
 // Cookie 解析
 app.use(cookieParser());
 
+// 安全头
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -142,6 +151,7 @@ app.use('/api/pm2', require('./routes/pm2'));
 app.use('/api/docker', require('./routes/docker'));
 app.use('/api/ssh', require('./routes/ssh'));
 app.use('/api/db', require('./routes/db'));
+app.use('/api/monitor', require('./routes/monitor'));
 
 // SPA fallback
 app.use((req, res, next) => {
@@ -167,7 +177,7 @@ server.listen(PORT, () => {
   console.log(`🏠 家庭服务器管理面板已启动: http://0.0.0.0:${PORT}`);
   console.log(`📅 启动时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
   console.log(`👤 默认账号: admin / admin123`);
-  console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron PM2 Docker SSH`);
+  console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron PM2 Docker SSH Monitor`);
   require('./services/cron-service'); // 启动定时任务
 });
 

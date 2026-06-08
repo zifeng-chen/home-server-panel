@@ -96,6 +96,16 @@ router.post('/import', upload.single('file'), (req, res) => {
     }
     const ext = path.extname(req.file.originalname).toLowerCase();
     if (ext === '.db') {
+      // 验证 SQLite 文件头魔术字 (SQLite format 3)
+      const header = Buffer.alloc(16);
+      const fd = fs.openSync(req.file.path, 'r');
+      fs.readSync(fd, header, 0, 16, 0);
+      fs.closeSync(fd);
+      const magic = header.toString('utf8', 0, 16);
+      if (!magic.startsWith('SQLite format 3')) {
+        fs.unlinkSync(req.file.path);
+        return res.json({ success: false, message: '无效的 SQLite 数据库文件' });
+      }
       // 直接替换 SQLite 数据库文件
       const dbPath = path.join(__dirname, '..', '..', 'data', 'panel.db');
       const backupPath = dbPath + '.backup.' + Date.now();

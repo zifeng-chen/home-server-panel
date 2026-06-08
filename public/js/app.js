@@ -133,6 +133,28 @@ App.pageLoaders = {
   cron: loadCron,
   docker: loadDocker,
   ssh: loadSSH,
-  monitor: loadMonitor,
   settings: loadSettings
+};
+
+// 页面切换时停止仪表盘监控轮询
+var _origInitNav = initNavigation;
+initNavigation = function() {
+  _origInitNav();
+  // 监听导航点击，离开仪表盘时停止轮询
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      if (item.dataset.page !== 'dashboard') {
+        if (typeof _dashMonTimer !== 'undefined' && _dashMonTimer) {
+          clearInterval(_dashMonTimer);
+          _dashMonTimer = null;
+        }
+      } else {
+        // 回到仪表盘时重启
+        if (!_dashMonTimer && typeof _dashboardMonitorFetch === 'function') {
+          _dashboardMonitorFetch();
+          _dashMonTimer = setInterval(_dashboardMonitorFetch, 5000);
+        }
+      }
+    });
+  });
 };

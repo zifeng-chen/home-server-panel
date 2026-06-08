@@ -83,7 +83,18 @@ router.post('/config', (req, res) => {
     if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
 
     fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
-    res.json({ success: true, message: '配置已保存，重启后生效' });
+
+    // 🔥 立即生效：更新 process.env 并重载相关服务
+    if (aliKeyId && aliKeyId.indexOf('****') === -1) process.env.ALIYUN_ACCESS_KEY_ID = aliKeyId;
+    if (aliKeySecret && aliKeySecret !== '****') process.env.ALIYUN_ACCESS_KEY_SECRET = aliKeySecret;
+    if (pushplusToken) {
+      process.env.PUSHPLUS_TOKEN = pushplusToken;
+      try { require('../services/notify-service').setToken(pushplusToken); } catch (_) {}
+    }
+    if (acmeEmail) process.env.ACME_EMAIL = acmeEmail;
+    if (acmeDns) process.env.ACME_DNS_PROVIDER = acmeDns;
+
+    res.json({ success: true, message: '配置已保存并立即生效' });
   } catch (err) {
     res.json({ success: false, message: '保存失败: ' + err.message });
   }

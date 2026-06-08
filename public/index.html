@@ -73,10 +73,6 @@
           <i class="nav-icon">💻</i>
           <span>SSH 终端</span>
         </a>
-        <a href="#monitor" class="nav-item" data-page="monitor">
-          <i class="nav-icon">📈</i>
-          <span>系统监控</span>
-        </a>
       </nav>
       <div class="sidebar-footer">
         <span id="version">v1.10.0</span>
@@ -109,6 +105,10 @@
                 <span class="stat-value">加载中...</span>
               </div>
             </div>
+          </div>
+          <h2 style="margin-top:28px">📈 实时监控</h2>
+          <div class="monitor-grid" id="dashboardMonitor">
+            <div class="loading-box">⏳ 监控加载中...</div>
           </div>
         </section>
 
@@ -466,7 +466,6 @@
   <script src="/js/pages/pm2.js?v={BUILD_ID}"></script>
   <script src="/js/pages/docker.js?v={BUILD_ID}"></script>
   <script src="/js/pages/ssh.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/monitor.js?v={BUILD_ID}"></script>
   <script src="/js/pages/settings.js?v={BUILD_ID}"></script>
   <script src="/js/app.js?v={BUILD_ID}"></script>
 </body>

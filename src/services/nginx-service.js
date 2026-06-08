@@ -91,8 +91,9 @@ class NginxService {
         installed: false,
         running: false,
         platform: this.platform,
-        installHint: this.platform === 'darwin'
-          ? 'brew install nginx'
+        distro: this.distro,
+        installHint: this.distro === 'openwrt' ? 'opkg update && opkg install nginx'
+          : this.platform === 'darwin' ? 'brew install nginx'
           : 'apt install nginx 或 yum install nginx'
       };
     }

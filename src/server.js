@@ -62,15 +62,10 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // 检查 .env 是否存在且已安装
+  // 检查 .env 是否存在
   const envPath = require('path').join(__dirname, '..', '.env');
   const fs = require('fs');
   if (!fs.existsSync(envPath)) {
-    return res.redirect('/install.html');
-  }
-  // 检查 .env 中是否有 ADMIN_PASS 且不是默认值
-  const env = fs.readFileSync(envPath, 'utf-8');
-  if (!env.includes('ADMIN_PASS=') || env.includes('ADMIN_PASS=admin123')) {
     return res.redirect('/install.html');
   }
   next();

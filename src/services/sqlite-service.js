@@ -349,14 +349,29 @@ class SqliteService {
   }
 
   addDdnsDomain(domain) {
-    const c = this._getScalar('SELECT COUNT(*) AS c FROM ddns_config WHERE name = ? AND subdomain = ? AND record_type = ?',
-      [domain.name, domain.subdomain || '@', domain.recordType || 'A']);
-    if (c > 0) throw new Error('该域名 + 记录类型组合已存在');
+    const name = domain.name;
+    const subdomain = domain.subdomain || '@';
+    const recordType = domain.recordType || 'A';
+    const ttl = domain.ttl || 600;
+    const line = domain.line || 'default';
 
-    this._run(
-      'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [domain.name, domain.subdomain || '@', domain.recordType || 'A', domain.ttl || 600, domain.line || 'default', new Date().toISOString(), null, null]
+    const existing = this._get(
+      'SELECT * FROM ddns_config WHERE name = ? AND subdomain = ? AND record_type = ?',
+      [name, subdomain, recordType]
     );
+
+    if (existing) {
+      // 已存在：更新 TTL 和 Line，幂等处理
+      this._run(
+        'UPDATE ddns_config SET ttl = ?, line = ?, last_update = ? WHERE name = ? AND subdomain = ? AND record_type = ?',
+        [ttl, line, new Date().toISOString(), name, subdomain, recordType]
+      );
+    } else {
+      this._run(
+        'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, subdomain, recordType, ttl, line, new Date().toISOString(), null, null]
+      );
+    }
     return this.getDdnsDomains();
   }
 

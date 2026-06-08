@@ -104,11 +104,14 @@ router.get('/logs', async (req, res) => {
 // GET /api/nginx/install/stream - SSE 实时安装进度
 router.get('/install/stream', (req, res) => {
   const platform = nginxService.platform;
+  const distro = nginxService.distro;
   let { method } = req.query;
 
-  // 平台默认安装方式
+  // 平台/发行版默认安装方式
   if (!method) {
-    method = platform === 'darwin' ? 'brew' : 'apt';
+    if (distro === 'openwrt') method = 'opkg';
+    else if (distro === 'alpine') method = 'apk';
+    else method = platform === 'darwin' ? 'brew' : 'apt';
   }
 
   // SSE headers
@@ -133,12 +136,17 @@ router.get('/install/stream', (req, res) => {
   let cmd;
   if (method === 'brew' && platform === 'darwin') {
     cmd = 'brew install nginx 2>&1';
+  } else if (method === 'opkg') {
+    // OpenWRT / iStoreOS: 不需要 sudo，root 自带权限
+    send('start', { command: 'opkg update && opkg install nginx', platform, distro, note: 'iStoreOS/OpenWRT 检测到，使用 opkg（无需 sudo）' });
+    cmd = 'opkg update 2>&1 && opkg install nginx 2>&1';
   } else if (method === 'apt' && platform === 'linux') {
     cmd = 'sudo apt-get update -qq 2>&1 && sudo apt-get install -y nginx 2>&1';
   } else if (method === 'yum' && platform === 'linux') {
     cmd = 'sudo yum install -y nginx 2>&1';
   } else if (method === 'apk' && platform === 'linux') {
-    cmd = 'sudo apk add nginx 2>&1';
+    // Alpine 也可能以 root 运行
+    cmd = 'apk add nginx 2>&1';
   } else {
     send('error', { message: `不支持的平台(${platform})或安装方式(${method})` });
     return res.end();
@@ -195,15 +203,24 @@ router.post('/install', async (req, res) => {
     if (guide.installed) {
       return res.json({ success: true, data: { installed: true, message: 'Nginx 已安装' } });
     }
+    const distro = nginxService.distro;
+    const recommended = distro === 'openwrt' ? 'opkg'
+      : distro === 'alpine' ? 'apk'
+      : nginxService.platform === 'darwin' ? 'brew'
+      : 'apt';
+    const methods = distro === 'openwrt' ? ['opkg']
+      : distro === 'alpine' ? ['apk']
+      : nginxService.platform === 'linux' ? ['apt', 'yum', 'apk']
+      : ['brew'];
     res.json({
       success: true,
       data: {
         installed: false,
         platform: nginxService.platform,
-        recommended: nginxService.platform === 'darwin' ? 'brew' : 'apt',
-        methods: nginxService.platform === 'linux'
-          ? ['apt', 'yum', 'apk']
-          : ['brew'],
+        distro: nginxService.distro,
+        isRoot: nginxService._isRoot(),
+        recommended,
+        methods,
         commands: guide.guide?.commands || []
       }
     });

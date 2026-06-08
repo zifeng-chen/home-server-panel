@@ -7,7 +7,35 @@ const os = require('os');
 class NginxService {
   constructor() {
     this.platform = os.platform();
+    this.distro = this._detectDistro();
     this._detectPaths();
+  }
+
+  // 检测发行版（iStoreOS / OpenWRT 特殊处理）
+  _detectDistro() {
+    // 检查 OpenWRT/iStoreOS 标志文件
+    if (fs.existsSync('/etc/openwrt_release') || fs.existsSync('/etc/os-release')) {
+      try {
+        const release = fs.readFileSync(
+          fs.existsSync('/etc/openwrt_release') ? '/etc/openwrt_release' : '/etc/os-release',
+          'utf-8'
+        );
+        if (release.includes('OpenWrt') || release.includes('iStoreOS') || release.includes('LEDE')) {
+          return 'openwrt';
+        }
+      } catch (e) { /* fall through */ }
+    }
+    // 检查 opkg 是否存在
+    try {
+      require('child_process').execSync('which opkg 2>/dev/null', { timeout: 2000 });
+      return 'openwrt';
+    } catch (e) { /* not OpenWRT */ }
+    // 检查 alpine (apk)
+    try {
+      require('child_process').execSync('which apk 2>/dev/null', { timeout: 2000 });
+      return 'alpine';
+    } catch (e) { /* not Alpine */ }
+    return 'generic';
   }
 
   // 平台自适应路径检测
@@ -26,7 +54,10 @@ class NginxService {
       ]
     };
 
-    const bins = candidates[this.platform] || candidates.linux;
+    const bins = [...(candidates[this.platform] || candidates.linux)];
+    // OpenWRT 额外路径
+    const openwrtBins = ['/usr/sbin/nginx', '/usr/bin/nginx'];
+    if (this.distro === 'openwrt') bins.unshift(...openwrtBins.filter(b => !bins.includes(b)));
     for (const bin of bins) {
       if (fs.existsSync(bin)) {
         this.nginxBin = bin;
@@ -37,9 +68,11 @@ class NginxService {
     // 配置文件目录
     const configCandidates = {
       darwin: ['/opt/homebrew/etc/nginx', '/usr/local/etc/nginx'],
-      linux: ['/etc/nginx', '/usr/local/nginx/conf'],
+      linux: ['/etc/nginx', '/usr/local/nginx/conf', '/etc/nginx/conf.d'],
     };
-    const configDirs = configCandidates[this.platform] || configCandidates.linux;
+    const configDirs = [...(configCandidates[this.platform] || configCandidates.linux)];
+    // OpenWRT 配置目录优先
+    if (this.distro === 'openwrt') configDirs.unshift('/etc/nginx');
     for (const dir of configDirs) {
       if (fs.existsSync(dir)) {
         this.configDir = dir;
@@ -243,30 +276,62 @@ class NginxService {
   async getInstallGuide() {
     if (this.nginxBin) return { installed: true, message: 'Nginx 已安装' };
 
+    const isRoot = this._isRoot();
+    const sudoNeeded = isRoot ? '' : 'sudo ';
+
     const guides = {
       darwin: {
         method: 'Homebrew',
         commands: ['brew install nginx'],
         configPath: '/opt/homebrew/etc/nginx/'
       },
-      linux: {
+      openwrt: {
+        method: 'opkg',
+        commands: [
+          'opkg update && opkg install nginx  # OpenWRT / iStoreOS',
+          'opkg install nginx-full  # 如需完整模块',
+          'opkg install nginx-ssl  # 如需 SSL 支持'
+        ],
+        configPath: '/etc/nginx/',
+        rootHint: isRoot ? null : '⚠️ 非 root 用户运行，可能需要 sudo 或联系管理员'
+      },
+      alpine: {
+        method: 'apk',
+        commands: [`${sudoNeeded}apk add nginx`],
+        configPath: '/etc/nginx/'
+      },
+      generic: {
         method: 'apt / yum',
         commands: [
-          'sudo apt update && sudo apt install -y nginx  # Debian/Ubuntu',
-          'sudo yum install -y nginx  # CentOS/RHEL'
+          `${sudoNeeded}apt update && ${sudoNeeded}apt install -y nginx  # Debian/Ubuntu`,
+          `${sudoNeeded}yum install -y nginx  # CentOS/RHEL`
         ],
         configPath: '/etc/nginx/'
       }
     };
 
+    const key = this.distro === 'openwrt' ? 'openwrt'
+      : this.distro === 'alpine' ? 'alpine'
+      : this.platform === 'darwin' ? 'darwin'
+      : 'generic';
+
     return {
       installed: false,
       platform: this.platform,
-      guide: guides[this.platform] || guides.linux
+      distro: this.distro,
+      isRoot,
+      guide: guides[key]
     };
   }
 
   // ========== 内部方法 ==========
+
+  // 检测当前是否以 root 运行
+  _isRoot() {
+    if (this._isRootCache !== undefined) return this._isRootCache;
+    this._isRootCache = (typeof process.getuid === 'function' && process.getuid() === 0);
+    return this._isRootCache;
+  }
 
   _requireNginx() {
     if (!this.nginxBin) {
@@ -478,6 +543,15 @@ class NginxService {
 
   async _execSudo(action, ...commands) {
     const command = commands.join(' && sleep 0.5 && ');
+
+    // 如果已经是 root，直接执行，不需要 sudo
+    if (this._isRoot()) {
+      try {
+        return await this._exec(command);
+      } catch (e) {
+        throw new Error(`权限不足: ${e.message}`);
+      }
+    }
 
     // systemd 优先: systemctl start/stop/reload/restart nginx
     if (this.platform === 'linux' && this._hasSystemctl() && ['start','stop','reload','restart'].includes(action)) {

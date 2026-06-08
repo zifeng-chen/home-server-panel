@@ -112,7 +112,7 @@ window.installNginx = async () => {
 
   const methods = guide.methods || (guide.platform === 'darwin' ? ['brew'] : ['apt', 'yum', 'apk']);
   const recommended = guide.recommended || methods[0];
-  const labels = { brew: '🍺 Homebrew', apt: '📦 APT', yum: '📦 YUM', apk: '📦 APK' };
+  const labels = { brew: '🍺 Homebrew', apt: '📦 APT', yum: '📦 YUM', apk: '📦 APK', opkg: '📦 opkg' };
 
   const methodButtons = methods.map(m => `<button class="btn btn-${m === recommended ? 'success' : 'secondary'}" onclick="startNginxInstall('${m}')" style="flex:1">${labels[m] || m.toUpperCase()}</button>`).join('');
 
@@ -120,7 +120,7 @@ window.installNginx = async () => {
     <div class="form-group" style="text-align:center">
       <p style="font-size:15px;margin-bottom:16px">Nginx 尚未安装，选择安装方式：</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">${methodButtons}</div>
-      <p style="color:var(--text-secondary);font-size:12px">平台: ${guide.platform} | 需要 sudo 权限</p>
+      <p style="color:var(--text-secondary);font-size:12px">平台: ${guide.platform}${guide.distro ? ' ('+guide.distro+')' : ''} | ${guide.isRoot ? '✅ root 权限' : '⚠️ 需要 sudo 权限'}</p>
     </div>
     <div id="installProgress" style="display:none;margin-top:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">

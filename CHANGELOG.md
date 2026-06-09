@@ -4,24 +4,26 @@
 
 ---
 
-## v1.13.1 - 2026-06-09 20:10:00
+## v1.13.1 - 2026-06-09 20:20:00
 
-### 🔧 系统设置、SSH 终端、PM2 管理三项修复
+### 🔧 系统设置DB显示 + SSH Token + PM2管理 三项修复
 
-**数据库模式修复:**
-- ✅ server.js 启动时读取 DB_MODE，MySQL 模式时自动连接并建表
-- ✅ 连接失败时自动回退 SQLite 并重置 mode 标记
-- ✅ 系统设置页正确显示当前数据库存储方式
+**系统设置 DB 显示修复:**
+- ✅ `/api/db/status` 加入 auth 白名单（无需登录即可查看存储方式）
+- ✅ settings.js `renderDbStatus()` 在 API 调用结束始终执行（避免永远显示默认值）
+- ✅ `renderDbStatus()` 新增 MySQL 断开状态提示
+- ✅ server.js dotenv 路径固定为 `__dirname/../.env`（避免 nohup cwd 变化导致 .env 加载失败）
+- ✅ SQLite 始终初始化（auth sessions 依赖），MySQL 条件初始化
 
-**SSH 终端修复:**
-- ✅ WebSocket token 键名修正：fm_token → hsp_token
+**SSH 终端 Token 修复:**
+- ✅ ssh.js 前端 token 键名修正：fm_token → hsp_token
+- ✅ WebSocket 连接时正确传递 hsp_token 参数
 
 **PM2 进程管理:**
-- ✅ 新增「一键安装 PM2」按钮
-- ✅ 新增「启动守护进程」按钮
-- ✅ 新增「卸载 PM2」按钮
-- ✅ PM2 运行中时显示版本信息 + 管理按钮
-- ✅ 后端新增 install/uninstall/start-daemon API
+- ✅ 新增「一键安装 PM2」按钮 → POST /api/pm2/install
+- ✅ 新增「启动守护进程」按钮 → POST /api/pm2/start-daemon
+- ✅ 新增「卸载 PM2」按钮 → POST /api/pm2/uninstall
+- ✅ PM2 运行中时显示版本信息 + 管理按钮（刷新/保存/卸载）
 
 
 ## v1.13.0 - 2026-06-09 18:33:00

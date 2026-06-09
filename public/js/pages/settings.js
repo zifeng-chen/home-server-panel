@@ -23,8 +23,8 @@ async function loadSettings() {
     if (dbRes.success && dbRes.data) {
       dbMode = dbRes.data.mode || 'local';
       dbConnected = dbRes.data.connected;
-      renderDbStatus();
     }
+    renderDbStatus();
   } catch (err) {
     App.log('error', '加载设置失败:', err);
   }
@@ -37,14 +37,23 @@ function renderDbStatus() {
   if (!el) return;
 
   if (dbMode === 'mysql' && dbConnected) {
-    el.innerHTML = '✅ <span style="color:var(--success)">MySQL 已连接</span>';
-    document.getElementById('dbMigrateSection')?.style.setProperty('display', 'none');
-    document.getElementById('btnDbSwitch')?.style.setProperty('display', 'inline-flex');
+    el.innerHTML = '<span style="color:var(--success)">✅ MySQL 已连接</span>';
+    const migrateSection = document.getElementById('dbMigrateSection');
+    const btnSwitch = document.getElementById('btnDbSwitch');
+    if (migrateSection) migrateSection.style.display = 'none';
+    if (btnSwitch) btnSwitch.style.display = 'inline-flex';
+  } else if (dbMode === 'mysql' && !dbConnected) {
+    el.innerHTML = '<span style="color:var(--warning)">⚠️ MySQL 连接断开</span>';
+    const migrateSection = document.getElementById('dbMigrateSection');
+    const btnSwitch = document.getElementById('btnDbSwitch');
+    if (migrateSection) migrateSection.style.display = 'none';
+    if (btnSwitch) btnSwitch.style.display = 'none';
   } else {
-    el.innerHTML = '🗄️ <span style="color:var(--text-secondary)">SQLite 本地存储</span>';
-    // Show MySQL migration button
-    document.getElementById('dbMigrateSection')?.style.setProperty('display', 'block');
-    document.getElementById('btnDbSwitch')?.style.setProperty('display', 'none');
+    el.innerHTML = '<span style="color:var(--text-secondary)">🗄️ SQLite 本地存储</span>';
+    const migrateSection = document.getElementById('dbMigrateSection');
+    const btnSwitch = document.getElementById('btnDbSwitch');
+    if (migrateSection) migrateSection.style.display = 'block';
+    if (btnSwitch) btnSwitch.style.display = 'none';
   }
 }
 

@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initLogout();
   updateClock();
-  setInterval(updateClock, 30000);
+  setInterval(updateClock, 1000);
   loadDashboard();
   loadSettings();
 });

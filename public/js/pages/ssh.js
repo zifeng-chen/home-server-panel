@@ -199,6 +199,16 @@ async function loadSSH() {
   function connectWebSocket(wsUrl, sshOpts) {
     ws = new WebSocket(wsUrl);
 
+    ws.onerror = () => {
+      connectStatus.innerHTML = '<span style="color:#f87171;">❌ WebSocket 连接失败，请检查服务是否运行</span>';
+      btnConnect.disabled = false;
+    };
+
+    ws.onclose = (e) => {
+      if (termStatus) termStatus.innerHTML = '<span style="color:#64748b;">⏹️ 连接已关闭</span>';
+      btnConnect.disabled = false;
+    };
+
     ws.onopen = () => {
       // 发送 SSH 连接请求
       ws.send(JSON.stringify({
@@ -287,16 +297,5 @@ async function loadSSH() {
     connectStatus.innerHTML = '';
     termStatus.innerHTML = '';
     termContainer.innerHTML = '';
-  }
-
-  // ws 错误处理
-  if (ws) {
-    ws.onerror = () => {
-      termStatus.innerHTML = '<span style="color:#f87171;">❌ WebSocket 连接失败</span>';
-      btnConnect.disabled = false;
-    };
-    ws.onclose = () => {
-      termStatus.innerHTML = '<span style="color:#64748b;">⏹️ 连接已关闭</span>';
-    };
   }
 }

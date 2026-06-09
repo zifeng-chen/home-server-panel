@@ -228,6 +228,10 @@ async function _dashboardMonitorFetch() {
     var lEl = document.getElementById('dmLoad');
     if (lEl) lEl.innerHTML = '1m:' + ld[0].toFixed(2) + ' 5m:' + ld[1].toFixed(2) + ' 15m:' + ld[2].toFixed(2);
 
+    // 侧边栏运行时间实时更新
+    var upEl = document.getElementById('uptime');
+    if (upEl && live.uptime) upEl.textContent = _dmFmtUptime(live.uptime);
+
     // 系统信息
     var iEl = document.getElementById('dmInfo');
     if (iEl) iEl.innerHTML =

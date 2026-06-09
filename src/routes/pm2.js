@@ -57,9 +57,143 @@ router.post('/install', (req, res) => {
   res.json(pm2Service.install());
 });
 
+// GET /api/pm2/install/stream - SSE 实时安装进度
+router.get('/install/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  const send = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+  };
+
+  if (pm2Service.isInstalled()) {
+    const status = pm2Service.getDaemonStatus();
+    send('done', { message: 'PM2 已安装', installed: true, version: status.version });
+    return res.end();
+  }
+
+  send('start', { message: '开始安装 PM2...', command: 'npm install -g pm2' });
+
+  const { spawn } = require('child_process');
+  const child = spawn('npm', ['install', '-g', 'pm2'], {
+    env: { ...process.env, PATH: process.env.PATH },
+    timeout: 120000
+  });
+
+  child.stdout.on('data', (data) => {
+    const lines = data.toString().split('\n').filter(l => l.trim());
+    lines.forEach(line => send('output', { text: line.trim() }));
+  });
+
+  child.stderr.on('data', (data) => {
+    const lines = data.toString().split('\n').filter(l => l.trim());
+    lines.forEach(line => {
+      // npm 的进度信息走 stderr
+      if (line.includes('ERR') || line.includes('error')) {
+        send('warn', { text: line.trim() });
+      } else {
+        send('output', { text: line.trim() });
+      }
+    });
+  });
+
+  child.on('close', (code) => {
+    if (code === 0) {
+      const installed = pm2Service.isInstalled();
+      const status = installed ? pm2Service.getDaemonStatus() : { version: '' };
+      send('done', { success: installed, message: installed ? 'PM2 安装成功' : '安装完成但检测失败', version: status.version });
+    } else {
+      send('error', { message: '安装失败 (exit code: ' + code + ')' });
+    }
+    res.end();
+  });
+
+  child.on('error', (err) => {
+    send('error', { message: '安装进程错误: ' + err.message });
+    res.end();
+  });
+
+  req.on('close', () => {
+    child.kill();
+  });
+});
+
 // 卸载 PM2
 router.post('/uninstall', (req, res) => {
   res.json(pm2Service.uninstall());
+});
+
+// GET /api/pm2/uninstall/stream - SSE 实时卸载进度
+router.get('/uninstall/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  const send = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+  };
+
+  if (!pm2Service.isInstalled()) {
+    send('done', { message: 'PM2 未安装，无需卸载' });
+    return res.end();
+  }
+
+  send('start', { message: '停止 PM2 守护进程...', command: 'pm2 kill && npm uninstall -g pm2' });
+
+  const { spawn, execSync } = require('child_process');
+
+  // 先 kill daemon
+  try { execSync('pm2 kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
+  send('output', { text: 'PM2 守护进程已停止' });
+
+  send('output', { text: '开始卸载 PM2...' });
+
+  const child = spawn('npm', ['uninstall', '-g', 'pm2'], {
+    env: { ...process.env, PATH: process.env.PATH },
+    timeout: 120000
+  });
+
+  child.stdout.on('data', (data) => {
+    const lines = data.toString().split('\n').filter(l => l.trim());
+    lines.forEach(line => send('output', { text: line.trim() }));
+  });
+
+  child.stderr.on('data', (data) => {
+    const lines = data.toString().split('\n').filter(l => l.trim());
+    lines.forEach(line => {
+      if (line.includes('ERR') || line.includes('error')) {
+        send('warn', { text: line.trim() });
+      } else {
+        send('output', { text: line.trim() });
+      }
+    });
+  });
+
+  child.on('close', (code) => {
+    if (code === 0) {
+      const stillInstalled = pm2Service.isInstalled();
+      send('done', { success: !stillInstalled, message: stillInstalled ? '卸载完成但仍有残留，请手动清理' : 'PM2 已卸载' });
+    } else {
+      send('error', { message: '卸载失败 (exit code: ' + code + ')' });
+    }
+    res.end();
+  });
+
+  child.on('error', (err) => {
+    send('error', { message: '卸载进程错误: ' + err.message });
+    res.end();
+  });
+
+  req.on('close', () => {
+    child.kill();
+  });
 });
 
 // 启动 PM2 守护进程

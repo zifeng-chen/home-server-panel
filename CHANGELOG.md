@@ -4,26 +4,27 @@
 
 ---
 
-## v1.13.1 - 2026-06-09 20:20:00
+## v1.13.1 - 2026-06-09 20:35
 
-### 🔧 系统设置DB显示 + SSH Token + PM2管理 三项修复
+### 🔧 四项修复：时钟/运行时间实时刷新 + SSH终端 + PM2进度 + DB显示
+
+**实时刷新:**
+- ✅ 北京时间改为每秒刷新（setInterval 30s → 1s）
+- ✅ 侧边栏运行时间加入 5 秒监控轮询（之前仅在 loadDashboard 设一次）
+
+**SSH 终端修复:**
+- ✅ token 键名修正：fm_token → hsp_token
+- ✅ ws.onerror/onclose 移入 connectWebSocket（原代码在 ws=null 时设置，完全无效）
+
+**PM2 安装进度:**
+- ✅ 安装/卸载改为 SSE 流式进度显示（spawn 替代 execSync 阻塞60秒）
+- ✅ 前端实时终端风格日志区（npm install 输出逐行显示）
+- ✅ 新增 `/api/pm2/install/stream` 和 `/api/pm2/uninstall/stream` SSE 端点
+- ✅ 守护进程启动、保存配置按钮
 
 **系统设置 DB 显示修复:**
 - ✅ `/api/db/status` 加入 auth 白名单（无需登录即可查看存储方式）
-- ✅ settings.js `renderDbStatus()` 在 API 调用结束始终执行（避免永远显示默认值）
-- ✅ `renderDbStatus()` 新增 MySQL 断开状态提示
-- ✅ server.js dotenv 路径固定为 `__dirname/../.env`（避免 nohup cwd 变化导致 .env 加载失败）
-- ✅ SQLite 始终初始化（auth sessions 依赖），MySQL 条件初始化
-
-**SSH 终端 Token 修复:**
-- ✅ ssh.js 前端 token 键名修正：fm_token → hsp_token
-- ✅ WebSocket 连接时正确传递 hsp_token 参数
-
-**PM2 进程管理:**
-- ✅ 新增「一键安装 PM2」按钮 → POST /api/pm2/install
-- ✅ 新增「启动守护进程」按钮 → POST /api/pm2/start-daemon
-- ✅ 新增「卸载 PM2」按钮 → POST /api/pm2/uninstall
-- ✅ PM2 运行中时显示版本信息 + 管理按钮（刷新/保存/卸载）
+- ✅ settings.js renderDbStatus() 始终执行
 
 
 ## v1.13.0 - 2026-06-09 18:33:00

@@ -196,28 +196,120 @@ async function pm2Action(name, action) {
 }
 
 // PM2 安装/卸载/启动守护进程
+let _pm2EventSource = null;
+
+function _pm2StopStream() {
+  if (_pm2EventSource) { _pm2EventSource.close(); _pm2EventSource = null; }
+}
+
+function _pm2ShowStreamLog() {
+  const guideEl = document.getElementById('pm2Guide');
+  if (guideEl) {
+    guideEl.innerHTML = `
+      <div class="card" style="border-left:3px solid var(--primary);margin-bottom:16px">
+        <h3 style="margin:0 0 8px 0;color:var(--primary)">📡 实时进度</h3>
+        <div id="pm2-stream-log" style="background:#0f172a;border-radius:8px;padding:12px;max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.6">
+          <div style="color:#64748b">⏳ 连接中...</div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-sm btn-outline" onclick="_pm2StopStream();loadPM2()">✕ 停止</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function _pm2StreamLog(msg, type) {
+  const el = document.getElementById('pm2-stream-log');
+  if (!el) return;
+  const colors = { output: '#94a3b8', warn: '#f59e0b', error: '#ef4444', info: '#22c55e', done: '#818cf8' };
+  const color = colors[type] || '#94a3b8';
+  const div = document.createElement('div');
+  div.style.color = color;
+  div.textContent = (type === 'done' ? '✅ ' : type === 'warn' ? '⚠️ ' : type === 'error' ? '❌ ' : '') + msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function _pm2InstallStream() {
+  _pm2StopStream();
+  _pm2ShowStreamLog();
+  _pm2StreamLog('正在连接安装服务...', 'info');
+
+  _pm2EventSource = new EventSource('/api/pm2/install/stream');
+  _pm2EventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'start') {
+        _pm2StreamLog(data.message || data.command, 'info');
+      } else if (data.type === 'output') {
+        _pm2StreamLog(data.text, 'output');
+      } else if (data.type === 'warn') {
+        _pm2StreamLog(data.text, 'warn');
+      } else if (data.type === 'done') {
+        _pm2StreamLog(data.message, 'done');
+        _pm2StreamLog(data.version ? '版本: ' + data.version : '', 'info');
+        _pm2StopStream();
+        setTimeout(loadPM2, 1500);
+      } else if (data.type === 'error') {
+        _pm2StreamLog(data.message, 'error');
+        _pm2StopStream();
+        setTimeout(loadPM2, 2000);
+      }
+    } catch (err) {
+      _pm2StreamLog(e.data, 'output');
+    }
+  };
+  _pm2EventSource.onerror = () => {
+    _pm2StreamLog('连接中断', 'error');
+    _pm2StopStream();
+    setTimeout(loadPM2, 2000);
+  };
+}
+
+function _pm2UninstallStream() {
+  _pm2StopStream();
+  _pm2ShowStreamLog();
+  _pm2StreamLog('正在连接卸载服务...', 'info');
+
+  _pm2EventSource = new EventSource('/api/pm2/uninstall/stream');
+  _pm2EventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'start') {
+        _pm2StreamLog(data.message || data.command, 'info');
+      } else if (data.type === 'output') {
+        _pm2StreamLog(data.text, 'output');
+      } else if (data.type === 'warn') {
+        _pm2StreamLog(data.text, 'warn');
+      } else if (data.type === 'done') {
+        _pm2StreamLog(data.message, 'done');
+        _pm2StopStream();
+        setTimeout(loadPM2, 1500);
+      } else if (data.type === 'error') {
+        _pm2StreamLog(data.message, 'error');
+        _pm2StopStream();
+        setTimeout(loadPM2, 2000);
+      }
+    } catch (err) {
+      _pm2StreamLog(e.data, 'output');
+    }
+  };
+  _pm2EventSource.onerror = () => {
+    _pm2StreamLog('连接中断', 'error');
+    _pm2StopStream();
+    setTimeout(loadPM2, 2000);
+  };
+}
+
 async function pm2Install() {
   if (!confirm('确定安装 PM2 吗？将执行 npm install -g pm2')) return;
-  App.notify('正在安装 PM2，请等待...', 'info');
-  const res = await Api.post('/pm2/install');
-  if (res.success) {
-    App.notify('PM2 安装成功！', 'success');
-  } else {
-    App.notify(res.message || '安装失败', 'error');
-  }
-  setTimeout(loadPM2, 2000);
+  _pm2InstallStream();
 }
 
 async function pm2Uninstall() {
   if (!confirm('确定卸载 PM2 吗？所有进程配置将丢失！')) return;
-  App.notify('正在卸载 PM2...', 'info');
-  const res = await Api.post('/pm2/uninstall');
-  if (res.success) {
-    App.notify('PM2 已卸载', 'success');
-  } else {
-    App.notify(res.message || '卸载失败', 'error');
-  }
-  setTimeout(loadPM2, 2000);
+  _pm2UninstallStream();
 }
 
 async function pm2StartDaemon() {

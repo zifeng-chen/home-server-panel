@@ -103,6 +103,7 @@ router.get('/install/stream', (req, res) => {
 
   child.on('close', (code) => {
     if (code === 0) {
+      pm2Service._refreshBin();
       const installed = pm2Service.isInstalled();
       const status = installed ? pm2Service.getDaemonStatus() : { version: '' };
       send('done', { success: installed, message: installed ? 'PM2 安装成功' : '安装完成但检测失败', version: status.version });
@@ -150,7 +151,7 @@ router.get('/uninstall/stream', (req, res) => {
   const { spawn, execSync } = require('child_process');
 
   // 先 kill daemon
-  try { execSync('pm2 kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
+  try { pm2Service._pm2('kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
   send('output', { text: 'PM2 守护进程已停止' });
 
   send('output', { text: '开始卸载 PM2...' });

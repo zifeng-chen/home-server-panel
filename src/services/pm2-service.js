@@ -3,37 +3,57 @@ const { execSync, spawn } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 
+// PM2 可能安装在 npm 全局目录，PATH 不一定包含（如 iStoreOS）
+function _findPm2() {
+  try {
+    const p = execSync('which pm2 2>/dev/null', { timeout: 2000, encoding: 'utf-8' }).trim();
+    if (p) return p;
+  } catch (e) {}
+  for (const candidate of ['/root/.npm-global/bin/pm2', '/usr/local/bin/pm2', '/usr/bin/pm2']) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return 'pm2';
+}
+
 class Pm2Service {
+  constructor() {
+    this._pm2Bin = _findPm2();
+  }
+
+  _pm2(cmd, options = {}) {
+    return execSync(`${this._pm2Bin} ${cmd}`, { timeout: 10000, encoding: 'utf-8', ...options });
+  }
+
+  _pm2Spawn(args) {
+    return spawn(this._pm2Bin, args, { stdio: 'pipe' });
+  }
+
+  _refreshBin() {
+    this._pm2Bin = _findPm2();
+    return this._pm2Bin;
+  }
+
   // 检查 PM2 是否已安装
   isInstalled() {
     try {
-      execSync('which pm2 2>/dev/null || npm list -g pm2 2>/dev/null', { timeout: 3000, encoding: 'utf-8' });
+      execSync('node -e "require(\'pm2\')"', { timeout: 3000, encoding: 'utf-8' });
       return true;
     } catch (e) {
-      try {
-        const ver = execSync('pm2 -v 2>/dev/null', { timeout: 3000, encoding: 'utf-8' }).trim();
-        return !!ver;
-      } catch (e2) {
-        return false;
-      }
+      return fs.existsSync(this._pm2Bin);
     }
   }
 
   // 获取 PM2 守护进程状态
   getDaemonStatus() {
-    try {
-      // 先检查 PM2 命令是否存在
-      execSync('which pm2 2>/dev/null', { timeout: 3000, encoding: 'utf-8' });
-    } catch (e) {
+    if (!this.isInstalled()) {
       return { installed: false, running: false, version: '' };
     }
 
-    // PM2 已安装，检查守护进程
     try {
-      const raw = execSync('pm2 ping 2>&1 || true', { timeout: 3000, encoding: 'utf-8' });
+      const raw = this._pm2('ping 2>&1 || true', { timeout: 3000 });
       const running = raw.includes('pong') || raw.includes('[PM2]');
       let pm2Ver = '';
-      try { pm2Ver = execSync('pm2 -v 2>/dev/null', { timeout: 2000, encoding: 'utf-8' }).trim(); } catch (e) {}
+      try { pm2Ver = this._pm2('-v 2>/dev/null', { timeout: 2000 }).trim(); } catch (e) {}
       return { installed: true, running, version: pm2Ver };
     } catch (err) {
       return { installed: true, running: false, version: '' };
@@ -43,9 +63,10 @@ class Pm2Service {
   // 安装 PM2
   install() {
     try {
-      const result = execSync('npm install -g pm2 2>&1', { timeout: 60000, encoding: 'utf-8' });
+      execSync('npm install -g pm2 2>&1', { timeout: 60000, encoding: 'utf-8' });
+      this._refreshBin();
       const installed = this.isInstalled();
-      return { success: installed, message: installed ? 'PM2 安装成功' : ('安装命令已执行但检测失败: ' + result.slice(-200)) };
+      return { success: installed, message: installed ? 'PM2 安装成功' : '安装命令已执行但检测失败' };
     } catch (err) {
       return { success: false, message: 'PM2 安装失败: ' + (err.stderr || err.message).slice(-300) };
     }
@@ -54,7 +75,7 @@ class Pm2Service {
   // 卸载 PM2
   uninstall() {
     try {
-      try { execSync('pm2 kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
+      try { this._pm2('kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
       execSync('npm uninstall -g pm2 2>&1', { timeout: 60000, encoding: 'utf-8' });
       return { success: true, message: 'PM2 已卸载' };
     } catch (err) {
@@ -65,7 +86,7 @@ class Pm2Service {
   // 启动 PM2 守护进程
   startDaemon() {
     try {
-      execSync('pm2 resurrect 2>&1', { timeout: 10000 });
+      this._pm2('resurrect 2>&1', { timeout: 10000 });
       return { success: true, message: 'PM2 守护进程已启动' };
     } catch (err) {
       return { success: false, message: '启动失败: ' + err.message };
@@ -99,10 +120,11 @@ class Pm2Service {
       }
     };
   }
+
   // 获取所有 PM2 进程
   getProcesses() {
     try {
-      const raw = execSync('pm2 jlist 2>/dev/null', { timeout: 5000, encoding: 'utf-8' });
+      const raw = this._pm2('jlist 2>/dev/null', { timeout: 5000 });
       if (!raw.trim()) return { success: true, data: { processes: [], count: 0 } };
 
       const processes = JSON.parse(raw);
@@ -151,7 +173,7 @@ class Pm2Service {
   // 获取单个进程详情
   getProcess(id) {
     try {
-      const raw = execSync(`pm2 jlist 2>/dev/null`, { timeout: 5000, encoding: 'utf-8' });
+      const raw = this._pm2('jlist 2>/dev/null', { timeout: 5000 });
       const processes = JSON.parse(raw);
       const p = processes.find(p => p.pm_id == id);
       if (!p) return { success: false, message: '进程不存在' };
@@ -164,7 +186,7 @@ class Pm2Service {
   // 重启进程
   restart(name) {
     try {
-      execSync(`pm2 restart '${name}' 2>&1`, { timeout: 10000 });
+      this._pm2(`restart '${name}' 2>&1`, { timeout: 10000 });
       return { success: true, message: `进程 ${name} 已重启` };
     } catch (err) {
       return { success: false, message: err.message };
@@ -174,7 +196,7 @@ class Pm2Service {
   // 停止进程
   stop(name) {
     try {
-      execSync(`pm2 stop '${name}' 2>&1`, { timeout: 10000 });
+      this._pm2(`stop '${name}' 2>&1`, { timeout: 10000 });
       return { success: true, message: `进程 ${name} 已停止` };
     } catch (err) {
       return { success: false, message: err.message };
@@ -184,7 +206,7 @@ class Pm2Service {
   // 启动进程
   start(name) {
     try {
-      execSync(`pm2 start '${name}' 2>&1`, { timeout: 10000 });
+      this._pm2(`start '${name}' 2>&1`, { timeout: 10000 });
       return { success: true, message: `进程 ${name} 已启动` };
     } catch (err) {
       return { success: false, message: err.message };
@@ -194,7 +216,7 @@ class Pm2Service {
   // 删除进程
   delete(name) {
     try {
-      execSync(`pm2 delete '${name}' 2>&1`, { timeout: 5000 });
+      this._pm2(`delete '${name}' 2>&1`, { timeout: 5000 });
       return { success: true, message: `进程 ${name} 已删除` };
     } catch (err) {
       return { success: false, message: err.message };
@@ -204,14 +226,13 @@ class Pm2Service {
   // 获取 PM2 概览
   getOverview() {
     try {
-      const result = execSync('pm2 info 0 2>&1 | head -30', { timeout: 5000, encoding: 'utf-8' });
-      const pm2Ver = execSync('pm2 -v 2>/dev/null', { timeout: 3000, encoding: 'utf-8' }).trim();
-      const node = os.hostname();
+      this._pm2('info 0 2>&1 | head -30', { timeout: 5000 });
+      const pm2Ver = this._pm2('-v 2>/dev/null', { timeout: 3000 }).trim();
       return { 
         success: true, 
         data: { 
           pm2Version: pm2Ver,
-          hostname: node,
+          hostname: os.hostname(),
           running: true
         }
       };
@@ -223,7 +244,7 @@ class Pm2Service {
   // 保存 PM2 配置
   save() {
     try {
-      execSync('pm2 save 2>&1', { timeout: 5000 });
+      this._pm2('save 2>&1', { timeout: 5000 });
       return { success: true, message: 'PM2 配置已保存' };
     } catch (err) {
       return { success: false, message: err.message };

@@ -494,7 +494,8 @@ class SslService {
         if (err) {
           // acme.sh 有时返回非0但实际成功
           const combined = stdout + stderr;
-          if (combined.includes('Cert success') || combined.includes('Already exists')) {
+          // exit code 2 = "Domains not changed"，表示证书已存在且未过期，直接视为成功
+          if (combined.includes('Cert success') || combined.includes('Already exists') || combined.includes('Domains not changed')) {
             return resolve(combined);
           }
           return reject(new Error(stderr || err.message));

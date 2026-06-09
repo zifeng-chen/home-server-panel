@@ -27,6 +27,53 @@ async function loadCron() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btnCronAdd")?.addEventListener("click", () => {
-    alert("定时任务功能已就绪，后续版本将提供UI配置界面。\n\n当前可通过 API 手动添加:\nPOST /api/cron");
+    const body = `
+      <div class="form-group">
+        <label>任务名称</label>
+        <input type="text" id="cronAddName" class="form-input" placeholder="例如：DDNS 自动刷新">
+      </div>
+      <div class="form-group">
+        <label>执行间隔（秒）</label>
+        <input type="number" id="cronAddInterval" class="form-input" value="3600" min="60" max="86400">
+      </div>
+      <div class="form-group">
+        <label>执行命令/API</label>
+        <select id="cronAddType" class="form-input">
+          <option value="ddns_refresh">刷新 DDNS</option>
+          <option value="custom">自定义 API</option>
+        </select>
+      </div>
+      <div class="form-group" id="cronAddCustomGroup" style="display:none">
+        <label>目标 API 路径</label>
+        <input type="text" id="cronAddApiPath" class="form-input" placeholder="例如：/api/ddns/refresh">
+      </div>
+    `;
+    const footer = `
+      <button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>
+      <button class="btn btn-success" id="cronAddConfirm">✅ 添加任务</button>
+    `;
+    Utils.openModal('添加定时任务', body, footer);
+
+    document.getElementById('cronAddType').addEventListener('change', function() {
+      document.getElementById('cronAddCustomGroup').style.display = this.value === 'custom' ? 'block' : 'none';
+    });
+
+    document.getElementById('cronAddConfirm').addEventListener('click', async () => {
+      const name = document.getElementById('cronAddName').value.trim() || '定时任务';
+      const interval = parseInt(document.getElementById('cronAddInterval').value) || 3600;
+      const type = document.getElementById('cronAddType').value;
+      const apiPath = document.getElementById('cronAddApiPath').value.trim();
+
+      Utils.closeModal();
+      Utils.notify('正在添加...', 'info');
+
+      const res = await Api.post('/cron', { name, interval: interval * 1000, type, apiPath });
+      if (res.success) {
+        Utils.notify(res.message || '定时任务已添加', 'success');
+        loadCron();
+      } else {
+        Utils.notify(res.message || '添加失败', 'error');
+      }
+    });
   });
 });

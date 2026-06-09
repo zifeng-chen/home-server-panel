@@ -139,13 +139,34 @@ window.editDdnsRecord = (recordId) => {
   });
 };
 
-// 移除记录（仅从面板移除，不删除阿里云 DNS 记录）
+// 移除记录
 window.removeDdnsRecord = (recordId, domain) => {
-  Utils.confirm('移除记录', `确定从面板中移除「${domain}」的跟踪吗？<br><small style="color:var(--warning)">仅从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>`, async () => {
-    const res = await Api.del(`/ddns/record/${recordId}?localOnly=true`);
+  const body = `
+    <p style="margin-bottom:16px;color:var(--text-secondary)">选择「${domain}」的移除方式：</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-secondary" id="ddnsRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
+        📋 <strong>仅移除面板跟踪</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>
+      </button>
+      <button class="btn btn-danger" id="ddnsRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
+        🗑 <strong>同时从阿里云删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>阿里云 DNS 上的解析记录</small>
+      </button>
+    </div>
+  `;
+  const footer = `<button class="btn btn-ghost" onclick="Utils.closeModal()">取消</button>`;
+  Utils.openModal('移除 DNS 记录', body, footer);
+
+  const doDelete = async (localOnly) => {
+    Utils.closeModal();
+    Utils.notify(localOnly ? '正在移除面板跟踪...' : '正在删除阿里云记录...', 'info');
+    const res = await Api.del(`/ddns/record/${recordId}?localOnly=${localOnly}`);
     if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
     else Utils.notify(res.message || '移除失败', 'error');
-  });
+  };
+
+  document.getElementById('ddnsRemovePanel').addEventListener('click', () => doDelete(true));
+  document.getElementById('ddnsRemoveCloud').addEventListener('click', () => doDelete(false));
 };
 
 // 全局刷新

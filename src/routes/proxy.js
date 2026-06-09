@@ -1,6 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const proxyService = require('../services/proxy-service');
+const nginxService = require('../services/nginx-service');
+
+// 自动部署 Nginx 配置
+async function _autoDeploy() {
+  try {
+    const config = proxyService.generateAllConfig();
+    const result = await nginxService.deployProxyConfig(config);
+    console.log('[Proxy] 自动部署结果:', result.success ? '成功' : result.message);
+    return result;
+  } catch (err) {
+    console.warn('[Proxy] 自动部署异常:', err.message);
+    return { success: false, message: err.message };
+  }
+}
 
 // GET /api/proxy - 代理规则列表
 router.get('/', (req, res) => {
@@ -19,7 +33,7 @@ router.get('/stats', (req, res) => {
 });
 
 // POST /api/proxy - 添加规则
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     // 兼容两种字段命名 (前端可能用 domain/target，后端存 sourceHost/targetHost)
     const body = { ...req.body };
@@ -38,37 +52,41 @@ router.post('/', (req, res) => {
       }
     }
     const rule = proxyService.addRule(body);
-    res.json({ success: true, message: '代理规则已添加', data: { rule } });
+    const deployResult = await _autoDeploy();
+    res.json({ success: true, message: '代理规则已添加' + (deployResult.success ? '并部署生效' : '，但部署失败'), data: { rule, deploy: deployResult } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
 });
 
 // PUT /api/proxy/:id - 编辑规则
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const rule = proxyService.updateRule(req.params.id, req.body);
-    res.json({ success: true, message: '代理规则已更新', data: { rule } });
+    const deployResult = await _autoDeploy();
+    res.json({ success: true, message: '代理规则已更新' + (deployResult.success ? '并部署生效' : '，但部署失败'), data: { rule, deploy: deployResult } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
 });
 
 // DELETE /api/proxy/:id - 删除规则
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     proxyService.deleteRule(req.params.id);
-    res.json({ success: true, message: '代理规则已删除' });
+    const deployResult = await _autoDeploy();
+    res.json({ success: true, message: '代理规则已删除' + (deployResult.success ? '并部署生效' : '') });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
 });
 
 // POST /api/proxy/:id/toggle - 启用/停用
-router.post('/:id/toggle', (req, res) => {
+router.post('/:id/toggle', async (req, res) => {
   try {
     const rule = proxyService.toggleRule(req.params.id);
-    res.json({ success: true, message: rule.enabled ? '已启用' : '已停用', data: { rule } });
+    const deployResult = await _autoDeploy();
+    res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + (deployResult.success ? '并部署生效' : ''), data: { rule, deploy: deployResult } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }

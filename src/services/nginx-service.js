@@ -117,14 +117,20 @@ class NginxService {
       // 3) 配置测试（独立，可能权限不足，尝试 sudo -n）
       let configTest = 'ok';
       let configTestOutput = '';
+      const isRoot = this._isRoot();
       try {
         configTestOutput = await this._exec(`${this.nginxBin} -t 2>&1`);
       } catch (e) {
-        // 权限不足时尝试 sudo -n
-        try {
-          configTestOutput = await this._exec(`sudo -n ${this.nginxBin} -t 2>&1`);
-        } catch (e2) {
-          configTestOutput = e2.message;
+        // 权限不足时尝试 sudo -n（非root用户）
+        if (!isRoot) {
+          try {
+            configTestOutput = await this._exec(`sudo -n ${this.nginxBin} -t 2>&1`);
+          } catch (e2) {
+            configTestOutput = e2.message;
+            configTest = 'error';
+          }
+        } else {
+          configTestOutput = e.message;
           configTest = 'error';
         }
       }
@@ -372,12 +378,36 @@ class NginxService {
         const mainPid = parseInt(mp.trim());
         if (mainPid > 0 && await this._pidAlive(mainPid)) return mainPid;
       } catch (e) { /* 非 systemd 系统 */ }
-      // Last fallback: pgrep (may return wrong nginx in Docker env)
+      // Fallback: pgrep (精确进程名匹配，避免匹配自身 shell)
       try {
-        const result = await this._exec('pgrep -f "/usr/sbin/nginx" 2>/dev/null || echo ""');
+        const result = await this._exec('pgrep -x nginx 2>/dev/null || echo ""');
         const pids = result.trim().split('\n').filter(Boolean);
-        if (pids.length > 0) return parseInt(pids[0]);
+        if (pids.length > 0) {
+          // 验证找到的进程确实是 nginx 而不是 pgrep 自身
+          for (const pidStr of pids) {
+            const pid = parseInt(pidStr);
+            if (pid > 0 && await this._pidAlive(pid)) {
+              // 二次确认：检查 cmdline 是否包含 nginx
+              try {
+                const cmdline = await this._exec(`cat /proc/${pid}/cmdline 2>/dev/null | tr "\\0" " "`);
+                if (cmdline.includes('nginx') && !cmdline.includes('pgrep') && !cmdline.includes('grep')) {
+                  return pid;
+                }
+              } catch { /* 读取失败，保守接受 */ return pid; }
+            }
+          }
+        }
       } catch (e) { /* pgrep not available */ }
+      // Last fallback: BusyBox ps + /proc (iStoreOS/OpenWRT)
+      try {
+        // 使用 [n]ginx 防止 grep 自身匹配
+        const result = await this._exec('ps | grep [n]ginx | head -1');
+        const parts = result.trim().split(/\s+/);
+        if (parts.length > 0) {
+          const pid = parseInt(parts[0]);
+          if (pid > 0 && await this._pidAlive(pid)) return pid;
+        }
+      } catch (e) { /* BusyBox ps fallback */ }
       return null;
     } catch {
       return null;
@@ -580,6 +610,59 @@ class NginxService {
         throw new Error(`权限不足: ${e2.message}。请配置 sudo NOPASSWD 或手动运行: sudo ${command}`);
       }
     }
+  }
+
+  // 部署反向代理配置到 Nginx 并重载
+  async deployProxyConfig(proxyConfigContent) {
+    const confdDir = this.configDir ? path.join(this.configDir, 'conf.d') : '/etc/nginx/conf.d';
+    const configFile = path.join(confdDir, 'proxy-panel.conf');
+
+    // 写入配置文件
+    fs.writeFileSync(configFile, proxyConfigContent, 'utf-8');
+
+    // 检查 nginx.conf 是否存在，不存在则创建最小配置
+    const mainConfig = path.join(this.configDir, 'nginx.conf');
+    if (!fs.existsSync(mainConfig)) {
+      console.log('[Nginx] nginx.conf 不存在，自动创建包含 conf.d 的最小配置');
+      const minimalConfig = [
+        'worker_processes 1;',
+        'events { worker_connections 1024; }',
+        'http {',
+        `    include ${confdDir}/*.conf;`,
+        '}'
+      ].join('\n');
+      fs.writeFileSync(mainConfig, minimalConfig, 'utf-8');
+    }
+
+    // 测试配置
+    try {
+      const testOutput = await this._exec(`${this.nginxBin} -t 2>&1`);
+      const testOk = testOutput.includes('successful') || testOutput.includes('ok');
+      if (!testOk) {
+        console.warn('[Nginx] 配置测试失败:', testOutput);
+        return { success: false, message: '配置测试失败: ' + testOutput.split('\n').slice(-3).join(' '), path: configFile };
+      }
+    } catch (e) {
+      console.warn('[Nginx] 配置测试异常:', e.message);
+      return { success: false, message: '配置测试失败: ' + e.message, path: configFile };
+    }
+
+    // 重载或启动
+    try {
+      const running = await this._isRunning();
+      if (running) {
+        await this._exec(`${this.nginxBin} -s reload`);
+        console.log('[Nginx] 配置已重载');
+      } else {
+        await this._exec(this.nginxBin);
+        console.log('[Nginx] 已启动');
+      }
+    } catch (e) {
+      console.warn('[Nginx] 重载/启动失败:', e.message);
+      return { success: false, message: 'Nginx 操作失败: ' + e.message, path: configFile };
+    }
+
+    return { success: true, message: 'Nginx 配置已部署并生效', path: configFile };
   }
 }
 

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 async function main() {
 
@@ -8,9 +8,11 @@ const path = require('path');
 const http = require('http');
 
 // 初始化数据库（根据 DB_MODE 选择 SQLite 或 MySQL）
+// SQLite 始终初始化（auth sessions 依赖），MySQL 作为业务数据存储
 const sqliteService = require('./services/sqlite-service');
-const dbMode = process.env.DB_MODE || 'local';
+await sqliteService.init();
 
+const dbMode = process.env.DB_MODE || 'local';
 if (dbMode === 'mysql') {
   try {
     const dbService = require('./services/db-service');
@@ -18,17 +20,13 @@ if (dbMode === 'mysql') {
     if (mysqlRes.success) {
       console.log('[DB] MySQL 连接成功');
     } else {
-      console.log('[DB] MySQL 连接失败: ' + mysqlRes.message + '，回退到 SQLite');
+      console.log('[DB] MySQL 连接失败: ' + mysqlRes.message);
       dbService.mode = 'local';
-      await sqliteService.init();
     }
   } catch (e) {
-    console.log('[DB] MySQL 初始化异常: ' + e.message + '，回退到 SQLite');
+    console.log('[DB] MySQL 初始化异常: ' + e.message);
     require('./services/db-service').mode = 'local';
-    await sqliteService.init();
   }
-} else {
-  await sqliteService.init();
 }
 
 const auth = require('./services/auth');

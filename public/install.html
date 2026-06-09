@@ -529,6 +529,8 @@ function showStep(n) {
 }
 
 function nextStep() {
+  // 全局锁：数据库已有数据时禁止继续
+  if (_forcedLogin) return;
   // 本地文件模式：跳过数据库配置步骤
   if (dbMode === 'local' && currentStep === 0) {
     showStep(2);
@@ -537,7 +539,7 @@ function nextStep() {
   // Validate DB connection when going from step 1 → 2
   if (dbMode === 'mysql' && currentStep === 1) {
     const testDiv = document.getElementById('testResult');
-    if (!testDiv.classList.contains('success')) {
+    if (!testDiv || !testDiv.classList.contains('success')) {
       testDiv.textContent = '⚠️ 请先测试数据库连接';
       testDiv.className = 'test-result error';
       return;
@@ -562,6 +564,9 @@ function togglePwd(inputId, btn) {
   input.type = isPassword ? 'text' : 'password';
   btn.textContent = isPassword ? '🙈' : '👁';
 }
+
+// ====== 全局锁：防止 hasTables 时绕过 ======
+let _forcedLogin = false;
 
 // ====== 测试 MySQL 连接 ======
 async function testConnection() {
@@ -591,28 +596,40 @@ async function testConnection() {
     const data = await res.json();
     if (data.success) {
       if (data.hasTables) {
-        // 数据库已有数据（之前已安装）
-        resultDiv.innerHTML = `
-          <div style="margin-bottom:12px">✅ 连接成功！数据库 "${db}" 已有数据</div>
-          <div style="margin-bottom:16px">⚠️ 检测到数据库已有表结构，说明系统之前已安装配置过。</div>
-          <button class="btn btn-primary" onclick="goToLogin()" style="width:100%">🔑 已有数据，直接前往登录</button>
+        // 数据库已有数据（之前已安装）→ 整个步骤切换为已完成提示
+        _forcedLogin = true;
+        const stepEl = document.getElementById('step-1');
+        stepEl.innerHTML = `
+          <div style="text-align:center;padding:12px 0">
+            <div style="font-size:40px;margin-bottom:12px">✅</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:8px">数据库已有数据</div>
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:6px">数据库 \`${db}\` 已有完整表结构</p>
+            <p style="color:var(--warning);font-size:13px;margin-bottom:20px">⚠️ 说明系统之前已经安装配置过，无需重复操作</p>
+            <button class="btn btn-primary" onclick="goToLogin()" style="width:100%">🔑 前往登录页</button>
+            <button class="btn btn-secondary" onclick="location.reload()" style="width:100%;margin-top:8px">🔄 重新选择</button>
+          </div>
         `;
-        resultDiv.className = 'test-result success';
-        // 隐藏下一步按钮，强制用户登录
-        document.querySelector('#step-1 .btn-group .btn-primary').style.display = 'none';
+        // 把步骤指示器标记为全部完成
+        document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
+        return;
       } else if (data.dbExists) {
         resultDiv.innerHTML = `
-          <div>✅ 连接成功！数据库 "${db}" 已存在，将直接使用</div>
-          <small style="color:var(--text-secondary)">点击「下一步」继续配置管理员账号</small>
+          <div style="background:rgba(99,102,241,0.08);padding:12px;border-radius:8px;border:1px solid rgba(99,102,241,0.2);line-height:1.7">
+            ✅ 连接成功！数据库 <strong>${db}</strong> 已存在<br>
+            <span style="color:var(--text-secondary);font-size:12px">该数据库为空，点击「下一步」继续配置管理员账号</span>
+          </div>
         `;
         resultDiv.className = 'test-result success';
+        _forcedLogin = false;
       } else {
         resultDiv.textContent = `✅ 连接成功！数据库 "${db}" 将在安装时自动创建`;
         resultDiv.className = 'test-result success';
+        _forcedLogin = false;
       }
     } else {
       resultDiv.textContent = '❌ ' + (data.message || '连接失败');
       resultDiv.className = 'test-result error';
+      _forcedLogin = false;
     }
   } catch (err) {
     resultDiv.textContent = '❌ 无法连接安装服务，请确认服务已启动';

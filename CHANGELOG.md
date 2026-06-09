@@ -4,16 +4,17 @@
 
 ---
 
-## v1.13.0 - 2026-06-09 17:09:00
+## v1.13.0 - 2026-06-09 18:33:00
 
 ### 📦 MySQL 安装引导修复 + 反向代理自动部署
 
 **MySQL 安装引导优化:**
 - ✅ 修复 `ssl`/`enabled`/`websocket` 保留字导致的 SQL 语法错误（加反引号）
 - ✅ `proxy_rules` 表结构与 `db-service.js` 统一
-- ✅ `testDbConnection` 新增 `hasTables` 检测，数据库已有数据时提示直接登录
+- ✅ `testDbConnection` 新增 `hasTables` 检测（改用 `SHOW TABLES FROM` 避免权限问题）
 - ✅ `_initMysql` 先 `SHOW TABLES`，有表时跳过建表
-- ✅ 安装页：检测 `hasTables` 时显示「前往登录」按钮，隐藏后续步骤
+- ✅ 安装页：数据库已有数据时 → 整个步骤替换为已完成提示 + 前往登录按钮
+- ✅ 安装页：`_forcedLogin` 全局锁阻止 `nextStep()` 绕过
 
 **反向代理自动部署:**
 - ✅ `proxy.js` routes 在 add/update/delete/toggle 后自动写入 Nginx 配置并 reload

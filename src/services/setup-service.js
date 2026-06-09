@@ -25,9 +25,9 @@ class SetupService {
       // 如果数据库已存在，检查是否已有数据表（说明之前已安装）
       if (dbExists) {
         try {
-          await conn.query(`USE \`${database}\``);
-          const [tables] = await conn.query('SHOW TABLES');
-          hasTables = tables.length > 0;
+          // 直接用 SHOW TABLES FROM 避免 USE 权限问题
+          const [tables] = await conn.query(`SHOW TABLES FROM \`${database}\``);
+          hasTables = Array.isArray(tables) && tables.length > 0;
         } catch (e) { /* 表检查失败不影响结果 */ }
       }
 

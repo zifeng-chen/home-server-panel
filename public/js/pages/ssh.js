@@ -189,7 +189,7 @@ async function loadSSH() {
     }
 
     // WebSocket 连接
-    const token = localStorage.getItem('fm_token') || '';
+    const token = localStorage.getItem('hsp_token') || '';
     const wsUrl = `ws://${location.host}/ws/ssh?token=${token}`;
 
     // 连接 WebSocket 并设置回调

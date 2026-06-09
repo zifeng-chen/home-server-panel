@@ -52,4 +52,19 @@ router.post('/save', (req, res) => {
   res.json(pm2Service.save());
 });
 
+// 安装 PM2
+router.post('/install', (req, res) => {
+  res.json(pm2Service.install());
+});
+
+// 卸载 PM2
+router.post('/uninstall', (req, res) => {
+  res.json(pm2Service.uninstall());
+});
+
+// 启动 PM2 守护进程
+router.post('/start-daemon', (req, res) => {
+  res.json(pm2Service.startDaemon());
+});
+
 module.exports = router;

@@ -7,9 +7,29 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 
-// 初始化 SQLite 数据库（必须在加载其他服务之前完成）
+// 初始化数据库（根据 DB_MODE 选择 SQLite 或 MySQL）
 const sqliteService = require('./services/sqlite-service');
-await sqliteService.init();
+const dbMode = process.env.DB_MODE || 'local';
+
+if (dbMode === 'mysql') {
+  try {
+    const dbService = require('./services/db-service');
+    const mysqlRes = await dbService.initMySQL();
+    if (mysqlRes.success) {
+      console.log('[DB] MySQL 连接成功');
+    } else {
+      console.log('[DB] MySQL 连接失败: ' + mysqlRes.message + '，回退到 SQLite');
+      dbService.mode = 'local';
+      await sqliteService.init();
+    }
+  } catch (e) {
+    console.log('[DB] MySQL 初始化异常: ' + e.message + '，回退到 SQLite');
+    require('./services/db-service').mode = 'local';
+    await sqliteService.init();
+  }
+} else {
+  await sqliteService.init();
+}
 
 const auth = require('./services/auth');
 const logService = require('./services/log-service');

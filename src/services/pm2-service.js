@@ -40,6 +40,38 @@ class Pm2Service {
     }
   }
 
+  // 安装 PM2
+  install() {
+    try {
+      const result = execSync('npm install -g pm2 2>&1', { timeout: 60000, encoding: 'utf-8' });
+      const installed = this.isInstalled();
+      return { success: installed, message: installed ? 'PM2 安装成功' : ('安装命令已执行但检测失败: ' + result.slice(-200)) };
+    } catch (err) {
+      return { success: false, message: 'PM2 安装失败: ' + (err.stderr || err.message).slice(-300) };
+    }
+  }
+
+  // 卸载 PM2
+  uninstall() {
+    try {
+      try { execSync('pm2 kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}
+      execSync('npm uninstall -g pm2 2>&1', { timeout: 60000, encoding: 'utf-8' });
+      return { success: true, message: 'PM2 已卸载' };
+    } catch (err) {
+      return { success: false, message: 'PM2 卸载失败: ' + (err.stderr || err.message).slice(-300) };
+    }
+  }
+
+  // 启动 PM2 守护进程
+  startDaemon() {
+    try {
+      execSync('pm2 resurrect 2>&1', { timeout: 10000 });
+      return { success: true, message: 'PM2 守护进程已启动' };
+    } catch (err) {
+      return { success: false, message: '启动失败: ' + err.message };
+    }
+  }
+
   // PM2 安装引导信息
   getInstallGuide() {
     const nodeVer = process.version;

@@ -124,17 +124,16 @@ class SetupService {
       // 切换到目标数据库
       await conn.query(`USE \`${DB_NAME}\``);
 
-      // 检查是否已有表（数据库已存在时跳过建表）
-      const [tables] = await conn.query(`SHOW TABLES`);
-      if (tables.length > 0) {
-        // 数据库已初始化，直接使用
-        return { success: true, alreadyInitialized: true };
-      }
+      // 检查是否已有表 + 创建/补全所有表
+      // 用 SHOW TABLES FROM 避免 USE 权限问题
+      const [tables] = await conn.query(`SHOW TABLES FROM \`${DB_NAME}\``);
+      const alreadyInitialized = Array.isArray(tables) && tables.length > 0;
 
-      // 创建初始表
+      // 切换到目标数据库再建表
+      await conn.query(`USE \`${DB_NAME}\``);
       await this._createTables(conn);
 
-      return { success: true };
+      return { success: true, alreadyInitialized };
     } catch (err) {
       return { success: false, message: `数据库初始化失败: ${err.message}` };
     } finally {

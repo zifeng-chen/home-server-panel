@@ -19,26 +19,37 @@ async function loadPM2() {
       Api.get('/pm2/guide')
     ]);
 
-    // 安装引导
-    if (guideEl && !statusRes?.data?.running) {
-      const g = guideRes?.data || {};
-      const guides = g.guides || [];
+    const g = guideRes?.data || {};
+    const guides = g.guides || [];
+    const installed = g.installed;
+    const daemonRunning = g.daemonRunning;
+    const running = statusRes?.data?.running;
+
+    // 安装引导（PM2 未安装或守护进程未运行）
+    if (guideEl && !running) {
       pm2GuideShown = true;
       guideEl.innerHTML = `
         <div class="card" style="border-left:3px solid var(--warning);margin-bottom:16px">
           <h3 style="margin:0 0 12px 0;color:var(--warning)">⚠️ PM2 未运行</h3>
-          ${!g.installed ? `
+          ${!installed ? `
             <p style="margin:0 0 12px 0;color:var(--text-secondary)">
               PM2 未安装。Node ${g.nodeVersion} | npm ${g.npmVersion}
             </p>
-            <p style="margin:0 0 8px 0;font-weight:600">📦 安装步骤：</p>
+            <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="pm2Install()">📦 一键安装 PM2</button>
+            </div>
+            <p style="margin:0 0 8px 0;font-weight:600">📖 或手动安装：</p>
           ` : `
-            <p style="margin:0 0 8px 0;color:var(--text-secondary)">PM2 已安装但守护进程未运行。</p>
+            <p style="margin:0 0 12px 0;color:var(--text-secondary)">PM2 ${g.pm2Version} 已安装但守护进程未运行。</p>
+            <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-success btn-sm" onclick="pm2StartDaemon()">▶ 启动守护进程</button>
+              <button class="btn btn-danger btn-sm" style="border:1px solid var(--danger);color:var(--danger);" onclick="pm2Uninstall()">🗑 卸载 PM2</button>
+            </div>
           `}
           <table class="data-table" style="margin:0">
             <thead><tr><th style="width:50px">#</th><th>操作</th><th>命令</th></tr></thead>
             <tbody>
-              ${(!g.installed ? guides : guides.filter(gs => gs.step >= 3)).map(gs => `
+              ${(!installed ? guides : guides.filter(gs => gs.step >= 3)).map(gs => `
                 <tr>
                   <td>${gs.step}</td>
                   <td>${gs.title}</td>
@@ -49,6 +60,18 @@ async function loadPM2() {
           </table>
           <div style="margin-top:12px">
             <button class="btn btn-sm" onclick="loadPM2()">🔄 重新检测</button>
+          </div>
+        </div>
+      `;
+    } else if (guideEl && installed && daemonRunning) {
+      // PM2 正常运行，显示管理按钮
+      guideEl.innerHTML = `
+        <div class="card" style="border-left:3px solid var(--success);margin-bottom:16px">
+          <h3 style="margin:0 0 12px 0;color:var(--success)">✅ PM2 ${g.pm2Version} 运行中</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="loadPM2()">🔄 刷新</button>
+            <button class="btn btn-sm btn-warning" onclick="pm2Save()">💾 保存配置</button>
+            <button class="btn btn-sm btn-danger" style="border:1px solid var(--danger);color:var(--danger);" onclick="pm2Uninstall()">🗑 卸载 PM2</button>
           </div>
         </div>
       `;
@@ -96,20 +119,20 @@ async function loadPM2() {
     const processes = (listRes.data && listRes.data.processes) || [];
     
     // 如果没有进程但 PM2 在运行
-    if (processes.length === 0 && statusRes?.data?.running) {
+    if (processes.length === 0 && running) {
       tbody.innerHTML = '<tr><td colspan="8" class="empty-state">📭 暂无 PM2 管理的进程<br><small>在项目目录执行 <code>pm2 start app.js</code> 添加进程</small></td></tr>';
       return;
     }
 
     // PM2 未运行但已安装
-    if (processes.length === 0 && !statusRes?.data?.running && statusRes?.data?.installed) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">⚡ PM2 守护进程未运行<br><small>请执行 <code>pm2 resurrect</code> 或启动进程后刷新</small></td></tr>';
+    if (processes.length === 0 && !running && installed) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">⚡ PM2 守护进程未运行<br><small>点击上方「启动守护进程」或执行 <code>pm2 resurrect</code></small></td></tr>';
       return;
     }
 
     if (processes.length === 0) {
       const installerLink = 'pm2-not-installed';
-      tbody.innerHTML = `<tr id="${installerLink}"><td colspan="8" class="empty-state">📦 PM2 未安装，查看上方安装引导 ↑</td></tr>`;
+      tbody.innerHTML = `<tr id="${installerLink}"><td colspan="8" class="empty-state">📦 PM2 未安装，点击上方安装按钮 ↑</td></tr>`;
       return;
     }
 
@@ -172,14 +195,52 @@ async function pm2Action(name, action) {
   setTimeout(loadPM2, 1500);
 }
 
+// PM2 安装/卸载/启动守护进程
+async function pm2Install() {
+  if (!confirm('确定安装 PM2 吗？将执行 npm install -g pm2')) return;
+  App.notify('正在安装 PM2，请等待...', 'info');
+  const res = await Api.post('/pm2/install');
+  if (res.success) {
+    App.notify('PM2 安装成功！', 'success');
+  } else {
+    App.notify(res.message || '安装失败', 'error');
+  }
+  setTimeout(loadPM2, 2000);
+}
+
+async function pm2Uninstall() {
+  if (!confirm('确定卸载 PM2 吗？所有进程配置将丢失！')) return;
+  App.notify('正在卸载 PM2...', 'info');
+  const res = await Api.post('/pm2/uninstall');
+  if (res.success) {
+    App.notify('PM2 已卸载', 'success');
+  } else {
+    App.notify(res.message || '卸载失败', 'error');
+  }
+  setTimeout(loadPM2, 2000);
+}
+
+async function pm2StartDaemon() {
+  App.notify('正在启动 PM2 守护进程...', 'info');
+  const res = await Api.post('/pm2/start-daemon');
+  if (res.success) {
+    App.notify('守护进程已启动', 'success');
+  } else {
+    App.notify(res.message || '启动失败', 'error');
+  }
+  setTimeout(loadPM2, 2000);
+}
+
+async function pm2Save() {
+  const res = await Api.post('/pm2/save');
+  App.notify((res && res.message) || '配置已保存', res.success ? 'success' : 'error');
+}
+
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', () => {
   const btnRefresh = document.getElementById('btnPM2Refresh');
   if (btnRefresh) btnRefresh.addEventListener('click', loadPM2);
 
   const btnSave = document.getElementById('btnPM2Save');
-  if (btnSave) btnSave.addEventListener('click', async () => {
-    const res = await Api.post('/pm2/save');
-    App.notify((res && res.message) || '配置已保存');
-  });
+  if (btnSave) btnSave.addEventListener('click', pm2Save);
 });

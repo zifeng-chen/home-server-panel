@@ -19,7 +19,19 @@ class SetupService {
         'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
         [database]
       );
-      return { success: true, dbExists: rows.length > 0 };
+      const dbExists = rows.length > 0;
+      let hasTables = false;
+
+      // 如果数据库已存在，检查是否已有数据表（说明之前已安装）
+      if (dbExists) {
+        try {
+          await conn.query(`USE \`${database}\``);
+          const [tables] = await conn.query('SHOW TABLES');
+          hasTables = tables.length > 0;
+        } catch (e) { /* 表检查失败不影响结果 */ }
+      }
+
+      return { success: true, dbExists, hasTables };
     } catch (err) {
       return { success: false, message: err.code === 'ER_ACCESS_DENIED_ERROR'
         ? '数据库用户名或密码错误'
@@ -112,6 +124,13 @@ class SetupService {
       // 切换到目标数据库
       await conn.query(`USE \`${DB_NAME}\``);
 
+      // 检查是否已有表（数据库已存在时跳过建表）
+      const [tables] = await conn.query(`SHOW TABLES`);
+      if (tables.length > 0) {
+        // 数据库已初始化，直接使用
+        return { success: true, alreadyInitialized: true };
+      }
+
       // 创建初始表
       await this._createTables(conn);
 
@@ -157,15 +176,19 @@ class SetupService {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // 反向代理规则表
+    // 反向代理规则表 (与 db-service.js 保持一致)
     await conn.query(`
       CREATE TABLE IF NOT EXISTS proxy_rules (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        domain VARCHAR(255) NOT NULL,
-        target VARCHAR(500) NOT NULL,
-        ssl TINYINT(1) DEFAULT 0,
-        websocket TINYINT(1) DEFAULT 0,
-        enabled TINYINT(1) DEFAULT 1,
+        source VARCHAR(255) NOT NULL,
+        source_host VARCHAR(255),
+        target_host VARCHAR(255),
+        target VARCHAR(1024),
+        port INT,
+        \`ssl\` TINYINT(1) DEFAULT 0,
+        \`websocket\` TINYINT(1) DEFAULT 0,
+        \`enabled\` TINYINT(1) DEFAULT 1,
+        remark VARCHAR(500),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4

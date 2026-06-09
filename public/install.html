@@ -590,10 +590,26 @@ async function testConnection() {
     });
     const data = await res.json();
     if (data.success) {
-      resultDiv.textContent = data.dbExists 
-        ? `✅ 连接成功！数据库 "${db}" 已存在，将直接使用` 
-        : `✅ 连接成功！数据库 "${db}" 将在安装时自动创建`;
-      resultDiv.className = 'test-result success';
+      if (data.hasTables) {
+        // 数据库已有数据（之前已安装）
+        resultDiv.innerHTML = `
+          <div style="margin-bottom:12px">✅ 连接成功！数据库 "${db}" 已有数据</div>
+          <div style="margin-bottom:16px">⚠️ 检测到数据库已有表结构，说明系统之前已安装配置过。</div>
+          <button class="btn btn-primary" onclick="goToLogin()" style="width:100%">🔑 已有数据，直接前往登录</button>
+        `;
+        resultDiv.className = 'test-result success';
+        // 隐藏下一步按钮，强制用户登录
+        document.querySelector('#step-1 .btn-group .btn-primary').style.display = 'none';
+      } else if (data.dbExists) {
+        resultDiv.innerHTML = `
+          <div>✅ 连接成功！数据库 "${db}" 已存在，将直接使用</div>
+          <small style="color:var(--text-secondary)">点击「下一步」继续配置管理员账号</small>
+        `;
+        resultDiv.className = 'test-result success';
+      } else {
+        resultDiv.textContent = `✅ 连接成功！数据库 "${db}" 将在安装时自动创建`;
+        resultDiv.className = 'test-result success';
+      }
     } else {
       resultDiv.textContent = '❌ ' + (data.message || '连接失败');
       resultDiv.className = 'test-result error';
@@ -602,6 +618,10 @@ async function testConnection() {
     resultDiv.textContent = '❌ 无法连接安装服务，请确认服务已启动';
     resultDiv.className = 'test-result error';
   }
+}
+
+function goToLogin() {
+  window.location.href = '/login.html';
 }
 
 // ====== 执行安装 ======

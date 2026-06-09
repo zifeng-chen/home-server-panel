@@ -4,6 +4,168 @@
 
 ---
 
+## v1.13.0 - 2026-06-09 17:09:00
+
+### 📦 MySQL 安装引导修复 + 反向代理自动部署
+
+**MySQL 安装引导优化:**
+- ✅ 修复 `ssl`/`enabled`/`websocket` 保留字导致的 SQL 语法错误（加反引号）
+- ✅ `proxy_rules` 表结构与 `db-service.js` 统一
+- ✅ `testDbConnection` 新增 `hasTables` 检测，数据库已有数据时提示直接登录
+- ✅ `_initMysql` 先 `SHOW TABLES`，有表时跳过建表
+- ✅ 安装页：检测 `hasTables` 时显示「前往登录」按钮，隐藏后续步骤
+
+**反向代理自动部署:**
+- ✅ `proxy.js` routes 在 add/update/delete/toggle 后自动写入 Nginx 配置并 reload
+- ✅ iStoreOS (BusyBox) 兼容：`_getPid` pgrep→grep [n]ginx，`_isRunning` ps fallback
+- ✅ `configTest` root 用户自动跳过 sudo
+- ✅ 修复 `pgrep -f` 自匹配导致假 PID 的问题
+
+**其他修复:**
+- ✅ DDNS 删除：修复 removeDomain 参数错误 + 新增「阿里云删除」选项
+- ✅ DDNS 按钮：「添加域名」→「添加解析」
+- ✅ SSL 申请：exit code 2 (Domains not changed) 视为成功
+- ✅ Cron UI：添加自定义定时任务弹窗
+
+---
+
+## v1.12.0 - 2026-06-07 09:51:00
+
+### 🗄️ SQLite 全量迁移 + 安全加固 + 设置页增强
+
+**数据库:**
+- ✅ SQLite (sql.js/WASM) 完全替换 JSON 存储，WAL 模式 + 索引优化
+- ✅ 数据库导出 (.db) / 导入 (.db/.json) / 重置 API
+- ✅ MySQL 迁移适配 (pool.query 替代 execute)
+
+**安全加固:**
+- ✅ 登录限速：30秒5次失败 → 60秒冷却
+- ✅ 路径遍历防护 (proxy/cert/db 路由)
+- ✅ DB 文件魔术字验证 + Server 安全头
+
+**设置页:**
+- ✅ 显示 SQLite 状态，导出/导入/迁移按钮
+- ✅ 设置热重载：写入 .env 后同步更新 process.env
+
+**前端:**
+- ✅ Dashboard 五张统计卡片可点击跳转
+- ✅ 侧栏退出按钮移至底部
+- ✅ 引导页文案改为「SQLite」
+
+---
+
+## v1.11.0 - 2026-06-05 17:01:00
+
+### 📋 操作日志审计 + 🔒 SSL 证书导出 + 🗄️ MySQL 双模式
+
+- ✅ 操作日志：middleware 自动记录 API，data/logs/current.json
+- ✅ SSL 证书导出：cert/key/fullchain/ca/all，tar.gz 打包
+- ✅ MySQL 存储支持（db-service.js + 前端配置卡片）
+- ✅ 退出登录：清除 localStorage → 跳转 login.html
+- ✅ 安装引导：本地/MySQL 双模式，检测 .env 文件存在性
+
+---
+
+## v1.10.0 - 2026-06-04 14:11:00
+
+### 🎨 五项 UI 优化 + 安装引导页
+
+- ✅ 登录页密码明文切换按钮 (👁/🙈)
+- ✅ 全局错误弹窗 + 一键复制
+- ✅ Nginx + 反向代理左右分栏（替代标签页）
+- ✅ 移除操作日志独立页面
+- ✅ 各页新增 📋 诊断日志按钮
+- ✅ 安装引导页 (install.html)：三步引导（存储方式 → DB 配置 → 管理员）
+
+---
+
+## v1.9.0 - 2026-06-04 10:23:00
+
+### 🌐 DDNS IPv6 + Nginx/Proxy 合并
+
+- ✅ DDNS 新增 IPv6 支持（5 个 IPv6 服务 + 本机 fallback）
+- ✅ A + AAAA 双栈、记录启停/编辑、域名添加弹窗
+- ✅ Nginx + 反向代理合并到一个页面
+
+---
+
+## v1.8.7 - 2026-06-03 09:35:00
+
+### 🐛 Dashboard 渲染修复 + 端口双协议 + 诊断增强
+
+- ✅ BUILD_ID 永久缓存爆破方案
+- ✅ 端口管理：TCP LISTEN + UDP 双协议扫描
+- ✅ 诊断栏折叠（右上角 24×24 小图标入口）
+- ✅ 分类日志：系统设置页按页面诊断日志
+- ✅ Safari 浏览器 PC 端适配
+
+---
+
+## v1.8.4 - 2026-06-02 09:00:00
+
+### 💻 Web SSH 终端
+
+- ✅ xterm.js + WebSocket + SSH2 架构
+- ✅ Token 认证（WebSocket query 参数）
+- ✅ Docker Stats 性能优化：批量获取
+
+---
+
+## v1.8.2 - 2026-06-01 19:42:00
+
+### 🐳 Docker 容器管理
+
+- ✅ 容器概览/CRUD/启停/日志/Stats/Images
+- ✅ PM2 安装引导（NAS 未安装时显示）
+
+---
+
+## v1.8.0 - 2026-06-01 13:49:00
+
+### 🌐 Nginx SSE 一键安装
+
+- ✅ acme.sh 安装/卸载 (SSE 进度)
+- ✅ Nginx 日志弹窗重构（tab 切换 + 一键复制）
+
+---
+
+## v1.7.0 - 2026-05-31 13:25:00
+
+### 📊 PM2 进程管理
+
+- ✅ 进程列表/启停/安装引导
+- ✅ API 多问题修复（root 路由、转义等）
+
+---
+
+## v1.6.1 - 2026-05-31 12:11:00
+
+### 🐛 Dashboard 诊断修复
+
+- ✅ DOMContentLoaded 重复绑定修复
+- ✅ 页面加载器完整注册
+- ✅ GitHub 推送 + NAS 部署
+
+---
+
+## v1.6.0 - 2026-05-30 22:33:00
+
+### 🔄 反向代理完整功能
+
+- ✅ 反向代理规则 CRUD + Nginx 配置自动生成
+- ✅ HTTPS/WebSocket 支持
+
+---
+
+## v1.5.0 - 2026-05-30 21:00:00
+
+### 🔌 端口管理 + PushPlus 通知
+
+- ✅ 端口扫描（lsof） + 进程信息
+- ✅ PushPlus 微信推送（DDNS/SSL/异常通知）
+
+---
+
 ## v1.3.0 - 2026-05-31 00:23:39
 
 ### 🔄 反向代理引擎 + 🌐 Nginx 管理完成

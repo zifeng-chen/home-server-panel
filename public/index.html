@@ -98,17 +98,14 @@
         <section class="page" id="page-dashboard">
           <h1>系统概览</h1>
           <div class="stats-grid" id="statsGrid">
-            <div class="stat-card loading">
-              <div class="stat-icon">🖥️</div>
-              <div class="stat-info">
-                <span class="stat-label">主机名</span>
-                <span class="stat-value">加载中...</span>
-              </div>
-            </div>
+            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
           </div>
           <h2 style="margin-top:28px">📈 实时监控</h2>
           <div class="monitor-grid" id="dashboardMonitor">
-            <div class="loading-box">⏳ 监控加载中...</div>
+            <div class="skeleton-card" style="grid-column:span 2"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
           </div>
         </section>
 
@@ -456,18 +453,18 @@
 
   <div class="notify-bar hidden" id="notifyBar"></div>
 
-  <script src="/js/utils.js?v={BUILD_ID}"></script>
-  <script src="/js/api.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/dashboard.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/ddns.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/cert.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/nginx.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/port.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/cron.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/pm2.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/docker.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/ssh.js?v={BUILD_ID}"></script>
-  <script src="/js/pages/settings.js?v={BUILD_ID}"></script>
-  <script src="/js/app.js?v={BUILD_ID}"></script>
+  <script defer src="/js/utils.js?v={BUILD_ID}"></script>
+  <script defer src="/js/api.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/dashboard.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/ddns.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/cert.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/nginx.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/port.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/cron.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/pm2.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/docker.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/ssh.js?v={BUILD_ID}"></script>
+  <script defer src="/js/pages/settings.js?v={BUILD_ID}"></script>
+  <script defer src="/js/app.js?v={BUILD_ID}"></script>
 </body>
 </html>

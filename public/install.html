@@ -6,20 +6,20 @@
 <title>Home Server Panel - 引导安装</title>
 <style>
 :root {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: #1e293b;
-  --bg-input: #0f172a;
-  --bg-tertiary: #334155;
-  --border: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --brand-primary: #6366f1;
-  --brand-hover: #818cf8;
-  --success: #22c55e;
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f1f3f5;
+  --bg-tertiary: #e5e7eb;
+  --border: #e5e7eb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b7280;
+  --brand-primary: #b8860b;
+  --brand-hover: #daa520;
+  --success: #10b981;
   --warning: #f59e0b;
-  --danger: #ef4444;
-  --error: #f87171;
+  --danger: #c41e3a;
+  --error: #c41e3a;
   --radius: 12px;
 }
 
@@ -58,7 +58,7 @@ canvas#bgCanvas {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 40px 36px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
 }
 
 /* Brand */
@@ -124,9 +124,9 @@ canvas#bgCanvas {
 }
 .form-input:focus, .form-select:focus {
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  box-shadow: 0 0 0 3px rgba(184,134,11,0.15);
 }
-.form-input::placeholder { color: #64748b; }
+.form-input::placeholder { color: #9ca3af; }
 .form-select option { background: var(--bg-secondary); color: var(--text-primary); }
 
 .form-row {
@@ -160,7 +160,7 @@ canvas#bgCanvas {
   width: 100%;
 }
 .btn-primary:hover {
-  box-shadow: 0 0 20px rgba(99,102,241,0.3);
+  box-shadow: 0 0 20px rgba(184,134,11,0.3);
   transform: translateY(-1px);
 }
 .btn-primary:disabled {
@@ -201,8 +201,8 @@ canvas#bgCanvas {
 .db-mode-card:hover { border-color: var(--brand-primary); }
 .db-mode-card.selected {
   border-color: var(--brand-primary);
-  background: rgba(99,102,241,0.08);
-  box-shadow: 0 0 12px rgba(99,102,241,0.15);
+  background: rgba(184,134,11,0.08);
+  box-shadow: 0 0 12px rgba(184,134,11,0.15);
 }
 .db-mode-icon { font-size: 32px; margin-bottom: 8px; }
 .db-mode-title { font-size: 15px; font-weight: 600; }
@@ -217,7 +217,7 @@ canvas#bgCanvas {
   display: none;
 }
 .test-result.success { display: block; background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
-.test-result.error { display: block; background: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); }
+.test-result.error { display: block; background: rgba(196,30,58,0.1); color: var(--error); border: 1px solid rgba(196,30,58,0.2); }
 
 /* Pwd toggle */
 .pwd-wrapper { position: relative; }
@@ -240,7 +240,7 @@ canvas#bgCanvas {
   font-size: 12px;
   margin-bottom: 16px;
 }
-.alert-info { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: var(--brand-hover); }
+.alert-info { background: rgba(184,134,11,0.1); border: 1px solid rgba(184,134,11,0.2); color: var(--brand-hover); }
 .alert-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: var(--warning); }
 
 /* Success page */
@@ -434,7 +434,7 @@ canvas#bgCanvas {
     ctx.clearRect(0, 0, w, h);
     
     // 网格
-    ctx.strokeStyle = 'rgba(51,65,85,0.15)';
+    ctx.strokeStyle = 'rgba(184,134,11,0.06)';
     ctx.lineWidth = 0.5;
     const spacing = 50;
     for (let x = spacing; x < w; x += spacing) {
@@ -451,7 +451,7 @@ canvas#bgCanvas {
       if (p.y < 0 || p.y > h) p.vy *= -1;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(99,102,241,0.2)';
+      ctx.fillStyle = 'rgba(184,134,11,0.2)';
       ctx.fill();
     });
 
@@ -462,7 +462,7 @@ canvas#bgCanvas {
         const dist = Math.sqrt(dx*dx + dy*dy);
         if (dist < 120) {
           ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = `rgba(99,102,241,${0.06 * (1 - dist/120)})`;
+          ctx.strokeStyle = `rgba(184,134,11,${0.05 * (1 - dist/120)})`;
           ctx.stroke();
         }
       });
@@ -616,7 +616,7 @@ async function testConnection() {
         return;
       } else if (data.dbExists) {
         resultDiv.innerHTML = `
-          <div style="background:rgba(99,102,241,0.08);padding:12px;border-radius:8px;border:1px solid rgba(99,102,241,0.2);line-height:1.7">
+          <div style="background:rgba(184,134,11,0.08);padding:12px;border-radius:8px;border:1px solid rgba(184,134,11,0.2);line-height:1.7">
             ✅ 连接成功！数据库 <strong>${db}</strong> 已存在<br>
             <span style="color:var(--text-secondary);font-size:12px">该数据库为空，点击「下一步」继续配置管理员账号</span>
           </div>

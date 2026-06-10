@@ -257,13 +257,13 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var pad = { top: 24, right: 16, bottom: 28, left: 48 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(15,23,42,0.6)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
   // 网格
-  ctx.strokeStyle = 'rgba(51,65,85,0.25)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
   for (var i = 0; i <= 4; i++) {
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillStyle = '#64748b'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
     ctx.fillText((100 - i * 25) + '%', pad.left - 10, y + 7);
   }
   var maxVal = Math.max(Math.max.apply(null, data.map(function(d) { return d[field]; })), 1);
@@ -271,7 +271,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
   // 渐变填充
   var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
-  grad.addColorStop(0, 'rgba(99,102,241,0.25)'); grad.addColorStop(1, 'rgba(99,102,241,0.02)');
+  grad.addColorStop(0, 'rgba(184,134,11,0.18)'); grad.addColorStop(1, 'rgba(184,134,11,0.02)');
   ctx.beginPath();
   ctx.moveTo(scX(0), scY(data[0][field]));
   for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
@@ -280,14 +280,14 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   // 折线
   ctx.beginPath(); ctx.moveTo(scX(0), scY(data[0][field]));
   for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
-  ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.strokeStyle = '#daa520'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
   // 末点
   var last = data[data.length - 1];
   ctx.beginPath(); ctx.arc(scX(data.length - 1), scY(last[field]), 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#818cf8'; ctx.fill();
-  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#daa520'; ctx.fill();
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 3; ctx.stroke();
   // 标签
-  ctx.fillStyle = '#94a3b8'; ctx.font = '22px -apple-system, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#6b7280'; ctx.font = '22px -apple-system, sans-serif'; ctx.textAlign = 'left';
   ctx.fillText(label, pad.left, 26);
   ctx.textAlign = 'right'; ctx.fillText(last[field].toFixed(1) + unit, pad.left + pw, 26);
 }
@@ -298,8 +298,8 @@ function _dmDrawNetChart(canvasId, data) {
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
   var pad = { top: 24, right: 16, bottom: 28, left: 60 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  ctx.clearRect(0, 0, W, H); ctx.fillStyle = 'rgba(15,23,42,0.6)'; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(51,65,85,0.25)'; ctx.lineWidth = 1;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
   for (var i = 0; i <= 4; i++) {
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
@@ -309,7 +309,7 @@ function _dmDrawNetChart(canvasId, data) {
   var maxVal = Math.max(Math.max.apply(null, rxArr), Math.max.apply(null, txArr), 1024);
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
-  ctx.fillStyle = '#64748b'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     ctx.fillText(_dmFmtBytesShort(maxVal * (1 - i / 4)), pad.left - 8, pad.top + (ph / 4) * i + 7);
   }
@@ -332,8 +332,8 @@ function _dmDrawLoadChart(canvasId, data) {
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
   var pad = { top: 24, right: 16, bottom: 28, left: 48 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  ctx.clearRect(0, 0, W, H); ctx.fillStyle = 'rgba(15,23,42,0.6)'; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(51,65,85,0.25)'; ctx.lineWidth = 1;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
   for (var i = 0; i <= 4; i++) {
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
@@ -343,7 +343,7 @@ function _dmDrawLoadChart(canvasId, data) {
   var maxVal = Math.max(Math.max.apply(null, allVals), 1);
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
-  var colors = ['#22c55e', '#f59e0b', '#ef4444'];
+  var colors = ['#22c55e', '#f59e0b', '#c41e3a'];
   var keys = ['load1', 'load5', 'load15'];
   var labels = ['1m', '5m', '15m'];
   keys.forEach(function(key, idx) {
@@ -359,8 +359,8 @@ function _dmDrawLoadChart(canvasId, data) {
 function _dmDrawEmpty(canvas, msg) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'rgba(15,23,42,0.6)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#64748b'; ctx.font = '28px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#9ca3af'; ctx.font = '28px -apple-system, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 10);
 }
 

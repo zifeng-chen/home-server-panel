@@ -77,7 +77,7 @@ const Utils = (window.Utils = {
   async showOpLog(module, title) {
     const body = `
       <div id="opLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
-      <pre id="opLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+      <pre id="opLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
       <div id="opLogSummary" style="display:none;margin-top:8px;font-size:11px;color:var(--text-secondary);"></div>
     `;
     const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyOpLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
@@ -150,7 +150,7 @@ const Utils = (window.Utils = {
       const logText = allEntries.map(e => `[${e.time}] [${e.page}] ${e.level.toUpperCase()} ${e.msg}`).join('\n');
       window._hspUtilsLog = logText;
       const body = `
-        <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
+        <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
         <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">共 ${allEntries.length} 条 API 调用记录（全部页面）</div>
       `;
       const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
@@ -160,7 +160,7 @@ const Utils = (window.Utils = {
     const logText = entries.map(e => `[${e.time}] ${e.level.toUpperCase()} ${e.msg}`).join('\n');
     window._hspUtilsLog = logText;
     const body = `
-      <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
+      <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
       <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">共 ${entries.length} 条 API 调用记录</div>
     `;
     const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
@@ -171,7 +171,7 @@ const Utils = (window.Utils = {
   async showLog(apiPath, title) {
     const body = `
       <div id="utilsLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
-      <pre id="utilsLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+      <pre id="utilsLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
     `;
     const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
     Utils.openModal('📋 ' + (title || '日志'), body, footer);

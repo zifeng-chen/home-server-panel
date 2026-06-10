@@ -175,7 +175,7 @@ window.openNginxLog = async (type) => {
       <span id="logPath" style="color:var(--text-secondary);font-size:12px;margin-left:auto;">加载中...</span>
     </div>
     <div id="logLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">⏳ 加载中...</div>
-    <pre id="logContent" style="display:none;max-height:420px;overflow:auto;background:var(--bg-tertiary,#0f172a);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
+    <pre id="logContent" style="display:none;max-height:420px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
   `;
   const footer = `<button class="btn btn-sm btn-secondary" onclick="copyNginxLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
   Utils.openModal('📋 Nginx 日志', body, footer);

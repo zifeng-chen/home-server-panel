@@ -251,11 +251,11 @@ function renderDiagLog() {
     return;
   }
 
-  var levelColors = { success: '#22c55e', warn: '#f59e0b', error: '#ef4444', info: '#94a3b8' };
+  var levelColors = { success: '#22c55e', warn: '#f59e0b', error: '#c41e3a', info: '#6b7280' };
   var pageLabels = { dashboard: '📊', ddns: '📡', ssl: '🔒', nginx: '🖥️', proxy: '🔄', port: '🔌', pm2: '⚡', docker: '🐳', ssh: '💻', settings: '⚙️' };
 
   container.innerHTML = logs.map(function(e) {
-    var color = levelColors[e.level] || '#94a3b8';
+    var color = levelColors[e.level] || '#6b7280';
     var label = pageLabels[e.page] || '❓';
     return '<span style="color:' + color + '">' + e.time + ' ' + label + ' ' + e.msg + '</span>';
   }).join('<br>');

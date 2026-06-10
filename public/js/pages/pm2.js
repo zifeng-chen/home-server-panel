@@ -208,7 +208,7 @@ function _pm2ShowStreamLog() {
     guideEl.innerHTML = `
       <div class="card" style="border-left:3px solid var(--primary);margin-bottom:16px">
         <h3 style="margin:0 0 8px 0;color:var(--primary)">📡 实时进度</h3>
-        <div id="pm2-stream-log" style="background:#0f172a;border-radius:8px;padding:12px;max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.6">
+        <div id="pm2-stream-log" style="background:#f8f9fa;border-radius:8px;padding:12px;max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.6">
           <div style="color:#64748b">⏳ 连接中...</div>
         </div>
         <div style="margin-top:10px">
@@ -222,8 +222,8 @@ function _pm2ShowStreamLog() {
 function _pm2StreamLog(msg, type) {
   const el = document.getElementById('pm2-stream-log');
   if (!el) return;
-  const colors = { output: '#94a3b8', warn: '#f59e0b', error: '#ef4444', info: '#22c55e', done: '#818cf8' };
-  const color = colors[type] || '#94a3b8';
+  const colors = { output: '#6b7280', warn: '#f59e0b', error: '#c41e3a', info: '#22c55e', done: '#daa520' };
+  const color = colors[type] || '#6b7280';
   const div = document.createElement('div');
   div.style.color = color;
   div.textContent = (type === 'done' ? '✅ ' : type === 'warn' ? '⚠️ ' : type === 'error' ? '❌ ' : '') + msg;

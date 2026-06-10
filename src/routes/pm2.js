@@ -148,7 +148,7 @@ router.get('/uninstall/stream', (req, res) => {
 
   send('start', { message: '停止 PM2 守护进程...', command: 'pm2 kill && npm uninstall -g pm2' });
 
-  const { spawn, execSync } = require('child_process');
+  const { spawn } = require('child_process');
 
   // 先 kill daemon
   try { pm2Service._pm2('kill 2>/dev/null', { timeout: 5000 }); } catch (e) {}

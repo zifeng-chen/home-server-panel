@@ -349,7 +349,7 @@ function _sshRender(keepTerm) {
 // 新建/编辑连接弹窗
 function _sshShowAddForm() {
   var st = window.__SSH;
-  showModal('🔗 新建 SSH 连接', `
+  var html = `
     <div class="ssh-form-row">
       <label>连接名称</label>
       <input type="text" id="sshFmName" placeholder="如: iStoreOS">
@@ -370,18 +370,21 @@ function _sshShowAddForm() {
       <label>密码</label>
       <input type="password" id="sshFmPass" placeholder="输入密码">
     </div>
-  `, [{
-    text: '💾 保存并连接', cls: 'btn-primary',
-    onClick: function() {
+  `;
+  var footer = '<button class="btn btn-primary" id="sshModalSave">💾 保存并连接</button><button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>';
+  Utils.openModal('🔗 新建 SSH 连接', html, footer);
+  
+  setTimeout(function() {
+    var btn = document.getElementById('sshModalSave');
+    if (btn) btn.addEventListener('click', function() {
       var name = document.getElementById('sshFmName').value.trim();
       var host = document.getElementById('sshFmHost').value.trim();
       var port = parseInt(document.getElementById('sshFmPort').value) || 22;
       var username = document.getElementById('sshFmUser').value.trim();
       var password = document.getElementById('sshFmPass').value.trim();
-      if (!host || !username || !password) { notify('请填写完整信息', 'error'); return; }
+      if (!host || !username || !password) { Utils.notify('请填写完整信息', 'error'); return; }
       if (!name) name = username + '@' + host;
 
-      // 检查是否已存在
       var exists = st.connections.findIndex(function(c) { return c.host === host && c.username === username; });
       var conn = { name: name, host: host, port: port, username: username, password: password };
       if (exists >= 0) {
@@ -391,8 +394,7 @@ function _sshShowAddForm() {
       }
       _saveSSHConns();
 
-      closeModal();
-      // 断开当前
+      Utils.closeModal();
       if (st.ws && st.ws.readyState === WebSocket.OPEN) {
         try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
         try { st.ws.close(); } catch(e) {}
@@ -400,10 +402,8 @@ function _sshShowAddForm() {
       }
       if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
       _sshConnect(conn);
-    }
-  }, {
-    text: '取消', cls: 'btn-secondary', onClick: closeModal
-  }]);
+    });
+  }, 50);
 }
 
 // 侧边栏状态同步

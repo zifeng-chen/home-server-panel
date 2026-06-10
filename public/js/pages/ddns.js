@@ -1,16 +1,121 @@
-// DDNS 页面 - 支持 IPv4 + IPv6
+// DDNS 页面 - 支持 IPv4 + IPv6 + 多选操作
 let ddnsLoaded = false;
+
+// 批量操作栏刷新
+function updateDdnsBatchBar() {
+  const bar = document.getElementById('ddnsBatchBar');
+  const countEl = document.getElementById('ddnsBatchCount');
+  if (!bar || !countEl) return;
+
+  const checked = document.querySelectorAll('#ddnsTbody .ddns-row-checkbox:checked');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `已选 ${checked.length} 项`;
+  } else {
+    bar.style.display = 'none';
+    const selectAll = document.getElementById('ddnsSelectAll');
+    if (selectAll) selectAll.checked = false;
+  }
+}
+
+// 全选/取消全选
+window.ddnsToggleSelectAll = () => {
+  const selectAll = document.getElementById('ddnsSelectAll');
+  const checkboxes = document.querySelectorAll('#ddnsTbody .ddns-row-checkbox');
+  const checked = selectAll.checked;
+  checkboxes.forEach(cb => { cb.checked = checked; });
+  updateDdnsBatchBar();
+};
+
+// 单行复选框变更
+window.ddnsRowCheckChanged = () => {
+  const selectAll = document.getElementById('ddnsSelectAll');
+  const checkboxes = document.querySelectorAll('#ddnsTbody .ddns-row-checkbox');
+  const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+  if (selectAll) selectAll.checked = allChecked;
+  updateDdnsBatchBar();
+};
+
+// 获取选中记录 ID 列表
+function getSelectedDdnsIds() {
+  const ids = [];
+  document.querySelectorAll('#ddnsTbody .ddns-row-checkbox:checked').forEach(cb => {
+    ids.push(cb.dataset.id);
+  });
+  return ids;
+}
+
+// 批量启用/停用
+window.batchToggleDdns = async (enable) => {
+  const ids = getSelectedDdnsIds();
+  if (ids.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
+
+  const status = enable ? 'ENABLE' : 'DISABLE';
+  const action = enable ? '启用' : '停用';
+  Utils.notify(`正在批量${action} ${ids.length} 条记录...`, 'info');
+
+  let success = 0, fail = 0;
+  for (const id of ids) {
+    const res = await Api.post(`/ddns/record/${id}/toggle`, { status });
+    if (res.success) success++; else fail++;
+  }
+
+  if (success > 0) Utils.notify(`成功${action} ${success} 条` + (fail > 0 ? `，${fail} 条失败` : ''), 'success');
+  else Utils.notify(`批量${action}失败`, 'error');
+  loadDdns();
+};
+
+// 批量删除
+window.batchDeleteDdns = async () => {
+  const ids = getSelectedDdnsIds();
+  if (ids.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
+
+  const body = `
+    <p style="margin-bottom:16px;color:var(--text-secondary)">确认删除选中的 <strong style="color:var(--danger)">${ids.length}</strong> 条 DDNS 记录？</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-secondary" id="batchRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
+        📋 <strong>仅移除面板跟踪</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>
+      </button>
+      <button class="btn btn-danger" id="batchRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
+        🗑 <strong>同时从阿里云删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>阿里云 DNS 上的解析记录</small>
+      </button>
+    </div>
+  `;
+  const footer = `<button class="btn btn-ghost" onclick="Utils.closeModal()">取消</button>`;
+  Utils.openModal('批量删除 DNS 记录', body, footer);
+
+  const doBatchDelete = async (localOnly) => {
+    Utils.closeModal();
+    Utils.notify(localOnly ? '正在批量移除面板跟踪...' : '正在批量删除阿里云记录...', 'info');
+
+    let success = 0, fail = 0;
+    for (const id of ids) {
+      const res = await Api.del(`/ddns/record/${id}?localOnly=${localOnly}`);
+      if (res.success) success++; else fail++;
+    }
+
+    if (success > 0) Utils.notify(`成功移除 ${success} 条` + (fail > 0 ? `，${fail} 条失败` : ''), 'success');
+    else Utils.notify('批量删除失败', 'error');
+    loadDdns();
+  };
+
+  document.getElementById('batchRemovePanel').addEventListener('click', () => doBatchDelete(true));
+  document.getElementById('batchRemoveCloud').addEventListener('click', () => doBatchDelete(false));
+};
 
 async function loadDdns() {
   const tbody = document.getElementById('ddnsTbody');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="8">加载中...</td></tr>';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="9">加载中...</td></tr>';
 
   try {
     const res = await Api.get('/ddns');
     if (!res.success) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
+      updateDdnsBatchBar();
       return;
     }
 
@@ -25,13 +130,14 @@ async function loadDdns() {
     }
 
     if (records.length === 0) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
+      updateDdnsBatchBar();
       return;
     }
 
     tbody.innerHTML = records.map(r => {
       if (r.error) {
-        return `<tr><td colspan="8" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
+        return `<tr><td colspan="9" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
       }
 
       const needsUpdate = r.needsUpdate;
@@ -40,6 +146,7 @@ async function loadDdns() {
 
       return `
         <tr style="${enabled ? '' : 'opacity:0.5'}">
+          <td style="text-align:center"><input type="checkbox" class="ddns-row-checkbox" data-id="${r.id}" onchange="ddnsRowCheckChanged()"></td>
           <td><strong>${r.domain}</strong></td>
           <td><span class="${typeClass}">${r.recordType || 'A'}</span></td>
           <td><code style="${needsUpdate ? 'color:var(--warning)' : ''}">${r.ip || '--'}</code></td>
@@ -58,8 +165,16 @@ async function loadDdns() {
         </tr>
       `;
     }).join('');
+
+    // 绑定全选复选框
+    const selectAll = document.getElementById('ddnsSelectAll');
+    if (selectAll) {
+      selectAll.onchange = ddnsToggleSelectAll;
+    }
+    updateDdnsBatchBar();
   } catch (err) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">加载失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">加载失败: ${err.message}</td></tr>`;
+    updateDdnsBatchBar();
   }
 }
 
@@ -82,11 +197,10 @@ window.editDdnsRecord = (recordId) => {
     for (const btn of btns) {
       if (btn.getAttribute('onclick')?.includes(recordId)) {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 3) {
-          const domain = cells[0].textContent.trim();
-          const type = cells[1].textContent.trim();
-          const ip = cells[2].querySelector('code')?.textContent.trim() || '';
-          const ttlEl = row.querySelector('[data-ttl]');
+        if (cells.length >= 4) {
+          const domain = cells[1].textContent.trim();
+          const type = cells[2].textContent.trim();
+          const ip = cells[3].querySelector('code')?.textContent.trim() || '';
           record = { id: recordId, domain, type, ip, ttl: 600 };
         }
         break;
@@ -188,7 +302,6 @@ window.onDdnsTypeChange = () => {
   if (!ipv6PrefixEl) return;
   if (type === 'AAAA') {
     ipv6PrefixEl.style.display = 'block';
-    // 尝试从当前公网 IPv6 获取 /64 前缀
     tryLoadIpv6Prefix();
   } else {
     ipv6PrefixEl.style.display = 'none';
@@ -200,18 +313,16 @@ window.tryLoadIpv6Prefix = async () => {
   const prefixEl = document.getElementById('ddnsIpv6PrefixValue');
   if (!inputEl || !prefixEl) return;
   try {
-    // 先尝试从已缓存的公网 IPv6 获取
     const ipDisplay = document.getElementById('ddnsPublicIp');
     const ipv6Text = ipDisplay?.innerText || '';
     const ipv6Match = ipv6Text.match(/IPv6:\s*([a-fA-F0-9:]+)/);
     if (ipv6Match && ipv6Match[1].includes(':')) {
       const parts = ipv6Match[1].split(':');
-      const prefix = parts.slice(0, 4).join(':');  // /64 = first 4 groups
+      const prefix = parts.slice(0, 4).join(':');
       prefixEl.textContent = prefix;
       if (!inputEl.value) inputEl.value = prefix + '::';
       return;
     }
-    // 如果没有缓存，从服务器获取
     const res = await Api.get('/ddns/ipv6');
     if (res.success && res.data?.ip) {
       const parts = res.data.ip.split(':');
@@ -274,7 +385,6 @@ window.showAddDdnsModal = () => {
     if (res.success) {
       Utils.notify(res.message, 'success');
       loadDdns();
-      // 添加后自动刷新
       setTimeout(() => Api.post('/ddns/refresh'), 1500);
     } else {
       Utils.notify(res.message || '添加失败', 'error');
@@ -287,8 +397,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshBtn = document.getElementById('btnDdnsRefresh');
   const addBtn = document.getElementById('btnDdnsAdd');
   const logBtn = document.getElementById('btnDdnsLog');
+  const selectAll = document.getElementById('ddnsSelectAll');
 
-  // 在工具栏右侧插入 IP 显示
   const toolbar = document.querySelector('#page-ddns .page-toolbar');
   if (toolbar && !document.getElementById('ddnsPublicIp')) {
     const ipSpan = document.createElement('span');
@@ -298,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toolbar.appendChild(ipSpan);
   }
 
+  if (selectAll) selectAll.onchange = ddnsToggleSelectAll;
   if (refreshBtn) refreshBtn.addEventListener('click', refreshAllDdns);
   if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
   if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ddns', 'DDNS'));

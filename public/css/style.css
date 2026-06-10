@@ -896,3 +896,6 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
   .stat-card { padding: 22px 20px; }
   .settings-card { padding: 24px; }
 }
+/* 批量操作栏 */
+.batch-bar { display: flex; align-items: center; gap: 8px; }
+.batch-bar .btn-sm { padding: 4px 12px; font-size: 12px; }

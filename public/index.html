@@ -81,7 +81,7 @@
         </a>
       </nav>
       <div class="sidebar-footer">
-        <span id="version">v1.16.0</span>
+        <span id="version">v1.16.1</span>
         <span id="uptime">--</span>
         <a href="#" id="btnLogout" title="退出登录" style="color:var(--text-secondary);text-decoration:none;font-size:13px;margin-top:6px;display:block;opacity:0.6;text-align:center">🚪 退出登录</a>
       </div>
@@ -123,10 +123,17 @@
             <button class="btn btn-success" id="btnDdnsAdd">+ 添加解析</button>
             <button class="btn btn-secondary" style="margin-left:8px" id="btnDdnsLog">📋 日志</button>
           </div>
+          <div id="ddnsBatchBar" class="batch-bar" style="display:none;margin-bottom:8px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;align-items:center;gap:8px">
+            <span id="ddnsBatchCount" style="font-size:13px;color:var(--text-secondary)">已选 0 项</span>
+            <button class="btn btn-sm btn-success" onclick="batchToggleDdns(true)">▶ 批量启用</button>
+            <button class="btn btn-sm btn-secondary" onclick="batchToggleDdns(false)">⏸ 批量停用</button>
+            <button class="btn btn-sm btn-danger" onclick="batchDeleteDdns()">🗑 批量删除</button>
+          </div>
           <div class="table-wrapper">
             <table class="data-table" id="ddnsTable">
               <thead>
                 <tr>
+                  <th style="width:36px"><input type="checkbox" id="ddnsSelectAll" title="全选/取消全选"></th>
                   <th>域名</th>
                   <th>类型</th>
                   <th>当前 IP</th>
@@ -137,7 +144,7 @@
                 </tr>
               </thead>
               <tbody id="ddnsTbody">
-                <tr class="empty-row"><td colspan="7">暂无配置</td></tr>
+                <tr class="empty-row"><td colspan="8">暂无配置</td></tr>
               </tbody>
             </table>
           </div>

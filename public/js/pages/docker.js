@@ -69,8 +69,10 @@ function renderDockerPage(data) {
       <td><small>${c.ports.map(p => {
   var raw = p.raw || (p.host && p.container ? p.host + ':' + p.container : '');
   var hostPort = p.host || (p.raw ? p.raw.split(':')[0] : '');
-  if (hostPort && hostPort !== '0.0.0.0') {
-    return '<a href="http://' + hostPort + ':' + p.container + '" target="_blank" style="color:var(--brand-hover);text-decoration:none" title="打开服务">' + raw + ' 🔗</a>';
+  // hostPort 可能是端口号(数字)或IP地址，统一用当前主机名构造链接
+  var serverHost = window.location.hostname;
+  if (hostPort && String(hostPort) !== '0.0.0.0') {
+    return '<a href="http://' + serverHost + ':' + p.container + '" target="_blank" style="color:var(--brand-hover);text-decoration:none" title="打开服务">' + raw + ' 🔗</a>';
   }
   return raw || '--';
 }).join(', ') || '--'}</small></td>

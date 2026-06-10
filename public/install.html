@@ -491,8 +491,7 @@ let systemInstalled = false;
     const res = await fetch('/api/setup/status');
     const data = await res.json();
     if (data.success && data.data && data.data.installed) {
-      systemInstalled = true;
-      // 检查登录状态，已登录→仪表盘，未登录→登录页
+      // 系统已安装，立即跳转，不显示中间页面
       var token = localStorage.getItem('hsp_token');
       if (token) {
         try {
@@ -504,17 +503,9 @@ let systemInstalled = false;
           }
         } catch(e) {}
       }
-      document.querySelector('.container .card').innerHTML = `
-        <div class="brand">
-          <div class="brand-icon">✅</div>
-          <h1>系统已安装</h1>
-          <p>服务器管理面板已配置完成</p>
-        </div>
-        <button class="btn btn-primary" onclick="window.location.href='/login.html'" style="margin-top:20px">🔑 前往登录</button>
-      `;
-      document.querySelector('.steps')?.style.setProperty('display', 'none');
+      window.location.href = '/login.html';
     }
-  } catch(e) { /* 网络错误忽略 */ }
+  } catch(e) { /* 网络错误，允许继续安装 */ }
 })();
 
 function selectDbMode(mode) {

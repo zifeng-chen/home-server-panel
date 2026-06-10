@@ -8,9 +8,19 @@ const path = require('path');
 // 检查是否已安装
 function isInstalled() {
   try {
+    // 方式1：检查 .env 文件
     const envPath = path.join(__dirname, '..', '..', '.env');
-    const env = fs.readFileSync(envPath, 'utf-8');
-    return env.includes('ADMIN_PASS=') && !env.includes('ADMIN_PASS=admin123');
+    if (fs.existsSync(envPath)) {
+      const env = fs.readFileSync(envPath, 'utf-8');
+      if (env.includes('ADMIN_PASS=') && !env.includes('ADMIN_PASS=admin123')) return true;
+    }
+    // 方式2：检查 SQLite 数据库是否存在（无 .env 的部署场景，如 iStoreOS）
+    const dbPath = path.join(__dirname, '..', '..', 'data', 'panel.db');
+    if (fs.existsSync(dbPath)) return true;
+    // 方式3：检查 hsp.db（别名）
+    const altDbPath = path.join(__dirname, '..', '..', 'data', 'hsp.db');
+    if (fs.existsSync(altDbPath)) return true;
+    return false;
   } catch (e) {
     return false;
   }

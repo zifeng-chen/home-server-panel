@@ -149,14 +149,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Auth 中间件
-app.use(auth.middleware());
-
-// API 速率限制（防批量抓取，SSE 流式接口除外）
+// API 速率限制（防批量抓取，必须在认证前运行以拦截未认证请求）
 app.use('/api/', (req, res, next) => {
   if (req.path.includes('/stream')) return next();
   apiRateLimit(req, res, next);
 });
+
+// Auth 中间件
+app.use(auth.middleware());
 
 // 操作日志中间件（仅在认证后记录）
 app.use(logService.middleware());

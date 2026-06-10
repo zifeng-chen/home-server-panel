@@ -48,6 +48,40 @@
 
 ---
 
+## v1.15.0 - 2026-06-10 14:50
+
+### 🔒 全面安全加固 — 防批量抓取/防数据泄露
+
+**API 速率限制：**
+- ✅ 内存滑动窗口限速器（零外部依赖）
+- ✅ 全局 API 120次/分钟/IP，SSE 流式接口不限制
+- ✅ 昂贵操作 20次/分钟（端口扫描/Docker查询/DB导出/SSL签发/定时任务/Nginx安装）
+- ✅ 响应头含 X-RateLimit-Limit/Remaining/Reset
+
+**安全响应头：**
+- ✅ CSP (Content-Security-Policy) 阻止 XSS 和外部脚本注入
+- ✅ HSTS 防止 HTTPS 降级攻击
+- ✅ X-Permitted-Cross-Domain-Policies: none
+- ✅ Cross-Origin-Resource-Policy: same-origin
+- ✅ Permissions-Policy 禁用摄像头/麦克风/地理定位
+
+**数据泄露防护：**
+- ✅ 隐藏 Express 指纹 (app.disable('x-powered-by'))
+- ✅ 请求体大小限制 1MB（防 DoS）
+- ✅ 系统信息脱敏：hostname/arch/nodeVersion/panelVersion 移除
+
+**Cookie 安全：**
+- ✅ httpOnly + sameSite=strict + 自适应 secure（HTTPS 时启用）
+
+**WebSocket 认证升级：**
+- ✅ Token 从 URL query → Cookie（防日志/代理泄露）
+- ✅ 后端 Cookie + URL 双重验证（兼容旧版）
+
+**仪表盘适配：**
+- ✅ dashboard.js 兼容已脱敏的 system/info 字段
+
+---
+
 # 更新日志 (CHANGELOG)
 
 本项目所有更新迭代均记录于此，时间戳精确到秒。

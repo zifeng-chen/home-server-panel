@@ -172,6 +172,14 @@ body {
   margin: 0 auto;
   width: 100%;
 }
+/* 2K 屏幕 */
+@media (min-width: 1800px) {
+  .main-content { max-width: 1600px; padding: 28px 36px; }
+}
+/* 4K 屏幕 */
+@media (min-width: 2560px) {
+  .main-content { max-width: 2200px; padding: 32px 48px; }
+}
 .page { }
 .page.hidden { display: none; }
 .page h1 {
@@ -207,6 +215,14 @@ body {
 /* 1080P: 确保 5 列 */
 @media (min-width: 1400px) {
   .stats-grid { grid-template-columns: repeat(5, 1fr); }
+}
+/* 2K: 7 列 */
+@media (min-width: 1800px) {
+  .stats-grid { grid-template-columns: repeat(7, 1fr); }
+}
+/* 4K: 8 列 */
+@media (min-width: 2560px) {
+  .stats-grid { grid-template-columns: repeat(8, 1fr); }
 }
 .stat-card {
   background: var(--bg-card);
@@ -435,6 +451,14 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 /* 1080P: 3 列 */
 @media (min-width: 1400px) {
   .settings-grid { grid-template-columns: repeat(3, 1fr); }
+}
+/* 2K: 4 列 */
+@media (min-width: 1800px) {
+  .settings-grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* 4K: 5 列 */
+@media (min-width: 2560px) {
+  .settings-grid { grid-template-columns: repeat(5, 1fr); }
 }
 .settings-card {
   background: var(--bg-card);
@@ -844,3 +868,31 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* ==================== 2K / 4K 自适应 ==================== */
+
+/* 2K (2560×1440): 更大内容区域 + 更多列 */
+@media (min-width: 1800px) {
+  /* 监控 3 列 */
+  .monitor-grid { grid-template-columns: repeat(3, 1fr); }
+  /* Nginx 分栏 35:65 */
+  .split-layout { grid-template-columns: 1fr 2fr; }
+  /* 字体微调 */
+  .page h1 { font-size: 24px; }
+  .stat-value { font-size: 20px; }
+  .stat-label { font-size: 12px; }
+}
+
+/* 4K (3840×2160): 全屏沉浸 */
+@media (min-width: 2560px) {
+  /* 监控 4 列 */
+  .monitor-grid { grid-template-columns: repeat(4, 1fr); }
+  /* Nginx 分栏 30:70 */  
+  .split-layout { grid-template-columns: 1fr 3fr; }
+  /* 进一步放大字体 */
+  .page h1 { font-size: 26px; }
+  .stat-value { font-size: 22px; }
+  .stat-label { font-size: 13px; }
+  .stat-card { padding: 22px 20px; }
+  .settings-card { padding: 24px; }
+}

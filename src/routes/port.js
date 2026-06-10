@@ -38,4 +38,17 @@ router.get('/check/:port', async (req, res) => {
   }
 });
 
+
+// 终止端口进程
+router.post('/kill/:port', (req, res) => {
+  portService.killPort(req.params.port).then(r => res.json(r));
+});
+
+// 执行启动命令（恢复端口服务）
+router.post('/start', (req, res) => {
+  const { command } = req.body;
+  if (!command) return res.json({ success: false, message: '请输入启动命令' });
+  portService.startService(command).then(r => res.json(r));
+});
+
 module.exports = router;

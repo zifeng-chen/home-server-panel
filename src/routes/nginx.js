@@ -229,4 +229,17 @@ router.post('/install', async (req, res) => {
   }
 });
 
+
+// 手动部署项目到 Nginx
+router.post('/manual-deploy', async (req, res) => {
+  try {
+    var { name, domain, target, websocket } = req.body;
+    if (!name || !domain || !target) return res.json({ success: false, message: '参数不完整' });
+    var result = await nginxService.manualDeploy({ name, domain, target, websocket: !!websocket });
+    res.json(result);
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

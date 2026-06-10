@@ -66,7 +66,14 @@ function renderDockerPage(data) {
       <td><strong>${c.name}</strong></td>
       <td><small>${c.image}</small></td>
       <td><span class="status-dot" style="background:${STATE_COLORS[c.state] || 'var(--text-secondary)'}"></span>${STATE_TEXT[c.state] || c.state}</td>
-      <td><small>${c.ports.map(p => p.raw || `${p.host}:${p.container}`).join(', ') || '--'}</small></td>
+      <td><small>${c.ports.map(p => {
+  var raw = p.raw || (p.host && p.container ? p.host + ':' + p.container : '');
+  var hostPort = p.host || (p.raw ? p.raw.split(':')[0] : '');
+  if (hostPort && hostPort !== '0.0.0.0') {
+    return '<a href="http://' + hostPort + ':' + p.container + '" target="_blank" style="color:var(--brand-hover);text-decoration:none" title="打开服务">' + raw + ' 🔗</a>';
+  }
+  return raw || '--';
+}).join(', ') || '--'}</small></td>
       <td><small>${c.status}</small></td>
       <td class="action-cell">
         ${c.state !== 'running' ? `<button class="btn btn-sm btn-success" onclick="dockerAction('${c.name}','start')" title="启动">▶</button>` : ''}

@@ -382,4 +382,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 默认隐藏操作按钮
   updateActionButtons(false);
+
+  // 手动部署按钮
+  var manualBtn = document.getElementById('btnNginxManual');
+  if (manualBtn) manualBtn.addEventListener('click', showManualDeployModal);
 });
+
+// 手动部署 Nginx 项目
+window.showManualDeployModal = function() {
+  var body = '<div class="form-group"><label>项目名称</label><input id="manualName" class="form-input" placeholder="例如：my-app"></div>' +
+    '<div class="form-group"><label>域名</label><input id="manualDomain" class="form-input" placeholder="例如：app.example.com"></div>' +
+    '<div class="form-group"><label>目标地址</label><input id="manualTarget" class="form-input" placeholder="例如：http://127.0.0.1:8080"></div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:6px"><input id="manualWs" type="checkbox"> 🔌 WebSocket 支持</label></div>';
+  Utils.openModal('🔧 手动部署项目', body,
+    '<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>' +
+    '<button class="btn btn-primary" id="manualDeployBtn">🚀 部署</button>');
+  document.getElementById('manualDeployBtn').addEventListener('click', function() {
+    var name = document.getElementById('manualName').value.trim();
+    var domain = document.getElementById('manualDomain').value.trim();
+    var target = document.getElementById('manualTarget').value.trim();
+    var ws = document.getElementById('manualWs').checked;
+    if (!name || !domain || !target) { Utils.notify('请填写完整信息', 'error'); return; }
+    Api.post('/nginx/manual-deploy', { name: name, domain: domain, target: target, websocket: ws }).then(function(res) {
+      if (res.success) {
+        Utils.notify(res.message || '部署成功', 'success');
+        Utils.closeModal();
+        loadNginx();
+      }
+    }).catch(function(err) {
+      Utils.notify('部署失败: ' + err.message, 'error');
+    });
+  });
+};

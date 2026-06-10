@@ -492,14 +492,25 @@ let systemInstalled = false;
     const data = await res.json();
     if (data.success && data.data && data.data.installed) {
       systemInstalled = true;
+      // 检查登录状态，已登录→仪表盘，未登录→登录页
+      var token = localStorage.getItem('hsp_token');
+      if (token) {
+        try {
+          var authRes = await fetch('/api/auth/status', { headers: { 'x-auth-token': token } });
+          var authData = await authRes.json();
+          if (authData.authenticated) {
+            window.location.href = '/';
+            return;
+          }
+        } catch(e) {}
+      }
       document.querySelector('.container .card').innerHTML = `
         <div class="brand">
           <div class="brand-icon">✅</div>
           <h1>系统已安装</h1>
-          <p>服务器管理面板已配置完成，无需重复安装</p>
+          <p>服务器管理面板已配置完成</p>
         </div>
         <button class="btn btn-primary" onclick="window.location.href='/login.html'" style="margin-top:20px">🔑 前往登录</button>
-        <button class="btn btn-secondary" onclick="window.location.href='/'" style="margin-top:10px;width:100%">🏠 前往仪表盘</button>
       `;
       document.querySelector('.steps')?.style.setProperty('display', 'none');
     }
@@ -709,7 +720,23 @@ function showError(msg) {
 }
 
 function goToPanel() {
-  window.location.href = '/login.html';
+  // 安装完成后，先发一次登录请求让后端种Cookie
+  const adminUser = document.getElementById('adminUser').value.trim();
+  const adminPass = document.getElementById('adminPass').value;
+  fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: adminUser, password: adminPass })
+  }).then(r => r.json()).then(data => {
+    if (data.success && data.token) {
+      localStorage.setItem('hsp_token', data.token);
+      window.location.href = '/';
+    } else {
+      window.location.href = '/login.html';
+    }
+  }).catch(() => {
+    window.location.href = '/login.html';
+  });
 }
 </script>
 </body>

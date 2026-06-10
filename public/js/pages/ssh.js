@@ -198,18 +198,22 @@ async function loadSSH() {
 
   function connectWebSocket(wsUrl, sshOpts) {
     ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';  // 必须在 onmessage 之前设置
 
     ws.onerror = () => {
       connectStatus.innerHTML = '<span style="color:#f87171;">❌ WebSocket 连接失败，请检查服务是否运行</span>';
       btnConnect.disabled = false;
+      if (term) { term.write('\r\n[WebSocket 连接失败]\r\n'); }
     };
 
     ws.onclose = (e) => {
-      if (termStatus) termStatus.innerHTML = '<span style="color:#64748b;">⏹️ 连接已关闭</span>';
+      if (termStatus) termStatus.innerHTML = '<span style="color:#64748b;">⏹️ 连接已关闭 (code: ' + e.code + ')</span>';
       btnConnect.disabled = false;
+      if (term && e.code !== 1000) { term.write('\r\n[连接已关闭]\r\n'); }
     };
 
     ws.onopen = () => {
+      connectStatus.innerHTML = '<span style="color:#94a3b8;">⏳ 正在认证并连接 SSH...</span>';
       // 发送 SSH 连接请求
       ws.send(JSON.stringify({
         type: 'connect',
@@ -221,18 +225,19 @@ async function loadSSH() {
     };
 
     ws.onmessage = (event) => {
-      // 判断是 JSON 协议消息还是二进制终端数据
-      try {
-        const msg = JSON.parse(event.data);
-        handleWsMessage(msg);
-      } catch (e) {
-        // 原始终端数据 → 写入终端
-        if (term) term.write(event.data);
+      // JSON 协议消息
+      if (typeof event.data === 'string' && event.data.startsWith('{')) {
+        try {
+          const msg = JSON.parse(event.data);
+          handleWsMessage(msg);
+        } catch (e) {
+          if (term) term.write(event.data);
+        }
+      } else {
+        // 二进制或原始终端数据 → 写入终端
+        if (term) term.write(typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data));
       }
     };
-
-    // 二进制终端数据
-    ws.binaryType = 'arraybuffer';
   }
 
   function handleWsMessage(msg) {

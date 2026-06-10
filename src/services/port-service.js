@@ -208,6 +208,35 @@ class PortService {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
   }
+  // 终止端口进程
+  async killPort(port) {
+    return new Promise((resolve) => {
+      const { execSync } = require("child_process");
+      try {
+        const result = execSync("lsof -iTCP:" + port + " -sTCP:LISTEN -nP -t 2>/dev/null", { timeout: 5000, encoding: "utf-8" }).trim();
+        if (!result) return resolve({ success: false, message: "端口 " + port + " 未找到监听进程" });
+        const pids = result.split("\n").filter(Boolean);
+        for (const pid of pids) {
+          try { execSync("kill -9 " + pid + " 2>/dev/null", { timeout: 3000 }); } catch(e) {}
+        }
+        resolve({ success: true, message: "端口 " + port + " 已终止 (PID: " + pids.join(", ") + ")" });
+      } catch (err) {
+        resolve({ success: false, message: "终止失败: " + err.message });
+      }
+    });
+  }
+
+  // 启动命令执行（恢复端口服务）
+  async startService(command) {
+    return new Promise((resolve) => {
+      const { exec } = require("child_process");
+      exec(command, { timeout: 10000 }, (err, stdout, stderr) => {
+        if (err) return resolve({ success: false, message: "执行失败: " + err.message });
+        resolve({ success: true, message: "命令已执行", output: (stdout || stderr || "").slice(0, 500) });
+      });
+    });
+  }
+
 }
 
 module.exports = new PortService();

@@ -61,7 +61,7 @@ async function loadPort() {
           <td><span style="color:${statusColor};" class="status-badge ${isUdp ? 'offline' : 'online'}">${p.status}</span></td>
           ${p.pid ? `<td><code>PID ${p.pid}</code></td>` : '<td>--</td>'}
           <td>
-            <button class="btn btn-sm" onclick="checkSinglePort(${p.port})">🔍 检测</button>
+            ${(isSystem || isSelf || isUdp) ? '<button class="btn btn-sm" onclick="checkSinglePort(${p.port})">🔍 检测</button>' : '<button class="btn btn-sm btn-danger" onclick="killPort(${p.port}, \'${p.process}\')">⏹ 终止</button> <button class="btn btn-sm btn-success" onclick="startPort(${p.port}, \'${p.process}\', \'${p.description}\')">▶ 恢复</button>'}
           </td>
         </tr>
       `;
@@ -106,14 +106,29 @@ document.addEventListener('DOMContentLoaded', () => {
     toolbar.appendChild(statsSpan);
   }
 
-  // 刷新按钮
-  if (toolbar && !document.getElementById('btnPortRefresh')) {
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-secondary';
-    btn.id = 'btnPortRefresh';
-    btn.textContent = '🔄 刷新扫描';
-    btn.style.marginLeft = '8px';
-    btn.addEventListener('click', reScanPorts);
-    toolbar.appendChild(btn);
-  }
 });
+// 终止端口进程
+window.killPort = async (port, process) => {
+  Utils.confirm('终止端口进程', `确定要终止端口 ${port} 的进程 "${process}" 吗？`, async () => {
+    const res = await Api.post(`/port/kill/${port}`);
+    if (res.success) {
+      Utils.notify(res.message || `端口 ${port} 已终止`, 'success');
+      setTimeout(loadPort, 1000);
+    } else {
+      Utils.notify(res.message || '终止失败', 'error');
+    }
+  });
+};
+
+// 恢复端口服务（需要知道启动命令，简单场景用 systemctl）
+window.startPort = async (port, process, desc) => {
+  const cmd = prompt(`恢复端口 ${port} (${desc})\n请输入启动命令:`, desc ? `systemctl start ${desc.toLowerCase().replace(/ /g, '-')}` : '');
+  if (!cmd) return;
+  const res = await Api.post('/port/start', { port, command: cmd });
+  if (res.success) {
+    Utils.notify(res.message || '启动命令已执行', 'success');
+    setTimeout(loadPort, 1000);
+  } else {
+    Utils.notify(res.message || '命令执行失败', 'error');
+  }
+};

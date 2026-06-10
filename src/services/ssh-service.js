@@ -58,7 +58,7 @@ class SSHService extends EventEmitter {
       this._connections.delete(sessionId);
     });
 
-    client.connect({ host, port, username, password, readyTimeout: 10000 });
+    client.connect({ host, port, username, password, readyTimeout: 10000, tryKeyboard: true });
 
     return sessionId;
   }

@@ -664,6 +664,36 @@ class NginxService {
 
     return { success: true, message: 'Nginx 配置已部署并生效', path: configFile };
   }
+  // 手动部署项目（Nginx server block）
+  async manualDeploy(opts) {
+    const fs = require("fs"), path = require("path");
+    const confDir = this._configDir || "/etc/nginx/conf.d";
+    if (!fs.existsSync(confDir)) {
+      return { success: false, message: "Nginx 配置目录 " + confDir + " 不存在，请先安装 Nginx" };
+    }
+    const wsSection = opts.websocket ? "\n    # WebSocket 支持\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection \"upgrade\";\n    proxy_http_version 1.1;" : "";
+    const config = "server {\n" +
+      "    listen 80;\n" +
+      "    server_name " + opts.domain + ";\n" +
+      "\n" +
+      "    location / {\n" +
+      "        proxy_pass " + opts.target + ";\n" +
+      "        proxy_set_header Host $host;\n" +
+      "        proxy_set_header X-Real-IP $remote_addr;\n" +
+      "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n" +
+      "        proxy_set_header X-Forwarded-Proto $scheme;" + wsSection + "\n" +
+      "    }\n" +
+      "}\n";
+    const filePath = path.join(confDir, opts.name.replace(/[^a-zA-Z0-9_-]/g, "-") + ".conf");
+    fs.writeFileSync(filePath, config);
+    try {
+      const reloadRes = this.reload();
+      return { success: true, message: "项目已部署到 " + filePath + (reloadRes.success ? " 并重载生效" : " (请手动重载)"), filePath: filePath };
+    } catch (e) {
+      return { success: true, message: "配置已写入 " + filePath + "，重载失败: " + e.message, filePath: filePath };
+    }
+  }
+
 }
 
 module.exports = new NginxService();

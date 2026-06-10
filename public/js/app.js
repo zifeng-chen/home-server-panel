@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initLogout();
   updateClock();
-  setInterval(updateClock, 1000);
+  setInterval(function() { updateClock(); updateUptime(); }, 1000);
   loadDashboard();
   loadSettings();
 });
@@ -61,6 +61,19 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateClock() {
   const el = document.getElementById('currentTime');
   if (el) el.textContent = formatTime(new Date());
+}
+
+// 侧边栏运行时间实时更新（每秒）
+let _uptimeStart = null;
+function updateUptime() {
+  if (_uptimeStart == null && window._liveUptime != null) {
+    _uptimeStart = Date.now() - window._liveUptime * 1000;
+  }
+  if (_uptimeStart != null) {
+    const sec = Math.floor((Date.now() - _uptimeStart) / 1000);
+    const el = document.getElementById('uptime');
+    if (el) el.textContent = formatUptime(sec);
+  }
 }
 
 // 侧边栏折叠

@@ -231,6 +231,7 @@ async function _dashboardMonitorFetch() {
     // 侧边栏运行时间实时更新
     var upEl = document.getElementById('uptime');
     if (upEl && live.uptime) upEl.textContent = _dmFmtUptime(live.uptime);
+    window._liveUptime = live.uptime;  // 供 app.js updateUptime() 读取
 
     // 系统信息
     var iEl = document.getElementById('dmInfo');

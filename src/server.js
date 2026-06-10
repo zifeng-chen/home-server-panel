@@ -36,6 +36,9 @@ const dbService = require('./services/db-service');
 const app = express();
 const PORT = process.env.SERVER_PORT || 3456;
 
+// 隐藏 Express 指纹
+app.disable('x-powered-by');
+
 // 永久缓存爆破：每次启动生成唯一版本号，注入 index.html
 // 浏览器端所有 JS/CSS URL 携带此版本号，重启即刷新缓存
 const BUILD_ID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -50,12 +53,69 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('X-Download-Options', 'noopen');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  // CSP: 允许本站 + xterm CDN + 内联样式(骨架屏/全局CSS)
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "img-src 'self' data:; " +
+    "font-src 'self' https://cdn.jsdelivr.net; " +
+    "connect-src 'self' ws: wss: https://api.map.baidu.com; " +
+    "frame-ancestors 'self'"
+  );
+  // HSTS: 如通过 HTTPS 访问则启用
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 
-// Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parser — 限制大小防 DoS
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ==================== API 速率限制 ====================
+const rateLimiter = (function() {
+  const windows = new Map();
+  const CLEANUP_MS = 60000;
+  let lastCleanup = Date.now();
+
+  return function createLimiter(maxReqs, windowMs) {
+    return function(req, res, next) {
+      const now = Date.now();
+      if (now - lastCleanup > CLEANUP_MS) {
+        lastCleanup = now;
+        for (const [k, v] of windows) {
+          if (now > v.resetAt) windows.delete(k);
+        }
+      }
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+      let win = windows.get(ip);
+      if (!win || now > win.resetAt) {
+        win = { count: 0, resetAt: now + windowMs };
+        windows.set(ip, win);
+      }
+      win.count++;
+      res.setHeader('X-RateLimit-Limit', maxReqs);
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, maxReqs - win.count));
+      res.setHeader('X-RateLimit-Reset', Math.ceil(win.resetAt / 1000));
+      if (win.count > maxReqs) {
+        return res.status(429).json({
+          success: false, code: 'RATE_LIMITED',
+          message: '请求过于频繁，请' + Math.ceil((win.resetAt - now) / 1000) + '秒后重试',
+          retryAfter: Math.ceil((win.resetAt - now) / 1000)
+        });
+      }
+      next();
+    };
+  };
+})();
+const apiRateLimit = rateLimiter(120, 60000);
+const slowRateLimit = rateLimiter(20, 60000);
 
 // Auth 路由（无需认证）
 const authRouter = require('./routes/auth');
@@ -91,6 +151,12 @@ app.use((req, res, next) => {
 
 // Auth 中间件
 app.use(auth.middleware());
+
+// API 速率限制（防批量抓取，SSE 流式接口除外）
+app.use('/api/', (req, res, next) => {
+  if (req.path.includes('/stream')) return next();
+  apiRateLimit(req, res, next);
+});
 
 // 操作日志中间件（仅在认证后记录）
 app.use(logService.middleware());
@@ -149,6 +215,15 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     }
   }
 }));
+
+// 昂贵操作更严格限速
+app.use('/api/port', slowRateLimit);
+app.use('/api/docker/stats', slowRateLimit);
+app.use('/api/docker/containers', slowRateLimit);
+app.use('/api/db/export', slowRateLimit);
+app.use('/api/cert/issue', slowRateLimit);
+app.use('/api/cron', slowRateLimit);
+app.use('/api/nginx/install', slowRateLimit);
 
 // API 路由
 app.use('/api/ddns', require('./routes/ddns'));

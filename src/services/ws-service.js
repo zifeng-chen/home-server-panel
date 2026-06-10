@@ -12,12 +12,15 @@ function init(httpServer) {
   wss = new WebSocketServer({ server: httpServer, path: '/ws/ssh' });
 
   wss.on('connection', (ws, req) => {
-    // URL 格式: /ws/ssh?token=xxx
+    // 认证：优先从 Cookie 读取，fallback 到 URL 参数（兼容旧版）
     const url = new URL(req.url, 'http://localhost');
-    const token = url.searchParams.get('token');
+    const cookieToken = (req.headers.cookie || '').split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('hsp_token='))
+      ?.split('=')[1];
+    const token = cookieToken || url.searchParams.get('token');
 
-    // 认证
-    if (!auth.verifyToken(token)) {
+    if (!token || !auth.verifyToken(token)) {
       ws.send(JSON.stringify({ type: 'error', message: '未登录或 token 已过期' }));
       ws.close(4001, 'Unauthorized');
       return;

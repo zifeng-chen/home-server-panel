@@ -2,12 +2,11 @@ const express = require('express');
 const os = require('os');
 const router = express.Router();
 
-// GET /api/system/info - 系统信息
+// GET /api/system/info - 系统信息（脱敏）
 router.get('/info', (req, res) => {
   const info = {
-    hostname: os.hostname(),
+    hostname: os.hostname().replace(/[a-zA-Z0-9]/g, '*'),
     platform: os.platform(),
-    arch: os.arch(),
     cpus: os.cpus().length,
     memory: {
       total: Math.round(os.totalmem() / (1024 * 1024 * 1024) * 100) / 100,
@@ -15,9 +14,8 @@ router.get('/info', (req, res) => {
     },
     uptime: Math.floor(os.uptime()),
     loadavg: os.loadavg(),
-    nodeVersion: process.version,
-    modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH'],
-    panelVersion: '1.12.0+' + (req.app.locals.buildId || '0')
+    modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']
+    // arch, nodeVersion, panelVersion removed: 防服务器指纹识别
   };
   res.json({ success: true, data: info });
 });

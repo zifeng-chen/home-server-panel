@@ -172,8 +172,7 @@ function _sshConnect(conn, reconnecting) {
   _sshEnsureXterm().then(function() {
     _sshCreateTerm();
 
-    var token = localStorage.getItem('hsp_token') || '';
-    var wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/ssh?token=' + token;
+    var wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/ssh';
     st.ws = new WebSocket(wsUrl);
     st.ws.binaryType = 'arraybuffer';
 

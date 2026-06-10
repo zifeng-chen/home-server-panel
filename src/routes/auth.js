@@ -12,10 +12,13 @@ router.post('/login', (req, res) => {
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
   const result = auth.verifyLogin(username, password, clientIp);
   if (result.success) {
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('hsp_token', result.token, {
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: 'lax'
+      secure: isSecure,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000
     });
 
     return res.json({

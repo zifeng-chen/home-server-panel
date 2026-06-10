@@ -49,7 +49,7 @@ async function loadDashboard() {
     const sys = (info && info.data) || {};
     const up = uptime && uptime.success ? formatUptime(uptime.data?.uptime || 0) : '加载失败';
     const mem = sys.memory ? sys.memory.free + 'GB / ' + sys.memory.total + 'GB' : '--';
-    const cpu = (sys.cpus || '--') + ' 核 (' + (sys.arch || '--') + ')';
+    const cpu = (sys.cpus || '--') + ' 核';
     const loadStr = (sys.loadavg || []).slice(0, 2).map(function(n) { return n.toFixed(1); }).join(' / ') || '--';
 
     // 各模块状态

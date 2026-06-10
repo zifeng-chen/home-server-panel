@@ -1,3 +1,53 @@
+## v1.13.2 - 2026-06-10 13:42
+
+### 🐛 安装引导绕过 + Docker端口链接修复
+
+**安装引导绕过:**
+- ✅ isInstalled() 增加 SQLite 数据库文件检测（.env → panel.db → hsp.db 三层fallback）
+- ✅ 检测到已安装后直接跳转（有token→仪表盘，无token→登录页），不再显示中间页
+
+**Docker 端口链接：**
+- ✅ 修复端口链接跳转错误（端口号被当主机名→改用 window.location.hostname）
+
+**PM2 守护进程修复：**
+- ✅ _findPm2() 多路径探测（NVM/npm-global/系统目录），_pm2(cmd)封装统一走绝对路径
+- ✅ install() 后自动 _refreshBin() 刷新 pm2 路径
+- ✅ 修复 iStoreOS PATH 不含 npm-global/bin 导致 pm2 命令静默失败
+
+**七项修复 (commit 8273c9c)：**
+- ✅ 安装引导完成后自动跳转（URL跳转）
+- ✅ 侧边栏运行时间秒级刷新
+- ✅ 端口管理：非系统端口显示终止/恢复按钮
+- ✅ 端口管理去重复刷新按钮
+- ✅ Nginx 手动部署按钮（删除代理时同步清理Nginx配置）
+- ✅ SSH 终端：binaryType='arraybuffer'移入onmessage前，TextDecoder解码
+- ✅ Docker 容器端口可点击链接
+
+---
+
+## v1.14.0 - 2026-06-10 13:55
+
+### ⚡ 页面加载速度优化 + 💻 SSH 终端 V2
+
+**加载速度优化:**
+- ✅ 全部 13 个 script 标签添加 `defer` → 不阻塞 HTML 解析，并行下载
+- ✅ 仪表盘/监控区骨架屏 shimmer 动画（纯 CSS，静态 HTML 即时渲染）
+- ✅ 页面瞬间显示骨架，数据加载后替换真实内容
+
+**SSH 终端 V2 完全重写：**
+- ✅ 左右分栏布局：左侧连接历史 + 右侧终端窗口
+- ✅ 连接记录 localStorage 持久化（密码仅本地存储）
+- ✅ 全局状态 `window.__SSH` 跨页面保持 WebSocket 连接
+- ✅ 3 分钟无操作自动断连 + 模糊蒙层 + 点击重连
+- ✅ 终端深色主题 (#0a0e1a) 与页面背景区分
+- ✅ 头部状态指示（绿点/红点）+ 断开按钮
+
+**代码清理:**
+- ✅ 移除死代码 page-monitor（监控已集成到仪表盘）
+- ✅ 版本号统一 v1.14.0（package.json, app.js, index.html）
+
+---
+
 # 更新日志 (CHANGELOG)
 
 本项目所有更新迭代均记录于此，时间戳精确到秒。

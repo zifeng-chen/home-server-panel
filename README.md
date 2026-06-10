@@ -1,6 +1,6 @@
 # Home Server Panel - 家庭服务器运维管理面板
 
-**版本**: v1.13.1 | **技术栈**: Node.js + Express + SQLite + 原生 HTML/CSS/JS | **许可**: MIT
+**版本**: v1.14.0 | **技术栈**: Node.js + Express + SQLite + 原生 HTML/CSS/JS | **许可**: MIT
 
 轻量级家庭服务器运维管理面板，支持 SQLite/MySQL 双模式存储。支持群晖 (Synology)、绿联 (UGREEN)、iStoreOS、Linux/UNIX 系统。
 

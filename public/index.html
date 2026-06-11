@@ -387,51 +387,59 @@
             </div>
           </div>
 
-          <!-- 操作日志 -->
+          <!-- 操作日志 + 诊断日志（左右分栏） -->
           <div class="settings-card" style="margin-top:20px;">
-            <h3 style="display:flex;justify-content:space-between;align-items:center;">
-              📋 操作日志
-              <span style="display:flex;gap:8px;align-items:center;">
-                <select id="opLogModuleFilter" class="form-input" style="width:auto;padding:2px 8px;font-size:12px;">
-                  <option value="all">全部模块</option>
-                  <option value="ddns">DDNS</option>
-                  <option value="ssl">SSL证书</option>
-                  <option value="nginx">Nginx</option>
-                  <option value="proxy">反向代理</option>
-                  <option value="port">端口管理</option>
-                  <option value="pm2">PM2</option>
-                  <option value="docker">Docker</option>
-                  <option value="ssh">SSH终端</option>
-                  <option value="system">系统</option>
-                </select>
-                <button class="btn btn-sm btn-primary" onclick="showSettingsOpLog()">🔍 查看日志</button>
-              </span>
-            </h3>
-          </div>
-
-          <!-- 诊断日志（隐藏） -->
-          <div class="settings-card" style="margin-top:20px;opacity:0.5">
-            <h3 style="display:flex;justify-content:space-between;align-items:center;">
-              🔍 系统诊断日志
-              <span style="display:flex;gap:8px;">
-                <select id="diagPageFilter" class="form-input" style="width:auto;padding:2px 8px;font-size:12px;" onchange="renderDiagLog()">
-                  <option value="all">全部页面</option>
-                  <option value="dashboard">仪表盘</option>
-                  <option value="ddns">DDNS</option>
-                  <option value="ssl">SSL证书</option>
-                  <option value="nginx">Nginx</option>
-                  <option value="proxy">反向代理</option>
-                  <option value="port">端口管理</option>
-                  <option value="pm2">PM2</option>
-                  <option value="docker">Docker</option>
-                  <option value="ssh">SSH终端</option>
-                  <option value="settings">系统设置</option>
-                </select>
-                <button class="btn btn-sm btn-secondary" onclick="Api.clearDiagLog();renderDiagLog();">🗑️ 清除</button>
-              </span>
-            </h3>
-            <div id="diagLogContainer" style="background:var(--bg-primary);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;font:11px/1.6 monospace;white-space:pre-wrap;word-break:break-all;">
-              <span style="color:var(--text-secondary);">诊断日志（仅用于调试，日常使用请查看上方操作日志）</span>
+            <h3 style="display:flex;justify-content:space-between;align-items:center;">📋 诊断与日志</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+              <!-- 左栏：操作日志 -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span style="font-weight:600;font-size:13px;">操作日志</span>
+                  <span style="display:flex;gap:8px;align-items:center;">
+                    <select id="opLogModuleFilter" class="form-input" style="width:auto;padding:2px 8px;font-size:11px;">
+                      <option value="all">全部模块</option>
+                      <option value="ddns">DDNS</option>
+                      <option value="ssl">SSL证书</option>
+                      <option value="nginx">Nginx</option>
+                      <option value="proxy">反向代理</option>
+                      <option value="port">端口管理</option>
+                      <option value="pm2">PM2</option>
+                      <option value="docker">Docker</option>
+                      <option value="ssh">SSH终端</option>
+                      <option value="system">系统</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="showSettingsOpLog()" style="font-size:11px;">🔍 查看</button>
+                  </span>
+                </div>
+                <div style="background:#f1f5f9;border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;font:12px/1.6 Menlo,Monaco,monospace;color:#1e293b;">
+                  <span style="color:#64748b;">点击「查看日志」加载操作记录</span>
+                </div>
+              </div>
+              <!-- 右栏：诊断日志 -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span style="font-weight:600;font-size:13px;">诊断日志</span>
+                  <span style="display:flex;gap:8px;">
+                    <select id="diagPageFilter" class="form-input" style="width:auto;padding:2px 8px;font-size:11px;" onchange="renderDiagLog()">
+                      <option value="all">全部页面</option>
+                      <option value="dashboard">仪表盘</option>
+                      <option value="ddns">DDNS</option>
+                      <option value="ssl">SSL证书</option>
+                      <option value="nginx">Nginx</option>
+                      <option value="proxy">反向代理</option>
+                      <option value="port">端口管理</option>
+                      <option value="pm2">PM2</option>
+                      <option value="docker">Docker</option>
+                      <option value="ssh">SSH终端</option>
+                      <option value="settings">系统设置</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="Api.clearDiagLog();renderDiagLog();" style="font-size:11px;">🗑️ 清除</button>
+                  </span>
+                </div>
+                <div id="diagLogContainer" style="background:#f1f5f9;border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;font:12px/1.6 Menlo,Monaco,monospace;color:#1e293b;white-space:pre-wrap;word-break:break-all;">
+                  <span style="color:#64748b;">浏览器端诊断日志</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>

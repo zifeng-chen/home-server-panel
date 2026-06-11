@@ -15,6 +15,8 @@ function _sshResetIdle() {
 
 function _sshOnIdle() {
   var st = window.__SSH;
+  // 保存断连前的连接信息，以便重连
+  if (st.current) st._lastDisconnected = { host: st.current.host, port: st.current.port, username: st.current.username, password: st.current.password };
   if (st.ws && st.ws.readyState === WebSocket.OPEN) {
     try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
     try { st.ws.close(); } catch(e) {}
@@ -22,9 +24,9 @@ function _sshOnIdle() {
   st.ws = null;
   if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
   if (st.idleTimer) { clearTimeout(st.idleTimer); st.idleTimer = null; }
-  _sshShowOverlay('⚠️ 连接因 3 分钟无操作已断开', '点击此处重新连接');
   st.current = null;
   _sshRenderSidebar();
+  _sshShowOverlay('⚠️ 连接因 3 分钟无操作已断开', '点击此处重新连接');
 }
 
 function _sshShowOverlay(text, hint) {
@@ -61,6 +63,8 @@ window.__SSH._onPageSwitch = function(isSSHPage) {
 
 function _sshDisconnect() {
   var st = window.__SSH;
+  // 保存断连前的连接信息，以便重连
+  if (st.current) st._lastDisconnected = { host: st.current.host, port: st.current.port, username: st.current.username, password: st.current.password };
   if (st.idleTimer) { clearTimeout(st.idleTimer); st.idleTimer = null; }
   if (st.ws) {
     try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
@@ -253,6 +257,7 @@ function _sshRender(keepTerm) {
       var isActive = st.current && st.current.host === c.host && st.current.username === c.username;
       html += '<div class="ssh-conn-item' + (isActive ? ' active' : '') + '" data-conn-idx="' + i + '">';
       html += '<div><strong>' + c.name + '</strong><span class="conn-host">' + c.username + '@' + c.host + ':' + (c.port || 22) + '</span></div>';
+      html += '<span class="conn-edit" data-edit-idx="' + i + '" title="编辑">✏️</span>';
       html += '<span class="conn-del" data-del-idx="' + i + '" title="删除">×</span>';
       html += '</div>';
     });
@@ -310,6 +315,15 @@ function _sshRender(keepTerm) {
       });
     });
 
+    // 编辑连接
+    document.querySelectorAll('.conn-edit').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var idx = parseInt(el.dataset.editIdx);
+        _sshShowAddForm(idx);
+      });
+    });
+
     // 新建连接按钮
     var btnAdd = document.getElementById('btnSSHAdd');
     if (btnAdd) btnAdd.addEventListener('click', _sshShowAddForm);
@@ -320,9 +334,11 @@ function _sshRender(keepTerm) {
       _sshDisconnect();
     });
 
-    // 蒙层点击重连
+    // 蒙层点击重连 — 优先用 _lastDisconnected（手动断开/空闲断连后仍可重连）
     var overlay = document.getElementById('sshOverlay');
-    if (overlay && st.current) {
+    var reconnectTarget = st.current || st._lastDisconnected;
+    if (overlay && reconnectTarget) {
+      overlay.style.cursor = 'pointer';
       overlay.addEventListener('click', function() {
         if (st.ws && st.ws.readyState === WebSocket.OPEN) {
           try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
@@ -330,8 +346,10 @@ function _sshRender(keepTerm) {
           st.ws = null;
         }
         if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
-        _sshConnect(st.current, true);
+        _sshConnect(st._lastDisconnected || st.current, true);
       });
+    } else if (overlay) {
+      overlay.style.cursor = 'default';
     }
 
     // 如有活跃连接且有terminal，重新附加到DOM
@@ -346,53 +364,85 @@ function _sshRender(keepTerm) {
 }
 
 // 新建/编辑连接弹窗
-function _sshShowAddForm() {
+var _sshEditingIdx = -1;
+function _sshShowAddForm(editIdx) {
   var st = window.__SSH;
+  _sshEditingIdx = (editIdx !== undefined) ? editIdx : -1;
+  var isEditing = _sshEditingIdx >= 0;
+  var conn = isEditing ? st.connections[_sshEditingIdx] : null;
+
   var html = `
     <div class="ssh-form-row">
       <label>连接名称</label>
-      <input type="text" id="sshFmName" placeholder="如: iStoreOS">
+      <input type="text" id="sshFmName" placeholder="如: iStoreOS" value="${isEditing ? (conn.name || '') : ''}">
     </div>
     <div class="ssh-form-row">
       <label>主机地址</label>
-      <input type="text" id="sshFmHost" placeholder="192.168.100.1" value="192.168.100.110">
+      <input type="text" id="sshFmHost" placeholder="192.168.100.1" value="${isEditing ? (conn.host || '') : '192.168.100.110'}">
     </div>
     <div class="ssh-form-row">
       <label>端口</label>
-      <input type="number" id="sshFmPort" placeholder="22" value="22">
+      <input type="number" id="sshFmPort" placeholder="22" value="${isEditing ? (conn.port || 22) : 22}">
     </div>
     <div class="ssh-form-row">
       <label>用户名</label>
-      <input type="text" id="sshFmUser" placeholder="root" value="root">
+      <input type="text" id="sshFmUser" placeholder="root" value="${isEditing ? (conn.username || '') : 'root'}">
     </div>
     <div class="ssh-form-row">
       <label>密码</label>
-      <input type="password" id="sshFmPass" placeholder="输入密码">
+      <input type="password" id="sshFmPass" placeholder="${isEditing ? '(保持不变)' : '输入密码'}">
     </div>
   `;
-  var footer = '<button class="btn btn-primary" id="sshModalSave">💾 保存并连接</button><button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>';
-  Utils.openModal('🔗 新建 SSH 连接', html, footer);
-  
+  var footer = '<button class="btn btn-secondary" id="sshModalSave">💾 仅保存</button><button class="btn btn-primary" id="sshModalConnect">⚡ 保存并连接</button><button class="btn btn-secondary" style="margin-left:8px" onclick="Utils.closeModal()">取消</button>';
+  Utils.openModal(isEditing ? '✏️ 编辑 SSH 连接' : '🔗 新建 SSH 连接', html, footer);
+
   setTimeout(function() {
-    var btn = document.getElementById('sshModalSave');
-    if (btn) btn.addEventListener('click', function() {
+    var buildConn = function() {
       var name = document.getElementById('sshFmName').value.trim();
       var host = document.getElementById('sshFmHost').value.trim();
       var port = parseInt(document.getElementById('sshFmPort').value) || 22;
       var username = document.getElementById('sshFmUser').value.trim();
       var password = document.getElementById('sshFmPass').value.trim();
-      if (!host || !username || !password) { Utils.notify('请填写完整信息', 'error'); return; }
+      if (!host || !username) { Utils.notify('请填写主机和用户名', 'error'); return null; }
+      // 编辑时如果密码留空则保留原密码
+      if (isEditing && !password && conn.password) password = conn.password;
+      if (!password) { Utils.notify('请输入密码', 'error'); return null; }
       if (!name) name = username + '@' + host;
+      return { name: name, host: host, port: port, username: username, password: password };
+    };
 
-      var exists = st.connections.findIndex(function(c) { return c.host === host && c.username === username; });
-      var conn = { name: name, host: host, port: port, username: username, password: password };
-      if (exists >= 0) {
-        st.connections[exists] = conn;
+    var btnSave = document.getElementById('sshModalSave');
+    if (btnSave) btnSave.addEventListener('click', function() {
+      var newConn = buildConn();
+      if (!newConn) return;
+      if (isEditing) {
+        st.connections[_sshEditingIdx] = newConn;
       } else {
-        st.connections.push(conn);
+        // 查重：同host+username则更新
+        var existsIdx = st.connections.findIndex(function(c) { return c.host === newConn.host && c.username === newConn.username; });
+        if (existsIdx >= 0) st.connections[existsIdx] = newConn;
+        else st.connections.push(newConn);
       }
       _saveSSHConns();
+      _sshEditingIdx = -1;
+      Utils.closeModal();
+      _sshRenderSidebar();
+      Utils.notify('连接已保存', 'success');
+    });
 
+    var btnConnect = document.getElementById('sshModalConnect');
+    if (btnConnect) btnConnect.addEventListener('click', function() {
+      var newConn = buildConn();
+      if (!newConn) return;
+      if (isEditing) {
+        st.connections[_sshEditingIdx] = newConn;
+      } else {
+        var existsIdx = st.connections.findIndex(function(c) { return c.host === newConn.host && c.username === newConn.username; });
+        if (existsIdx >= 0) st.connections[existsIdx] = newConn;
+        else st.connections.push(newConn);
+      }
+      _saveSSHConns();
+      _sshEditingIdx = -1;
       Utils.closeModal();
       if (st.ws && st.ws.readyState === WebSocket.OPEN) {
         try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
@@ -400,7 +450,7 @@ function _sshShowAddForm() {
         st.ws = null;
       }
       if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
-      _sshConnect(conn);
+      _sshConnect(newConn);
     });
   }, 50);
 }
@@ -418,6 +468,7 @@ function _sshRenderSidebar() {
       var isActive = st.current && st.current.host === c.host && st.current.username === c.username;
       html += '<div class="ssh-conn-item' + (isActive ? ' active' : '') + '" onclick="(function(){var st=window.__SSH;var c=st.connections[' + i + '];if(st.ws&&st.ws.readyState===WebSocket.OPEN){try{st.ws.send(JSON.stringify({type:\"disconnect\"}));}catch(e){}try{st.ws.close();}catch(e){}st.ws=null;}if(st.term){try{st.term.dispose();}catch(e){}st.term=null;st.fitAddon=null;}_sshConnect(c);})()">';
       html += '<div><strong>' + c.name + '</strong><span class="conn-host">' + c.username + '@' + c.host + ':' + (c.port || 22) + '</span></div>';
+      html += '<span class="conn-edit" onclick="event.stopPropagation();_sshShowAddForm(' + i + ');" title="编辑">✏️</span>';
       html += '<span class="conn-del" onclick="event.stopPropagation();var st=window.__SSH;st.connections.splice(' + i + ',1);_saveSSHConns();_sshRender(true);">×</span>';
       html += '</div>';
     });

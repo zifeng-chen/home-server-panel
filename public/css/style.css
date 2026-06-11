@@ -786,8 +786,17 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
   border-radius: 4px;
   transition: opacity 0.15s;
 }
-.ssh-conn-item:hover .conn-del { opacity: 0.6; }
+.ssh-conn-item .conn-edit {
+  opacity: 0;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+.ssh-conn-item:hover .conn-del,
+.ssh-conn-item:hover .conn-edit { opacity: 0.6; }
 .ssh-conn-item .conn-del:hover { opacity: 1; background: var(--danger-light); }
+.ssh-conn-item .conn-edit:hover { opacity: 1; background: var(--brand-light); }
 .ssh-sidebar-add {
   padding: 8px;
   border-top: 1px solid var(--border-color);

@@ -14,7 +14,17 @@ async function loadSettings() {
       const cfg = cfgRes.data;
       setVal('cfgAliKeyId', cfg.aliKeyId || '');
       setVal('cfgAliKeySecret', cfg.aliKeySecret || '');
-      setVal('cfgPushplusToken', cfg.pushplusToken === '已配置' ? '' : '');
+      setVal('cfgPushplusToken', cfg.pushplusToken);
+      // 已配置 token 时显示提示 placeholder
+      var tokEl = document.getElementById('cfgPushplusToken');
+      if (tokEl && cfg.pushplusToken === '已配置') {
+        tokEl.value = '';
+        tokEl.placeholder = '✅ 已配置（修改请重新输入）';
+        tokEl.style.borderColor = 'var(--success)';
+      } else if (tokEl) {
+        tokEl.placeholder = '输入 Token';
+        tokEl.style.borderColor = '';
+      }
       setVal('cfgAcmeEmail', cfg.acmeEmail || '');
       setVal('cfgAcmeDns', cfg.acmeDnsProvider || 'alidns');
     }

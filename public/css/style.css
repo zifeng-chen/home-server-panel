@@ -213,7 +213,7 @@ body {
   width: 100%;
 }
 .page { }
-.page.hidden { display: none; }
+  .page.hidden { display: none !important; }
 #page-dashboard {
   display: flex;
   flex-direction: column;

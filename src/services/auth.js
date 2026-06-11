@@ -83,7 +83,7 @@ class Auth {
   middleware() {
     return (req, res, next) => {
       const publicPaths = ['/login.html', '/install.html', '/api/auth/login', '/api/db/status'];
-      const publicPrefixes = ['/api/setup'];
+      const publicPrefixes = ['/api/setup', '/css/', '/js/', '/favicon'];
 
       if (publicPaths.includes(req.path) || publicPrefixes.some(p => req.path.startsWith(p))) return next();
 

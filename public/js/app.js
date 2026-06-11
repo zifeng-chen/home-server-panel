@@ -113,7 +113,17 @@ function initNavigation() {
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
+
+      // 防抖：300ms 内重复点击忽略
+      var now = Date.now();
+      if (App._lastNavClick && now - App._lastNavClick < 300) return;
+      App._lastNavClick = now;
+
       const pageName = item.dataset.page;
+
+      // 如果同一个页面，不重复加载
+      if (App._currentPage === pageName) return;
+
       navItems.forEach(n => n.classList.remove('active'));
       item.classList.add('active');
 

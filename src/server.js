@@ -114,8 +114,8 @@ const rateLimiter = (function() {
     };
   };
 })();
-const apiRateLimit = rateLimiter(120, 60000);
-const slowRateLimit = rateLimiter(20, 60000);
+const apiRateLimit = rateLimiter(300, 60000);
+const slowRateLimit = rateLimiter(60, 60000);
 
 // Auth 路由（无需认证）
 const authRouter = require('./routes/auth');

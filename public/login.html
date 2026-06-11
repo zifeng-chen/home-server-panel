@@ -235,6 +235,18 @@
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 2K / 4K 适配 */
+    @media (min-width: 1800px) {
+      .login-form-wrapper { max-width: 520px; padding: 48px 44px; }
+      .login-title { font-size: 28px; }
+      .login-features { gap: 20px; }
+      .feature-item { font-size: 15px; }
+    }
+    @media (min-width: 2560px) {
+      .login-form-wrapper { max-width: 580px; padding: 56px 52px; }
+      .login-title { font-size: 32px; }
+    }
   </style>
 </head>
 <body>
@@ -376,14 +388,3 @@
   </script>
 </body>
 </html>
-/* 2K / 4K 适配 */
-@media (min-width: 1800px) {
-  .login-form-wrapper { max-width: 520px; padding: 48px 44px; }
-  .login-title { font-size: 28px; }
-  .login-features { gap: 20px; }
-  .feature-item { font-size: 15px; }
-}
-@media (min-width: 2560px) {
-  .login-form-wrapper { max-width: 580px; padding: 56px 52px; }
-  .login-title { font-size: 32px; }
-}

@@ -186,6 +186,9 @@ function _sshConnect(conn, reconnecting) {
     };
 
     st.ws.onclose = function(e) {
+      // 保存断连前的连接信息，以便重连
+      if (st.current) st._lastDisconnected = { host: st.current.host, port: st.current.port, username: st.current.username, password: st.current.password };
+      console.log('[SSH] onclose code=' + e.code + ' reason=' + (e.reason||'') + ' savedLastDisconnected=' + !!st._lastDisconnected);
       if (e.code !== 1000 && st.term) st.term.write('\r\n\x1b[33m[连接已关闭]\x1b[0m\r\n');
       if (dot) { dot.className = 'ssh-conn-dot offline'; }
       if (stText) stText.textContent = '已断开';
@@ -214,6 +217,7 @@ function _sshConnect(conn, reconnecting) {
             if (dot) { dot.className = 'ssh-conn-dot online'; }
             if (stText) stText.textContent = '已连接';
             st.current = conn;
+            st._lastDisconnected = null;  // 连接成功，清空旧的断连记录
             _sshRenderSidebar();
             if (st.fitAddon) { setTimeout(function() { try { st.fitAddon.fit(); } catch(e) {} }, 100); }
             st.term.focus();
@@ -334,22 +338,35 @@ function _sshRender(keepTerm) {
       _sshDisconnect();
     });
 
-    // 蒙层点击重连 — 优先用 _lastDisconnected（手动断开/空闲断连后仍可重连）
+    // 蒙层点击重连 — 使用统一的事件委托，永不失效
     var overlay = document.getElementById('sshOverlay');
-    var reconnectTarget = st.current || st._lastDisconnected;
-    if (overlay && reconnectTarget) {
+    if (overlay) {
       overlay.style.cursor = 'pointer';
-      overlay.addEventListener('click', function() {
-        if (st.ws && st.ws.readyState === WebSocket.OPEN) {
+      // 使用事件委托（用 onclick 替换旧的 onclick，避免 addEventListener 堆积）
+      overlay.onclick = function() {
+        console.log('[SSH] 蒙层点击 — current:', st.current, '_lastDisconnected:', !!st._lastDisconnected);
+        // 优先级：_lastDisconnected（空闲断连/手动断连） > st.current（意外断连） > 第一个保存的连接
+        var target = st._lastDisconnected || st.current;
+        if (!target && st.connections.length > 0) target = st.connections[0];
+        
+        if (!target) {
+          Utils.notify('没有可用的连接信息，请从左侧列表选择', 'error');
+          return;
+        }
+        console.log('[SSH] 重连目标:', target.username + '@' + target.host + ':' + target.port);
+        
+        // 清理旧状态
+        if (st.ws) {
+          try { st.ws.onclose = null; } catch(e) {}
           try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
           try { st.ws.close(); } catch(e) {}
           st.ws = null;
         }
         if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
-        _sshConnect(st._lastDisconnected || st.current, true);
-      });
-    } else if (overlay) {
-      overlay.style.cursor = 'default';
+        if (st.idleTimer) { clearTimeout(st.idleTimer); st.idleTimer = null; }
+        
+        _sshConnect(target);
+      };
     }
 
     // 如有活跃连接且有terminal，重新附加到DOM

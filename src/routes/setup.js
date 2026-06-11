@@ -63,8 +63,15 @@ router.post('/install', async (req, res) => {
 
 module.exports = router;
 
-// POST /api/setup/reset - 清除所有数据，重装系统
+// POST /api/setup/reset - 清除所有数据，重装系统（需验证管理员密码）
 router.post('/reset', (req, res) => {
+  // 安全：必须验证当前管理员密码
+  const currentPass = process.env.ADMIN_PASS || 'admin123';
+  const { password } = req.body;
+  if (!password || password !== currentPass) {
+    return res.status(403).json({ success: false, message: '管理员密码验证失败' });
+  }
+
   try {
     const envPath = path.join(__dirname, '..', '..', '.env');
     const dataDir = path.join(__dirname, '..', '..', 'data');

@@ -74,8 +74,10 @@ router.put('/config', (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return res.json({ success: false, message: 'token 不能为空' });
+    // 安全：移除换行符防止 .env 注入
+    const safeToken = String(token).replace(/[\r\n]/g, '');
 
-    notifyService.setToken(token);
+    notifyService.setToken(safeToken);
 
     // 写入 .env
     const fs = require('fs');
@@ -85,9 +87,9 @@ router.put('/config', (req, res) => {
     if (fs.existsSync(envPath)) {
       envContent = fs.readFileSync(envPath, 'utf-8');
       if (envContent.includes('PUSHPLUS_TOKEN=')) {
-        envContent = envContent.replace(/PUSHPLUS_TOKEN=.*\n?/, `PUSHPLUS_TOKEN=${token}\n`);
+        envContent = envContent.replace(/PUSHPLUS_TOKEN=.*\n?/, `PUSHPLUS_TOKEN=${safeToken}\n`);
       } else {
-        envContent += `\nPUSHPLUS_TOKEN=${token}\n`;
+        envContent += `\nPUSHPLUS_TOKEN=${safeToken}\n`;
       }
       fs.writeFileSync(envPath, envContent, 'utf-8');
     }

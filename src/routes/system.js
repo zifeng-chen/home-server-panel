@@ -64,8 +64,10 @@ router.post('/config', (req, res) => {
     }
 
     const updater = (key, value) => {
+      // 安全：移除换行符防止 .env 注入
+      const sanitized = String(value).replace(/[\r\n]/g, '');
       const re = new RegExp(`^${key}=.*$`, 'm');
-      const line = `${key}=${value}`;
+      const line = `${key}=${sanitized}`;
       if (re.test(envContent)) {
         envContent = envContent.replace(re, line);
       } else {

@@ -41,7 +41,11 @@ router.get('/check/:port', async (req, res) => {
 
 // 终止端口进程
 router.post('/kill/:port', (req, res) => {
-  portService.killPort(req.params.port).then(r => res.json(r));
+  const port = parseInt(req.params.port);
+  if (isNaN(port) || port < 1 || port > 65535) {
+    return res.json({ success: false, message: '端口号不合法 (1-65535)' });
+  }
+  portService.killPort(port).then(r => res.json(r));
 });
 
 // 执行启动命令（恢复端口服务）

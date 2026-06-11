@@ -210,10 +210,15 @@ class PortService {
   }
   // 终止端口进程
   async killPort(port) {
+    // 防御：确保 port 是合法数字
+    const p = parseInt(port);
+    if (isNaN(p) || p < 1 || p > 65535) {
+      return { success: false, message: '端口号不合法' };
+    }
     return new Promise((resolve) => {
       const { execSync } = require("child_process");
       try {
-        const result = execSync("lsof -iTCP:" + port + " -sTCP:LISTEN -nP -t 2>/dev/null", { timeout: 5000, encoding: "utf-8" }).trim();
+        const result = execSync("lsof -iTCP:" + p + " -sTCP:LISTEN -nP -t 2>/dev/null", { timeout: 5000, encoding: "utf-8" }).trim();
         if (!result) return resolve({ success: false, message: "端口 " + port + " 未找到监听进程" });
         const pids = result.split("\n").filter(Boolean);
         for (const pid of pids) {

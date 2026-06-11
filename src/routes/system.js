@@ -2,12 +2,16 @@ const express = require('express');
 const os = require('os');
 const router = express.Router();
 
-// GET /api/system/info - 系统信息（脱敏）
+// GET /api/system/info - 系统信息
 router.get('/info', (req, res) => {
+  const pkg = require('../../package.json');
   const info = {
-    hostname: os.hostname().replace(/[a-zA-Z0-9]/g, '*'),
+    hostname: os.hostname(),
     platform: os.platform(),
+    arch: os.arch(),
     cpus: os.cpus().length,
+    nodeVersion: process.version,
+    panelVersion: pkg.version,
     memory: {
       total: Math.round(os.totalmem() / (1024 * 1024 * 1024) * 100) / 100,
       free: Math.round(os.freemem() / (1024 * 1024 * 1024) * 100) / 100
@@ -15,7 +19,6 @@ router.get('/info', (req, res) => {
     uptime: Math.floor(os.uptime()),
     loadavg: os.loadavg(),
     modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']
-    // arch, nodeVersion, panelVersion removed: 防服务器指纹识别
   };
   res.json({ success: true, data: info });
 });

@@ -5,6 +5,14 @@ const router = express.Router();
 // GET /api/system/info - 系统信息
 router.get('/info', (req, res) => {
   const pkg = require('../../package.json');
+  // 收集本机 IP 地址
+  const ips = [];
+  const nets = os.networkInterfaces();
+  for (const [name, addrs] of Object.entries(nets)) {
+    for (const addr of addrs) {
+      if (!addr.internal && addr.family === 'IPv4') ips.push(addr.address);
+    }
+  }
   const info = {
     hostname: os.hostname(),
     platform: os.platform(),
@@ -18,6 +26,7 @@ router.get('/info', (req, res) => {
     },
     uptime: Math.floor(os.uptime()),
     loadavg: os.loadavg(),
+    ips: ips,
     modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']
   };
   res.json({ success: true, data: info });

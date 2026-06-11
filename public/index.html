@@ -83,7 +83,7 @@
       <div class="sidebar-footer">
         <span id="version">v1.16.1</span>
         <span id="uptime">--</span>
-        <a href="#" id="btnLogout" title="退出登录" style="color:var(--text-secondary);text-decoration:none;font-size:13px;margin-top:6px;display:block;opacity:0.6;text-align:center">🚪 退出登录</a>
+      </div>
       </div>
     </aside>
 
@@ -92,9 +92,15 @@
       <!-- 顶部栏 -->
       <header class="topbar">
         <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+        <div class="topbar-center">
+          <span class="topbar-metric"><span class="topbar-metric-icon">🧠</span><span id="tbCpu">--%</span></span>
+          <span class="topbar-metric"><span class="topbar-metric-icon">💾</span><span id="tbMem">--%</span></span>
+          <span class="topbar-metric"><span class="topbar-metric-icon">⏱️</span><span id="tbUptime">--</span></span>
+        </div>
         <div class="topbar-right">
           <span class="status-dot" id="statusDot" title="系统状态"></span>
-          <span id="currentTime">--</span>
+          <span class="topbar-user">👤 管理员</span>
+          <button class="btn btn-outline btn-logout-top" id="btnLogoutTop" title="退出登录">🚪 退出</button>
         </div>
       </header>
 
@@ -102,16 +108,49 @@
       <div class="page-container">
         <!-- 仪表盘 -->
         <section class="page" id="page-dashboard">
-          <h1>系统概览</h1>
-          <div class="stats-grid" id="statsGrid">
-            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
-            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
-            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
-            <div class="stat-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
-          </div>
-          <h2 style="margin-top:28px">📈 实时监控</h2>
-          <div class="monitor-grid" id="dashboardMonitor">
-            <div class="skeleton-card" style="grid-column:span 2"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div></div>
+          <h1>仪表盘</h1>
+          <div class="dashboard-grid" id="dashGrid">
+            <!-- 左上：系统概览 -->
+            <div class="dash-panel dash-overview">
+              <div class="dash-panel-hd">🖥️ 系统概览</div>
+              <div class="dash-panel-body" id="overviewBody">
+                <div class="skeleton skeleton-text" style="width:60%"></div>
+                <div class="skeleton skeleton-text" style="width:80%"></div>
+                <div class="skeleton skeleton-text" style="width:50%"></div>
+                <div class="skeleton skeleton-text" style="width:70%"></div>
+              </div>
+            </div>
+            <!-- 右上：服务状态 -->
+            <div class="dash-panel dash-services">
+              <div class="dash-panel-hd">🟢 服务状态</div>
+              <div class="service-grid" id="servicesGrid">
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+                <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+              </div>
+            </div>
+            <!-- 左下：操作日志 -->
+            <div class="dash-panel dash-logs">
+              <div class="dash-panel-hd">
+                <span>📋 操作日志</span>
+                <a href="#settings" class="dash-panel-more">更多 →</a>
+              </div>
+              <div class="dash-log-list" id="dashLogList">
+                <div class="skeleton skeleton-text" style="width:70%"></div>
+                <div class="skeleton skeleton-text" style="width:60%"></div>
+                <div class="skeleton skeleton-text" style="width:75%"></div>
+              </div>
+            </div>
+            <!-- 右下：资源使用 -->
+            <div class="dash-panel dash-resources">
+              <div class="dash-panel-hd">📈 资源使用</div>
+              <div class="monitor-grid" id="dashboardMonitor">
+                <div class="skeleton-card" style="grid-column:span 2;min-height:100px"><div class="skeleton skeleton-icon"></div></div>
+              </div>
+            </div>
           </div>
         </section>
 

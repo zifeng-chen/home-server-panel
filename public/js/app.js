@@ -52,16 +52,23 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSidebarToggle();
   initLogout();
-  updateClock();
-  setInterval(function() { updateClock(); updateUptime(); }, 1000);
+  // 顶栏退出按钮（dashboard.js 提供 _initLogoutTop，此处兜底）
+  var topBtn = document.getElementById('btnLogoutTop');
+  if (topBtn && typeof _initLogoutTop !== 'function') {
+    topBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (confirm('确定要退出登录吗？')) {
+        localStorage.removeItem('hsp_token');
+        window.location.href = '/login.html';
+      }
+    });
+  }
+  _topbarPollStart();
+  setInterval(updateUptime, 1000);
   loadDashboard();
   loadSettings();
 });
 
-function updateClock() {
-  const el = document.getElementById('currentTime');
-  if (el) el.textContent = formatTime(new Date());
-}
 
 // 侧边栏运行时间实时更新（每秒）
 let _uptimeStart = null;
@@ -90,21 +97,9 @@ function initSidebarToggle() {
   }
 }
 
-// 退出登录
+// 退出登录（顶栏按钮）
 function initLogout() {
-  const btn = document.getElementById('btnLogout');
-  if (!btn) return;
-  btn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'x-auth-token': localStorage.getItem('hsp_token') || '' }
-      });
-    } catch (_) {}
-    localStorage.removeItem('hsp_token');
-    window.location.href = '/login.html';
-  });
+  // 已在 dashboard.js 中通过 _initLogoutTop() 处理
 }
 
 // 导航

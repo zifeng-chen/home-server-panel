@@ -130,8 +130,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 20px;
   flex-shrink: 0;
+  gap: 12px;
 }
 .sidebar-toggle {
   display: none;
@@ -144,12 +145,53 @@ body {
   border-radius: var(--radius-sm);
 }
 .sidebar-toggle:hover { background: var(--bg-input); }
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
+}
+.topbar-metric {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.topbar-metric-icon {
+  font-size: 15px;
+}
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-size: 13px;
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.topbar-user {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.btn-logout-top {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-logout-top:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-light);
 }
 .status-dot {
   width: 8px;
@@ -172,6 +214,14 @@ body {
 }
 .page { }
 .page.hidden { display: none; }
+#page-dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--topbar-height) - 100px);
+}
+#page-dashboard .dashboard-grid {
+  flex: 1;
+}
 .page h1 {
   font-size: 22px;
   font-weight: 700;
@@ -196,7 +246,152 @@ body {
   color: var(--text-primary);
 }
 
-/* ====== 统计卡片 ====== */
+/* ====== 仪表盘 4 区布局 ====== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+.dash-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.dash-panel-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-input);
+  flex-shrink: 0;
+}
+.dash-panel-body {
+  padding: 16px 18px;
+  flex: 1;
+}
+.dash-overview .dash-panel-body { min-height: 240px; }
+.dash-logs { min-height: 200px; }
+.dash-resources { min-height: 320px; }
+.dash-panel-more {
+  font-size: 12px;
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.dash-panel-more:hover { text-decoration: underline; }
+
+/* 系统概览行 */
+.overview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+.overview-row:last-child { border-bottom: none; }
+.overview-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.overview-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+/* 服务状态网格 */
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+.service-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+  color: inherit;
+}
+.service-card:hover {
+  border-color: var(--brand-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--brand-glow);
+}
+.service-card-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+  width: 44px;
+  text-align: center;
+}
+.service-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.service-card-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.service-card-status {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.service-card-status.up { color: var(--success); }
+.service-card-status.down { color: var(--text-tertiary); }
+.service-card-status.warn { color: var(--warning); }
+
+/* 操作日志列表 */
+.dash-log-list {
+  padding: 8px 18px;
+  flex: 1;
+}
+.dash-log-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+  align-items: baseline;
+}
+.dash-log-item:last-child { border-bottom: none; }
+.dash-log-time {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  font-size: 11px;
+  min-width: 44px;
+}
+.dash-log-text {
+  color: var(--text-primary);
+  flex: 1;
+}
+
+/* ====== 统计卡片（保留用于其他页面） ====== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

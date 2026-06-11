@@ -410,7 +410,7 @@ function _sshShowAddForm(editIdx) {
       <input type="password" id="sshFmPass" placeholder="${isEditing ? '(保持不变)' : '输入密码'}">
     </div>
   `;
-  var footer = '<button class="btn btn-secondary" id="sshModalSave">💾 仅保存</button><button class="btn btn-primary" id="sshModalConnect">⚡ 保存并连接</button><button class="btn btn-secondary" style="margin-left:8px" onclick="Utils.closeModal()">取消</button>';
+  var footer = '<button class="btn btn-primary" id="sshModalSaveConnect">⚡ 保存并连接</button><button class="btn btn-secondary" id="sshModalConnectOnly">🔌 连接</button><button class="btn btn-secondary" style="margin-left:8px" onclick="Utils.closeModal()">取消</button>';
   Utils.openModal(isEditing ? '✏️ 编辑 SSH 连接' : '🔗 新建 SSH 连接', html, footer);
 
   setTimeout(function() {
@@ -428,38 +428,19 @@ function _sshShowAddForm(editIdx) {
       return { name: name, host: host, port: port, username: username, password: password };
     };
 
-    var btnSave = document.getElementById('sshModalSave');
-    if (btnSave) btnSave.addEventListener('click', function() {
-      var newConn = buildConn();
-      if (!newConn) return;
+    var doSave = function(newConn) {
       if (isEditing) {
         st.connections[_sshEditingIdx] = newConn;
       } else {
-        // 查重：同host+username则更新
         var existsIdx = st.connections.findIndex(function(c) { return c.host === newConn.host && c.username === newConn.username; });
         if (existsIdx >= 0) st.connections[existsIdx] = newConn;
         else st.connections.push(newConn);
       }
       _saveSSHConns();
       _sshEditingIdx = -1;
-      Utils.closeModal();
-      _sshRenderSidebar();
-      Utils.notify('连接已保存', 'success');
-    });
+    };
 
-    var btnConnect = document.getElementById('sshModalConnect');
-    if (btnConnect) btnConnect.addEventListener('click', function() {
-      var newConn = buildConn();
-      if (!newConn) return;
-      if (isEditing) {
-        st.connections[_sshEditingIdx] = newConn;
-      } else {
-        var existsIdx = st.connections.findIndex(function(c) { return c.host === newConn.host && c.username === newConn.username; });
-        if (existsIdx >= 0) st.connections[existsIdx] = newConn;
-        else st.connections.push(newConn);
-      }
-      _saveSSHConns();
-      _sshEditingIdx = -1;
+    var doConnect = function(newConn) {
       Utils.closeModal();
       if (st.ws && st.ws.readyState === WebSocket.OPEN) {
         try { st.ws.send(JSON.stringify({ type: 'disconnect' })); } catch(e) {}
@@ -468,6 +449,25 @@ function _sshShowAddForm(editIdx) {
       }
       if (st.term) { try { st.term.dispose(); } catch(e) {} st.term = null; st.fitAddon = null; }
       _sshConnect(newConn);
+    };
+
+    // ⚡ 保存并连接
+    var btnSaveConnect = document.getElementById('sshModalSaveConnect');
+    if (btnSaveConnect) btnSaveConnect.addEventListener('click', function() {
+      var newConn = buildConn();
+      if (!newConn) return;
+      doSave(newConn);
+      _sshRenderSidebar();
+      doConnect(newConn);
+    });
+
+    // 🔌 连接（不保存）
+    var btnConnectOnly = document.getElementById('sshModalConnectOnly');
+    if (btnConnectOnly) btnConnectOnly.addEventListener('click', function() {
+      var newConn = buildConn();
+      if (!newConn) return;
+      _sshEditingIdx = -1;
+      doConnect(newConn);
     });
   }, 50);
 }

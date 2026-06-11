@@ -43,9 +43,10 @@ router.post('/logout', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.headers['x-auth-token'] || req.cookies?.hsp_token;
   const loggedIn = token && auth.verifyToken(token);
+  const username = auth.sessions[token]?.username || process.env.ADMIN_USER || 'admin';
   res.json({
     success: true,
-    data: { loggedIn, username: loggedIn ? 'admin' : null }
+    data: { loggedIn, username: loggedIn ? username : null }
   });
 });
 

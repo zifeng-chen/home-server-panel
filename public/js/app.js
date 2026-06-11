@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.16.1',
+  version: '1.17.0',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
@@ -42,6 +42,7 @@ window.addEventListener('hashchange', () => {
   if (target) {
     target.classList.remove('hidden');
     if (typeof Api !== 'undefined') Api._currentPage = pageName;
+    App._currentPage = pageName;
     (App.pageLoaders || {})[pageName]?.();
   }
   // 清除 hash
@@ -51,20 +52,8 @@ window.addEventListener('hashchange', () => {
 document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSidebarToggle();
-  initLogout();
-  // 顶栏退出按钮（dashboard.js 提供 _initLogoutTop，此处兜底）
-  var topBtn = document.getElementById('btnLogoutTop');
-  if (topBtn && typeof _initLogoutTop !== 'function') {
-    topBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (confirm('确定要退出登录吗？')) {
-        localStorage.removeItem('hsp_token');
-        window.location.href = '/login.html';
-      }
-    });
-  }
+  initUserMenu();
   _topbarPollStart();
-  setInterval(updateUptime, 1000);
   loadDashboard();
   loadSettings();
 });
@@ -97,9 +86,33 @@ function initSidebarToggle() {
   }
 }
 
+// 管理员菜单（点击用户名弹出退出登录菜单）
+function initUserMenu() {
+  var btn = document.getElementById('topbarUserBtn');
+  var dropdown = document.getElementById('userDropdown');
+  if (!btn || !dropdown) return;
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    dropdown.classList.toggle('hidden');
+  });
+  document.addEventListener('click', function() {
+    dropdown.classList.add('hidden');
+  });
+  var logoutLink = document.getElementById('menuLogout');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (confirm('确定要退出登录吗？')) {
+        localStorage.removeItem('hsp_token');
+        window.location.href = '/login.html';
+      }
+    });
+  }
+}
+
 // 退出登录（顶栏按钮）
 function initLogout() {
-  // 已在 dashboard.js 中通过 _initLogoutTop() 处理
+  // 已由 initUserMenu 统一处理
 }
 
 // 导航
@@ -122,7 +135,8 @@ function initNavigation() {
       const pageName = item.dataset.page;
 
       // 如果同一个页面，不重复加载
-      if (App._currentPage === pageName) return;
+      var prevPage = (typeof Api !== 'undefined') ? Api._currentPage : App._currentPage;
+      if (prevPage === pageName) return;
 
       navItems.forEach(n => n.classList.remove('active'));
       item.classList.add('active');
@@ -131,7 +145,8 @@ function initNavigation() {
       const target = pageMap[pageName];
       if (target) target.classList.remove('hidden');
 
-      // 设置当前页面（用于诊断日志标记）
+      // 设置当前页面（用于诊断日志标记 + 重复点击检测）
+      App._currentPage = pageName;
       if (typeof Api !== 'undefined') Api._currentPage = pageName;
 
       // 页面级懒加载

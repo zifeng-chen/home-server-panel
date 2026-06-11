@@ -163,6 +163,13 @@ function _topbarPollStart() {
   if (_topbarPollTimer) return;
   _topbarPoll();
   _topbarPollTimer = setInterval(_topbarPoll, 5000);
+  // 获取管理员用户名（仅一次）
+  Api.get('/auth/status', null, { showError: false }).then(function(r) {
+    if (r.success && r.data.username) {
+      var uEl = document.getElementById('topbarUserBtn');
+      if (uEl) uEl.textContent = '👤 ' + r.data.username;
+    }
+  }).catch(function() {});
 }
 async function _topbarPoll() {
   try {

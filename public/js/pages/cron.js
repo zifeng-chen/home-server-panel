@@ -77,3 +77,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+// 导出供 app.js 的 _ensurePage 调用
+window.loadCron = loadCron;

@@ -132,3 +132,6 @@ window.startPort = async (port, process, desc) => {
     Utils.notify(res.message || '命令执行失败', 'error');
   }
 };
+
+// 导出供 app.js 的 _ensurePage 调用
+window.loadPort = loadPort;

@@ -336,3 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSave = document.getElementById('btnPM2Save');
   if (btnSave) btnSave.addEventListener('click', pm2Save);
 });
+
+// 导出供 app.js 的 _ensurePage 调用
+window.loadPM2 = loadPM2;

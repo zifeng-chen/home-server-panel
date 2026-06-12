@@ -178,14 +178,14 @@ function initNavigation() {
 // 启动页加载映射
 App.pageLoaders = {
   dashboard: () => loadDashboard(),
-  ddns: () => _ensurePage('ddns', loadDdns),
-  ssl: () => _ensurePage('cert', loadCert),
+  ddns: () => _ensurePage('ddns', window.loadDdns),
+  ssl: () => _ensurePage('cert', window.loadCert),
   nginx: () => _ensurePage('nginx', window.loadNginxPage),
-  port: () => _ensurePage('port', loadPort),
-  pm2: () => _ensurePage('pm2', loadPM2),
-  cron: () => _ensurePage('cron', loadCron),
-  docker: () => _ensurePage('docker', loadDocker),
-  ssh: () => _ensurePage('ssh', loadSSH),
+  port: () => _ensurePage('port', window.loadPort),
+  pm2: () => _ensurePage('pm2', window.loadPM2),
+  cron: () => _ensurePage('cron', window.loadCron),
+  docker: () => _ensurePage('docker', window.loadDocker),
+  ssh: () => _ensurePage('ssh', window.loadSSH),
   settings: () => loadSettings()
 };
 

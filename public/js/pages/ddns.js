@@ -413,3 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
   if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ddns', 'DDNS'));
 });
+
+// 导出供 app.js 的 _ensurePage 调用
+window.loadDdns = loadDdns;

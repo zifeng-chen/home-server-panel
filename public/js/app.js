@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.17.6',
+  version: '1.17.7',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
@@ -197,7 +197,7 @@ function _ensurePage(name, fn) {
   if (document.getElementById(id)) return;              // 正在加载
   const s = document.createElement('script');
   s.id = id;
-  s.src = '/js/pages/' + name + '.js?v=' + (document.querySelector('meta[name="build-id"]')?.content || '');
+  s.src = '/js/pages/' + name + '.min.js?v=' + (document.querySelector('meta[name="build-id"]')?.content || '');
   s.onload = () => {
     // 脚本加载后重新触发页面加载
     const loader = App.pageLoaders?.[name];

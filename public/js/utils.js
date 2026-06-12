@@ -104,7 +104,14 @@ const Utils = (window.Utils = {
             const lines = list.map(e => {
               const time = (e.time || '').replace('T', ' ').substring(0, 19);
               const icon = levelIcon[e.level] || '📝';
-              return `[${time}] ${icon} [${e.module}] ${e.action}: ${e.message}${e.detail ? ' (' + e.detail + ')' : ''}`;
+              const meta = [];
+              if (e.ip && e.ip !== '-') meta.push(e.ip);
+              if (e.duration) meta.push(e.duration + 'ms');
+              if (e.statusCode) meta.push('HTTP ' + e.statusCode);
+              const metaStr = meta.length ? ' [' + meta.join(', ') + ']' : '';
+              const bodyInfo = e.body ? '\n  📩 ' + e.body : '';
+              const detailStr = e.detail ? '\n  📎 ' + e.detail : '';
+              return `[${time}] ${icon} [${e.module}] ${e.action}${metaStr}: ${e.message}${bodyInfo}${detailStr}`;
             });
             contentEl.textContent = lines.join('\n');
             summaryEl.style.display = 'block';

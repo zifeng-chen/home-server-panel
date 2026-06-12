@@ -266,6 +266,9 @@ server.listen(PORT, () => {
   console.log(`📅 启动时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
   console.log(`👤 默认账号: admin / admin123`);
   console.log(`📦 模块: DDNS SSL Nginx Proxy Port Notify Log Cron PM2 Docker SSH Monitor`);
+  logService.log({ module: 'system', action: 'STARTUP', level: 'info',
+    message: `服务已启动，端口 ${PORT}，数据库模式 ${dbMode}`,
+    detail: `Node ${process.version} | ${process.platform} ${process.arch}` });
   require('./services/cron-service'); // 启动定时任务
 });
 
@@ -275,6 +278,8 @@ async function _gracefulShutdown(signal) {
   if (_shuttingDown) return;
   _shuttingDown = true;
   console.log(`\n🛑 收到 ${signal} 信号，正在优雅关闭...`);
+  logService.log({ module: 'system', action: 'SHUTDOWN', level: 'warn',
+    message: `收到 ${signal} 信号，开始优雅关闭` });
   try {
     const monitor = require('./services/monitor-service');
     monitor.stop();

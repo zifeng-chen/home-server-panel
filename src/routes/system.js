@@ -2,42 +2,54 @@ const express = require('express');
 const os = require('os');
 const router = express.Router();
 
+// 简单内存缓存（60 秒 TTL）
+const _cache = new Map();
+function getCached(key, ttlMs, factory) {
+  const entry = _cache.get(key);
+  if (entry && Date.now() - entry.ts < ttlMs) return entry.data;
+  const data = factory();
+  _cache.set(key, { ts: Date.now(), data });
+  return data;
+}
+
 // GET /api/system/info - 系统信息
 router.get('/info', (req, res) => {
-  const pkg = require('../../package.json');
-  // 收集本机 IP 地址
-  const ips = [];
-  const nets = os.networkInterfaces();
-  for (const [name, addrs] of Object.entries(nets)) {
-    for (const addr of addrs) {
-      if (!addr.internal && addr.family === 'IPv4') ips.push(addr.address);
+  const info = getCached('sys-info', 60000, () => {
+    const pkg = require('../../package.json');
+    const ips = [];
+    const nets = os.networkInterfaces();
+    for (const [name, addrs] of Object.entries(nets)) {
+      for (const addr of addrs) {
+        if (!addr.internal && addr.family === 'IPv4') ips.push(addr.address);
+      }
     }
-  }
-  const info = {
-    hostname: os.hostname(),
-    platform: os.platform(),
-    arch: os.arch(),
-    cpus: os.cpus().length,
-    nodeVersion: process.version,
-    panelVersion: pkg.version,
-    memory: {
-      total: Math.round(os.totalmem() / (1024 * 1024 * 1024) * 100) / 100,
-      free: Math.round(os.freemem() / (1024 * 1024 * 1024) * 100) / 100
-    },
-    uptime: Math.floor(os.uptime()),
-    loadavg: os.loadavg(),
-    ips: ips,
-    modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']
-  };
+    return {
+      hostname: os.hostname(),
+      platform: os.platform(),
+      arch: os.arch(),
+      cpus: os.cpus().length,
+      nodeVersion: process.version,
+      panelVersion: pkg.version,
+      memory: {
+        total: Math.round(os.totalmem() / (1024 * 1024 * 1024) * 100) / 100,
+        free: Math.round(os.freemem() / (1024 * 1024 * 1024) * 100) / 100
+      },
+      uptime: Math.floor(os.uptime()),
+      loadavg: os.loadavg(),
+      ips: ips,
+      modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']
+    };
+  });
   res.json({ success: true, data: info });
 });
 
 // GET /api/system/uptime
 router.get('/uptime', (req, res) => {
-  res.json({
-    success: true,
-    data: { uptime: process.uptime(), startTime: new Date(Date.now() - process.uptime() * 1000).toISOString() }
-  });
+  const data = getCached('sys-uptime', 15000, () => ({
+    uptime: process.uptime(),
+    startTime: new Date(Date.now() - process.uptime() * 1000).toISOString()
+  }));
+  res.json({ success: true, data });
 });
 
 // GET /api/system/config - 获取配置（脱敏）

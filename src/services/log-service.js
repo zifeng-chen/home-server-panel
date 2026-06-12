@@ -58,24 +58,39 @@ class LogService {
 
   middleware() {
     const self = this;
+    // GET 静默路径：高频轮询不记录日志
+    const silentGets = new Set([
+      '/api/monitor', '/api/system', '/api/auth/status',
+      '/api/dashboard', '/api/db/status'
+    ]);
     return (req, res, next) => {
+      // GET 请求：仅记录有错误或非轮询路径
+      if (req.method === 'GET') {
+        const strippedPath = (req.originalUrl || req.url).split('?')[0];
+        if (silentGets.has(strippedPath)) return next();
+      }
+
       const start = Date.now();
       const origJson = res.json.bind(res);
       res.json = function(obj) {
         const duration = Date.now() - start;
-        const path = req.originalUrl || req.url;
-        if (!path.startsWith("/api/")) return origJson(obj);
-        let module = path.split("/").slice(2, 3)[0] || "system";
-        // 模块名映射
+        const reqPath = req.originalUrl || req.url;
+        if (!reqPath.startsWith("/api/")) return origJson(obj);
+        let module = reqPath.split("/").slice(2, 3)[0] || "system";
         const moduleMap = { cert: 'ssl', certificate: 'ssl' };
         module = moduleMap[module] || module;
+
+        // GET 成功不记日志，只记错误（减少日志噪音）
+        if (req.method === 'GET' && obj && obj.success === true) {
+          return origJson(obj);
+        }
 
         let level = "info", message = req.method + " " + module;
         if (res.statusCode >= 500) { level = "error"; message = obj.message || "服务器错误"; }
         else if (res.statusCode >= 400) { level = "warn"; message = obj.message || "请求被拒绝"; }
         else if (obj && obj.success === true) { level = "success"; message = obj.message || module + " 成功"; }
         else if (obj && obj.success === false) { level = "warn"; message = obj.message || "操作失败"; }
-        self.log({ module, action: req.method + " " + path, level, message, detail: duration + "ms" });
+        self.log({ module, action: req.method + " " + reqPath, level, message, detail: duration + "ms" });
         return origJson(obj);
       };
       next();

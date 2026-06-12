@@ -9,7 +9,7 @@ router.post('/test', async (req, res) => {
     const result = await dbService.testConnection(req.body);
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -19,7 +19,7 @@ router.post('/connect', async (req, res) => {
     const result = await dbService.initMySQL(req.body);
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -40,7 +40,7 @@ router.post('/migrate', async (req, res) => {
     const result = await dbService.migrateFromLocal();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -50,7 +50,7 @@ router.get('/migration-status', async (req, res) => {
     const status = await dbService.getMigrationStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -60,7 +60,7 @@ router.post('/disconnect', async (req, res) => {
     const result = await dbService.close();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -80,7 +80,7 @@ router.get('/export', (req, res) => {
       res.send(data);
     });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -104,7 +104,7 @@ router.post('/import', upload.single('file'), (req, res) => {
       const magic = header.toString('utf8', 0, 16);
       if (!magic.startsWith('SQLite format 3')) {
         fs.unlinkSync(req.file.path);
-        return res.json({ success: false, message: '无效的 SQLite 数据库文件' });
+        return res.status(400).json({success: false, message: '无效的 SQLite 数据库文件' });
       }
       // 直接替换 SQLite 数据库文件
       const dbPath = path.join(__dirname, '..', '..', 'data', 'panel.db');
@@ -134,7 +134,7 @@ router.post('/migrate-to-sqlite', (req, res) => {
     const result = sqliteService.migrateFromJson();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -154,7 +154,7 @@ router.get('/info', (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

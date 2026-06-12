@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     const data = await ddnsService.getAllRecords();
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, message: err.message, data: { records: [], publicIpv4: null, publicIpv6: null } });
+    res.status(500).json({success: false, message: err.message, data: { records: [], publicIpv4: null, publicIpv6: null } });
   }
 });
 
@@ -18,7 +18,7 @@ router.get('/ip', async (req, res) => {
     const ip = await ddnsService.getPublicIp();
     res.json({ success: true, data: { ip } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -28,7 +28,7 @@ router.get('/ipv6', async (req, res) => {
     const ip = await ddnsService.getPublicIpv6();
     res.json({ success: true, data: { ip } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -45,7 +45,7 @@ router.post('/refresh', async (req, res) => {
       data: results
     });
   } catch (err) {
-    res.json({ success: false, message: 'DDNS 刷新失败: ' + err.message });
+    res.status(500).json({success: false, message: 'DDNS 刷新失败: ' + err.message });
   }
 });
 
@@ -56,13 +56,13 @@ router.post('/record/:recordId/toggle', async (req, res) => {
     // 先查当前状态，然后翻转
     const records = (await ddnsService.getAllRecords()).records;
     const record = records.find(r => r.id === req.params.recordId);
-    if (!record) return res.json({ success: false, message: '记录不存在' });
+    if (!record) return res.status(400).json({success: false, message: '记录不存在' });
 
     const newStatus = status || (record.enabled ? 'DISABLE' : 'ENABLE');
     await ddnsService.setRecordStatus(req.params.recordId, newStatus);
     res.json({ success: true, message: newStatus === 'ENABLE' ? '已启用' : '已停用' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -73,7 +73,7 @@ router.put('/record/:recordId', async (req, res) => {
     await ddnsService.editRecord(req.params.recordId, { rr, type, value, ttl, line });
     res.json({ success: true, message: 'DNS 记录已更新' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -85,7 +85,7 @@ router.delete('/record/:recordId', async (req, res) => {
       // Task 12: 仅从面板移除，不删除阿里云记录
       const records = (await ddnsService.getAllRecords()).records;
       const record = records.find(r => r.id === req.params.recordId);
-      if (!record) return res.json({ success: false, message: '记录不存在' });
+      if (!record) return res.status(400).json({success: false, message: '记录不存在' });
       // 从 record 中提取主域名和子域名：domain=rr.mainDomain, rr=subdomain
       // record.domain 格式: 'rr.mainDomain' 或 'mainDomain'(当rr='@')
       const mainDomain = record.domain.replace(/^[^.]+\./, ''); // 去掉前缀子域名
@@ -96,7 +96,7 @@ router.delete('/record/:recordId', async (req, res) => {
       res.json({ success: true, message: 'DNS 记录已从阿里云删除' });
     }
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -110,7 +110,7 @@ router.get('/domains', (req, res) => {
 router.post('/domains', async (req, res) => {
   try {
     const { name, subdomain, recordType, ttl, value } = req.body;
-    if (!name) return res.json({ success: false, message: '域名不能为空' });
+    if (!name) return res.status(400).json({success: false, message: '域名不能为空' });
 
     // 保存到本地配置
     const domain = ddnsService.addDomain({
@@ -142,7 +142,7 @@ router.post('/domains', async (req, res) => {
       warning: dnsWarning || null
     });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -150,12 +150,12 @@ router.post('/domains', async (req, res) => {
 router.delete('/domains', (req, res) => {
   try {
     const { name, subdomain, recordType } = req.body;
-    if (!name) return res.json({ success: false, message: '域名不能为空' });
+    if (!name) return res.status(400).json({success: false, message: '域名不能为空' });
 
     ddnsService.removeDomain(name, subdomain || '@', recordType);
     res.json({ success: true, message: '域名已删除' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

@@ -12,7 +12,7 @@ router.get('/', (req, res) => {
     const data = monitor.snapshot();
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -22,7 +22,7 @@ router.get('/live', (req, res) => {
     const data = monitor.snapshot();
     res.json({ success: true, data: data.live });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

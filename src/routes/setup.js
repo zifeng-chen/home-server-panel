@@ -57,7 +57,7 @@ router.post('/install', async (req, res) => {
     const result = await setupService.install(config);
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: `安装失败: ${err.message}` });
+    res.status(500).json({success: false, message: `安装失败: ${err.message}` });
   }
 });
 
@@ -94,6 +94,6 @@ router.post('/reset', (req, res) => {
     
     res.json({ success: true, message: '系统已重置，请重新安装' });
   } catch (err) {
-    res.json({ success: false, message: '重置失败: ' + err.message });
+    res.status(500).json({success: false, message: '重置失败: ' + err.message });
   }
 });

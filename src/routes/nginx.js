@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     const status = await nginxService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -19,7 +19,7 @@ router.get('/status', async (req, res) => {
     const status = await nginxService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -35,7 +35,7 @@ router.post('/start', async (req, res) => {
     const result = await nginxService.start();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: '启动失败: ' + err.message });
+    res.status(500).json({success: false, message: '启动失败: ' + err.message });
   }
 });
 
@@ -45,7 +45,7 @@ router.post('/stop', async (req, res) => {
     const result = await nginxService.stop();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: '停止失败: ' + err.message });
+    res.status(500).json({success: false, message: '停止失败: ' + err.message });
   }
 });
 
@@ -55,7 +55,7 @@ router.post('/reload', async (req, res) => {
     const result = await nginxService.reload();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: '重载失败: ' + err.message });
+    res.status(500).json({success: false, message: '重载失败: ' + err.message });
   }
 });
 
@@ -65,7 +65,7 @@ router.post('/restart', async (req, res) => {
     const result = await nginxService.restart();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: '重启失败: ' + err.message });
+    res.status(500).json({success: false, message: '重启失败: ' + err.message });
   }
 });
 
@@ -75,7 +75,7 @@ router.post('/test', async (req, res) => {
     const result = await nginxService.testConfig();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -85,7 +85,7 @@ router.get('/sites', async (req, res) => {
     const sites = await nginxService.getSites();
     res.json({ success: true, data: sites });
   } catch (err) {
-    res.json({ success: false, message: err.message, data: { sites: [] } });
+    res.status(500).json({success: false, message: err.message, data: { sites: [] } });
   }
 });
 
@@ -97,7 +97,7 @@ router.get('/logs', async (req, res) => {
     const logs = await nginxService.getLogs(type, lines);
     res.json({ success: true, data: logs });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -225,7 +225,7 @@ router.post('/install', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -238,7 +238,7 @@ router.post('/manual-deploy', async (req, res) => {
     var result = await nginxService.manualDeploy({ name, domain, target, websocket: !!websocket });
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

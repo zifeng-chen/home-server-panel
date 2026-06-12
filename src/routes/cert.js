@@ -8,7 +8,7 @@ router.get('/acme', async (req, res) => {
     const status = await sslService.checkAcme();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -16,12 +16,12 @@ router.get('/acme', async (req, res) => {
 router.post('/acme/install', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.json({ success: false, message: '请提供联系邮箱' });
+    if (!email) return res.status(400).json({success: false, message: '请提供联系邮箱' });
     
     const result = await sslService.installAcme(email);
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
-    res.json({ success: false, message: '安装失败: ' + err.message });
+    res.status(500).json({success: false, message: '安装失败: ' + err.message });
   }
 });
 
@@ -56,7 +56,7 @@ router.post('/acme/uninstall', async (req, res) => {
     const result = await sslService.uninstallAcme();
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
-    res.json({ success: false, message: '卸载失败: ' + err.message });
+    res.status(500).json({success: false, message: '卸载失败: ' + err.message });
   }
 });
 
@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
     const data = await sslService.listCertificates();
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, message: err.message, data: { certificates: [], acmeInstalled: false } });
+    res.status(500).json({success: false, message: err.message, data: { certificates: [], acmeInstalled: false } });
   }
 });
 
@@ -74,12 +74,12 @@ router.get('/', async (req, res) => {
 router.post('/issue', async (req, res) => {
   try {
     const { domain, wildcard } = req.body;
-    if (!domain) return res.json({ success: false, message: '域名不能为空' });
+    if (!domain) return res.status(400).json({success: false, message: '域名不能为空' });
 
     const result = await sslService.issueCertificate(domain, { wildcard });
     res.json({ success: true, message: `证书申请成功: ${domain}`, data: result });
   } catch (err) {
-    res.json({ success: false, message: '证书申请失败: ' + err.message });
+    res.status(500).json({success: false, message: '证书申请失败: ' + err.message });
   }
 });
 
@@ -121,12 +121,12 @@ router.get('/issue/stream', async (req, res) => {
 router.post('/renew', async (req, res) => {
   try {
     const { domain } = req.body;
-    if (!domain) return res.json({ success: false, message: '域名不能为空' });
+    if (!domain) return res.status(400).json({success: false, message: '域名不能为空' });
 
     const result = await sslService.renewCertificate(domain);
     res.json({ success: true, message: `证书续期成功: ${domain}`, data: result });
   } catch (err) {
-    res.json({ success: false, message: '证书续期失败: ' + err.message });
+    res.status(500).json({success: false, message: '证书续期失败: ' + err.message });
   }
 });
 
@@ -136,7 +136,7 @@ router.post('/renew-all', async (req, res) => {
     const result = await sslService.renewAllCertificates();
     res.json({ success: true, message: '批量续期完成', data: result });
   } catch (err) {
-    res.json({ success: false, message: '批量续期失败: ' + err.message });
+    res.status(500).json({success: false, message: '批量续期失败: ' + err.message });
   }
 });
 
@@ -144,14 +144,14 @@ router.post('/renew-all', async (req, res) => {
 router.post('/deploy', async (req, res) => {
   try {
     const { domain, keyFile, fullchainFile } = req.body;
-    if (!domain) return res.json({ success: false, message: '域名不能为空' });
-    if (!keyFile) return res.json({ success: false, message: '请提供 key 文件路径' });
-    if (!fullchainFile) return res.json({ success: false, message: '请提供 fullchain 文件路径' });
+    if (!domain) return res.status(400).json({success: false, message: '域名不能为空' });
+    if (!keyFile) return res.status(400).json({success: false, message: '请提供 key 文件路径' });
+    if (!fullchainFile) return res.status(400).json({success: false, message: '请提供 fullchain 文件路径' });
 
     const result = await sslService.deployCertificate(domain, keyFile, fullchainFile);
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
-    res.json({ success: false, message: '部署失败: ' + err.message });
+    res.status(500).json({success: false, message: '部署失败: ' + err.message });
   }
 });
 

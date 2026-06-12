@@ -6,7 +6,7 @@ const auth = require('../services/auth');
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
-    return res.json({ success: false, message: '用户名和密码不能为空' });
+    return res.status(400).json({success: false, message: '用户名和密码不能为空' });
   }
 
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;

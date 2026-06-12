@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
     const stats = proxyService.getStats();
     res.json({ success: true, data: { rules, stats } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -65,7 +65,7 @@ router.post('/', async (req, res) => {
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已添加（部署已排入队列）', data: { rule } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -77,7 +77,7 @@ router.put('/:id', async (req, res) => {
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已更新（部署已排入队列）', data: { rule } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -89,7 +89,7 @@ router.delete('/:id', async (req, res) => {
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已删除（部署已排入队列）' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -101,7 +101,7 @@ router.post('/:id/toggle', async (req, res) => {
     _scheduleDeploy();
     res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + '（部署已排入队列）', data: { rule } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -111,7 +111,7 @@ router.get('/config/preview', (req, res) => {
     const config = proxyService.generateAllConfig();
     res.json({ success: true, data: { config } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -119,11 +119,11 @@ router.get('/config/preview', (req, res) => {
 router.get('/config/preview/:id', (req, res) => {
   try {
     const rule = proxyService.getRule(req.params.id);
-    if (!rule) return res.json({ success: false, message: '规则不存在' });
+    if (!rule) return res.status(400).json({success: false, message: '规则不存在' });
     const config = proxyService.generateNginxConfig(rule);
     res.json({ success: true, data: { config } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -135,7 +135,7 @@ router.post('/config/export', (req, res) => {
     const result = proxyService.exportToFile(dest);
     res.json({ success: true, message: `配置已导出到 ${result.path} (${result.rules} 条规则)`, data: result });
   } catch (err) {
-    res.json({ success: false, message: '导出失败: ' + err.message });
+    res.status(500).json({success: false, message: '导出失败: ' + err.message });
   }
 });
 

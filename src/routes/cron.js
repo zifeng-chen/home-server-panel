@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
     const jobs = cronService.listJobs();
     res.json({ success: true, data: { jobs, count: jobs.length } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -18,7 +18,7 @@ router.post('/', (req, res) => {
     const job = cronService.addJob(req.body);
     res.json({ success: true, message: '定时任务已添加', data: { job } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -28,7 +28,7 @@ router.put('/:id', (req, res) => {
     const job = cronService.updateJob(req.params.id, req.body);
     res.json({ success: true, message: '任务已更新', data: { job } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -38,7 +38,7 @@ router.delete('/:id', (req, res) => {
     cronService.removeJob(req.params.id);
     res.json({ success: true, message: '任务已删除' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -48,7 +48,7 @@ router.post('/:id/toggle', (req, res) => {
     const job = cronService.toggleJob(req.params.id);
     res.json({ success: true, message: job.enabled ? '已启用' : '已停用', data: { job } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -58,7 +58,7 @@ router.post('/:id/run', async (req, res) => {
     const result = await cronService.runJob(req.params.id);
     res.json({ success: true, message: '任务已执行', data: { result } });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

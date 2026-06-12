@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     });
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -25,7 +25,7 @@ router.delete('/', (req, res) => {
     const result = logService.clear();
     res.json(result);
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

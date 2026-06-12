@@ -12,7 +12,7 @@ router.get('/sessions', (req, res) => {
     }
     res.json({ success: true, data: sessions });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -22,7 +22,7 @@ router.post('/disconnect/:sessionId', (req, res) => {
     sshService.disconnect(req.params.sessionId);
     res.json({ success: true, message: '已断开' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

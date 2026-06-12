@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const status = await notifyService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -20,7 +20,7 @@ router.post('/test', async (req, res) => {
     const result = await notifyService.test();
     res.json({ success: result.success !== false, message: result.message || '测试推送已发送' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -34,7 +34,7 @@ router.post('/ddns', async (req, res) => {
     const result = await notifyService.notifyDdnsChange(records);
     res.json({ success: result.success !== false, message: 'DDNS 变更通知已发送' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -42,7 +42,7 @@ router.post('/ddns', async (req, res) => {
 router.post('/ssl', async (req, res) => {
   try {
     const { domain } = req.body;
-    if (!domain) return res.json({ success: false, message: 'domain 不能为空' });
+    if (!domain) return res.status(400).json({success: false, message: 'domain 不能为空' });
 
     // 从证书列表找到对应证书
     const certs = await sslService.listCertificates();
@@ -52,7 +52,7 @@ router.post('/ssl', async (req, res) => {
     const result = await notifyService.notifySslExpire(cert);
     res.json({ success: result.success !== false, message: 'SSL 到期通知已发送' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -60,12 +60,12 @@ router.post('/ssl', async (req, res) => {
 router.post('/service', async (req, res) => {
   try {
     const { service, error } = req.body;
-    if (!service) return res.json({ success: false, message: 'service 不能为空' });
+    if (!service) return res.status(400).json({success: false, message: 'service 不能为空' });
 
     const result = await notifyService.notifyServiceDown(service, error);
     res.json({ success: result.success !== false, message: '服务异常通知已发送' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 
@@ -73,7 +73,7 @@ router.post('/service', async (req, res) => {
 router.put('/config', (req, res) => {
   try {
     const { token } = req.body;
-    if (!token) return res.json({ success: false, message: 'token 不能为空' });
+    if (!token) return res.status(400).json({success: false, message: 'token 不能为空' });
     // 安全：移除换行符防止 .env 注入
     const safeToken = String(token).replace(/[\r\n]/g, '');
 
@@ -96,7 +96,7 @@ router.put('/config', (req, res) => {
 
     res.json({ success: true, message: 'PushPlus Token 已更新' });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

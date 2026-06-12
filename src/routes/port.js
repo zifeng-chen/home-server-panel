@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     const stats = portService.getStats(ports);
     res.json({ success: true, data: { ports, stats } });
   } catch (err) {
-    res.json({ success: false, message: err.message, data: { ports: [], stats: { total: 0 } } });
+    res.status(500).json({success: false, message: err.message, data: { ports: [], stats: { total: 0 } } });
   }
 });
 
@@ -20,7 +20,7 @@ router.get('/scan', async (req, res) => {
     const stats = portService.getStats(ports);
     res.json({ success: true, data: { ports, stats }, message: `扫描完成，发现 ${ports.length} 个监听端口` });
   } catch (err) {
-    res.json({ success: false, message: err.message, data: { ports: [], stats: { total: 0 } } });
+    res.status(500).json({success: false, message: err.message, data: { ports: [], stats: { total: 0 } } });
   }
 });
 
@@ -34,7 +34,7 @@ router.get('/check/:port', async (req, res) => {
     const result = await portService.checkPort(port);
     res.json({ success: true, data: result });
   } catch (err) {
-    res.json({ success: false, message: err.message });
+    res.status(500).json({success: false, message: err.message });
   }
 });
 

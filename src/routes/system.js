@@ -108,7 +108,7 @@ router.post('/config', (req, res) => {
 
     res.json({ success: true, message: '配置已保存并立即生效' });
   } catch (err) {
-    res.json({ success: false, message: '保存失败: ' + err.message });
+    res.status(500).json({success: false, message: '保存失败: ' + err.message });
   }
 });
 

@@ -180,7 +180,7 @@ App.pageLoaders = {
   dashboard: () => loadDashboard(),
   ddns: () => _ensurePage('ddns', loadDdns),
   ssl: () => _ensurePage('cert', loadCert),
-  nginx: () => _ensurePage('nginx', () => { loadNginx(); loadProxy(); }),
+  nginx: () => _ensurePage('nginx', window.loadNginxPage),
   port: () => _ensurePage('port', loadPort),
   pm2: () => _ensurePage('pm2', loadPM2),
   cron: () => _ensurePage('cron', loadCron),

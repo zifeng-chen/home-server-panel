@@ -1,6 +1,9 @@
 // Nginx 管理 + 反向代理（左右分栏）
 let nginxLoaded = false;
 
+// _ensurePage 入口（供 app.js 延迟加载回调）
+window.loadNginxPage = function() { loadNginx(); loadProxy(); };
+
 // ========== Nginx 管理 ==========
 
 async function loadNginx() {

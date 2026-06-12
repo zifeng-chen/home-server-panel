@@ -26,12 +26,13 @@ async function loadDashboard() {
       }
     };
 
-    const [info, ddns, cert, nginxRes, proxy, logs] = await Promise.all([
+    const [info, ddns, cert, nginxRes, proxy, dbStatus, logs] = await Promise.all([
       safeFetch('/system/info', { success: false }),
       safeFetch('/ddns', { success: false }),
       safeFetch('/cert', { success: false }),
       safeFetch('/nginx/status', { success: false }),
       safeFetch('/proxy', { success: false }),
+      safeFetch('/db/status', { success: false }),
       safeFetch('/log?limit=8', { success: false })
     ]);
 
@@ -77,13 +78,16 @@ async function loadDashboard() {
       proxyCount = pd.stats ? pd.stats.enabled : (pd.rules ? pd.rules.filter(function(r) { return r.enabled; }).length : 0);
     }
 
+    var dbMode = (dbStatus && dbStatus.data && dbStatus.data.mode) || 'local';
+    var dbLabel = dbMode === 'mysql' ? 'MySQL' : 'SQLite';
+
     var services = [
       { icon: '🐳', name: 'Docker', status: '查看', cls: 'up', nav: 'docker' },
       { icon: '🌐', name: 'Nginx', status: nginxRunning ? '运行中' : '未运行', cls: nginxRunning ? 'up' : 'down', nav: 'nginx' },
       { icon: '📡', name: 'DDNS', status: ddnsCount + ' 个域名', cls: ddnsCount > 0 ? 'up' : 'warn', nav: 'ddns' },
       { icon: '🔒', name: 'SSL', status: certCount + ' 个证书', cls: certCount > 0 ? 'up' : 'warn', nav: 'ssl' },
       { icon: '🔄', name: '反向代理', status: proxyCount + ' 条启用', cls: proxyCount > 0 ? 'up' : 'warn', nav: 'nginx' },
-      { icon: '🗄️', name: '数据库', status: 'SQLite', cls: 'up', nav: 'settings' }
+      { icon: '🗄️', name: '数据库', status: dbLabel, cls: 'up', nav: 'settings' }
     ];
 
     var sGrid = document.getElementById('servicesGrid');

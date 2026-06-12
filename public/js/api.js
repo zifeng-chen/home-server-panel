@@ -95,3 +95,6 @@ const Api = {
   put(path, data, opts) { return this.request('PUT', path, data, null, opts); },
   del(path, data, opts) { return this.request('DELETE', path, data || {}, null, opts); }
 };
+
+// Export to window for IIFE bundle and lazy-loaded page scripts
+window.Api = Api;

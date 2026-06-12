@@ -3,10 +3,10 @@ const router = express.Router();
 const logService = require('../services/log-service');
 
 // GET /api/log - 查询日志
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { module, level, search, limit, offset } = req.query;
-    const result = logService.query({
+    const result = await logService.query({
       module,
       level,
       search,

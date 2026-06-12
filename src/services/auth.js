@@ -23,6 +23,8 @@ class Auth {
     this.sessions = this._loadSessions();
     this._cleanSessions();
     setInterval(() => this._cleanSessions(), 3600000);
+    // 定期清理过期速率限制条目（每 5 分钟）
+    setInterval(() => this._cleanRateLimit(), 300000);
     _instance = this;
   }
 
@@ -73,6 +75,16 @@ class Auth {
 
   _clearRateLimit(ip) {
     loginAttempts.delete(ip);
+  }
+
+  _cleanRateLimit() {
+    const now = Date.now();
+    for (const [ip, entry] of loginAttempts) {
+      // 清除超过窗口期 + 封禁期 的条目
+      if (now - entry.firstAttempt > LOGIN_WINDOW_MS + LOGIN_BLOCK_MS) {
+        loginAttempts.delete(ip);
+      }
+    }
   }
 
   verifyToken(token) {

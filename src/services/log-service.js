@@ -21,11 +21,30 @@ class LogService {
     };
     this.entries.unshift(r);
     if (this.entries.length > MAX) this.entries = this.entries.slice(0, MAX);
-    setImmediate(() => this._save());
+    setImmediate(() => {
+      this._save();
+      // 同时写 MySQL（如果已连接）
+      try {
+        const dbService = require("./db-service");
+        if (dbService.mode === "mysql" && dbService.getPool()) {
+          dbService.addLog(r).catch(() => {});
+        }
+      } catch (_) {}
+    });
     return r;
   }
 
-  query({ module, level, search, limit = 100, offset = 0 } = {}) {
+  async query({ module, level, search, limit = 100, offset = 0 } = {}) {
+    // MySQL 模式：优先读数据库
+    try {
+      const dbService = require("./db-service");
+      if (dbService.mode === "mysql" && dbService.getPool()) {
+        const dbResult = await dbService.queryLogs({ module, level, search, limit, offset });
+        if (dbResult) return dbResult;
+      }
+    } catch (_) {}
+
+    // fallback: 内存数据
     let list = [...this.entries];
     if (module && module !== "all") list = list.filter(e => e.module === module);
     if (level && level !== "all") list = list.filter(e => e.level === level);

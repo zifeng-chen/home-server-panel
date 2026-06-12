@@ -3,16 +3,25 @@ const router = express.Router();
 const proxyService = require('../services/proxy-service');
 const nginxService = require('../services/nginx-service');
 
-// 自动部署 Nginx 配置
-async function _autoDeploy() {
-  try {
-    const config = proxyService.generateAllConfig();
-    const result = await nginxService.deployProxyConfig(config);
-    console.log('[Proxy] 自动部署结果:', result.success ? '成功' : result.message);
-    return result;
-  } catch (err) {
-    console.warn('[Proxy] 自动部署异常:', err.message);
-    return { success: false, message: err.message };
+// 防抖部署：500ms 内的多次操作合并为一次 deploy
+let _deployTimer = null;
+let _deployPending = false;
+
+function _scheduleDeploy() {
+  if (_deployPending) return; // 已有待执行部署
+  if (!_deployTimer) {
+    _deployTimer = setTimeout(async () => {
+      _deployTimer = null;
+      _deployPending = false;
+      try {
+        const config = proxyService.generateAllConfig();
+        const result = await nginxService.deployProxyConfig(config);
+        console.log('[Proxy] 防抖部署结果:', result.success ? '成功' : result.message);
+      } catch (err) {
+        console.warn('[Proxy] 防抖部署异常:', err.message);
+      }
+    }, 500);
+    _deployPending = true;
   }
 }
 
@@ -52,8 +61,9 @@ router.post('/', async (req, res) => {
       }
     }
     const rule = proxyService.addRule(body);
-    const deployResult = await _autoDeploy();
-    res.json({ success: true, message: '代理规则已添加' + (deployResult.success ? '并部署生效' : '，但部署失败'), data: { rule, deploy: deployResult } });
+    // 部署已排入防抖队列，500ms内批量操作仅重载一次
+    _scheduleDeploy();
+    res.json({ success: true, message: '代理规则已添加（部署已排入队列）', data: { rule } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
@@ -63,8 +73,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const rule = proxyService.updateRule(req.params.id, req.body);
-    const deployResult = await _autoDeploy();
-    res.json({ success: true, message: '代理规则已更新' + (deployResult.success ? '并部署生效' : '，但部署失败'), data: { rule, deploy: deployResult } });
+    // 部署已排入防抖队列，500ms内批量操作仅重载一次
+    _scheduleDeploy();
+    res.json({ success: true, message: '代理规则已更新（部署已排入队列）', data: { rule } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
@@ -74,8 +85,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     proxyService.deleteRule(req.params.id);
-    const deployResult = await _autoDeploy();
-    res.json({ success: true, message: '代理规则已删除' + (deployResult.success ? '并部署生效' : '') });
+    // 部署已排入防抖队列，500ms内批量操作仅重载一次
+    _scheduleDeploy();
+    res.json({ success: true, message: '代理规则已删除（部署已排入队列）' });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
@@ -85,8 +97,9 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/toggle', async (req, res) => {
   try {
     const rule = proxyService.toggleRule(req.params.id);
-    const deployResult = await _autoDeploy();
-    res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + (deployResult.success ? '并部署生效' : ''), data: { rule, deploy: deployResult } });
+    // 部署已排入防抖队列，500ms内批量操作仅重载一次
+    _scheduleDeploy();
+    res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + '（部署已排入队列）', data: { rule } });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }

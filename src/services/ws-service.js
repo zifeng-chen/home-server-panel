@@ -32,6 +32,24 @@ function init(httpServer) {
       try {
         const msg = JSON.parse(raw.toString());
 
+        // 具名监听器引用，用于断开时清理
+        const listeners = [];
+        const onStatus = (sid, status) => {
+          if (sid === sessionId && ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'status', status }));
+          }
+        };
+        const onData = (sid, data) => {
+          if (sid === sessionId && ws.readyState === ws.OPEN) {
+            ws.send(data);
+          }
+        };
+        const onError = (sid, errMsg) => {
+          if (sid === sessionId && ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'error', message: errMsg }));
+          }
+        };
+
         switch (msg.type) {
           case 'connect': {
             sessionId = sshService.connect({
@@ -41,24 +59,14 @@ function init(httpServer) {
               password: msg.password
             });
 
-            // 监听 SSH 事件
-            sshService.on('status', (sid, status) => {
-              if (sid === sessionId) {
-                ws.send(JSON.stringify({ type: 'status', status }));
-              }
-            });
-
-            sshService.on('data', (sid, data) => {
-              if (sid === sessionId && ws.readyState === ws.OPEN) {
-                ws.send(data);
-              }
-            });
-
-            sshService.on('error', (sid, errMsg) => {
-              if (sid === sessionId) {
-                ws.send(JSON.stringify({ type: 'error', message: errMsg }));
-              }
-            });
+            sshService.on('status', onStatus);
+            sshService.on('data', onData);
+            sshService.on('error', onError);
+            listeners.push(
+              { event: 'status', fn: onStatus },
+              { event: 'data', fn: onData },
+              { event: 'error', fn: onError }
+            );
             break;
           }
 
@@ -102,6 +110,10 @@ function init(httpServer) {
     });
 
     ws.on('close', () => {
+      // 清理所有 SSH 事件监听器
+      for (const { event, fn } of listeners) {
+        sshService.off(event, fn);
+      }
       if (sessionId) {
         sshService.disconnect(sessionId);
         sessionId = null;
@@ -109,6 +121,9 @@ function init(httpServer) {
     });
 
     ws.on('error', () => {
+      for (const { event, fn } of listeners) {
+        sshService.off(event, fn);
+      }
       if (sessionId) {
         sshService.disconnect(sessionId);
         sessionId = null;

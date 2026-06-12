@@ -172,6 +172,8 @@ function _topbarPollStart() {
   }).catch(function() {});
 }
 async function _topbarPoll() {
+  // 仪表盘页面由 _dashboardMonitorFetch 统一更新顶栏，无需独立轮询
+  if (App._currentPage === 'dashboard') return;
   try {
     var res = await Api.get('/monitor/live', null, { showError: false });
     if (!res.success) return;
@@ -267,6 +269,13 @@ async function _dashboardMonitorFetch() {
     var tbMem = document.getElementById('tbMem');
     if (tbMem) tbMem.textContent = mem.pct.toFixed(0) + '%';
 
+    // 同步更新顶栏 UPTIME
+    var tbUptime = document.getElementById('tbUptime');
+    if (tbUptime && live.uptime) {
+      tbUptime.textContent = formatUptime(live.uptime);
+      window._liveUptime = live.uptime;
+    }
+
     var diskItems = hist.disk.length > 0 ? hist.disk[hist.disk.length - 1].items : [];
     if (diskItems.length > 0) {
       var dkEl = document.getElementById('dmDisk');
@@ -301,18 +310,33 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 24, right: 16, bottom: 28, left: 48 };
+  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+  var maxVal = Math.max(Math.max.apply(null, data.map(function(d) { return d[field]; })), 1);
+  // 将 maxVal 向上取整到合适刻度
+  var nice = [1,2,5,10,20,25,50,100,200,500,1000];
+  var step = 1;
+  for (var s = 0; s < nice.length; s++) {
+    if (maxVal <= nice[s] * 5) { step = nice[s]; break; }
+    step = maxVal / 4;
+  }
+  maxVal = Math.ceil(maxVal / step) * step;
+
+  // Y轴网格+标签（基于实际 maxVal）
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
+    var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText((100 - i * 25) + '%', pad.left - 10, y + 7);
+    // 整数值不显示小数
+    var label = v === Math.floor(v) ? v.toFixed(0) + unit : v.toFixed(1) + unit;
+    ctx.fillText(label, pad.left - 12, y + 7);
   }
-  var maxVal = Math.max(Math.max.apply(null, data.map(function(d) { return d[field]; })), 1);
+
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
   var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
@@ -329,37 +353,35 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   ctx.beginPath(); ctx.arc(scX(data.length - 1), scY(last[field]), 8, 0, Math.PI * 2);
   ctx.fillStyle = '#daa520'; ctx.fill();
   ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 3; ctx.stroke();
-  ctx.fillStyle = '#6b7280'; ctx.font = '22px -apple-system, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(label, pad.left, 26);
-  ctx.textAlign = 'right'; ctx.fillText(last[field].toFixed(1) + unit, pad.left + pw, 26);
 }
 
 function _dmDrawNetChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 24, right: 16, bottom: 28, left: 60 };
+  var pad = { top: 32, right: 20, bottom: 20, left: 80 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  for (var i = 0; i <= 4; i++) {
-    var y = pad.top + (ph / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-  }
+
   var rxArr = data.map(function(d) { return d.rxRate; });
   var txArr = data.map(function(d) { return d.txRate; });
   var maxVal = Math.max(Math.max.apply(null, rxArr), Math.max.apply(null, txArr), 1024);
-  var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
-  var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
+  // 向上取整
+  var nice = [1024, 5120, 10240, 51200, 102400, 524288, 1048576, 5242880, 10485760];
+  for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
   ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
-    ctx.fillText(_dmFmtBytesShort(maxVal * (1 - i / 4)), pad.left - 8, pad.top + (ph / 4) * i + 7);
+    var v = maxVal * (1 - i / 4);
+    var y = pad.top + (ph / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+    ctx.fillText(_dmFmtBytesShort(v), pad.left - 12, y + 7);
   }
+  var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
+  var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
   _dmDrawLine(ctx, data, rxArr, scX, scY, '#22c55e');
   _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
-  ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillStyle = '#22c55e'; ctx.fillText('🔽 下载', pad.left, 26);
-  ctx.fillStyle = '#f59e0b'; ctx.fillText('🔼 上传', pad.left + 140, 26);
 }
 
 function _dmDrawLine(ctx, data, arr, scX, scY, color) {
@@ -372,30 +394,33 @@ function _dmDrawLoadChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 24, right: 16, bottom: 28, left: 48 };
+  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  for (var i = 0; i <= 4; i++) {
-    var y = pad.top + (ph / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-  }
+
   var allVals = [];
   ['load1','load5','load15'].forEach(function(k) { data.forEach(function(d) { allVals.push(d[k]); }); });
   var maxVal = Math.max(Math.max.apply(null, allVals), 1);
+  maxVal = Math.ceil(maxVal * 2) / 2;
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  for (var i = 0; i <= 4; i++) {
+    var v = maxVal * (1 - i / 4);
+    var y = pad.top + (ph / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+    ctx.fillText(v.toFixed(1), pad.left - 12, y + 7);
+  }
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
   var colors = ['#22c55e', '#f59e0b', '#c41e3a'];
   var keys = ['load1', 'load5', 'load15'];
-  var labels = ['1m', '5m', '15m'];
   keys.forEach(function(key, idx) {
     var vals = data.map(function(d) { return d[key]; });
     ctx.beginPath(); ctx.moveTo(scX(0), scY(vals[0]));
     for (var i = 1; i < vals.length; i++) ctx.lineTo(scX(i), scY(vals[i]));
     ctx.strokeStyle = colors[idx]; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
   });
-  ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'left';
-  keys.forEach(function(_, i) { ctx.fillStyle = colors[i]; ctx.fillText(labels[i], pad.left + i * 100, 26); });
 }
 
 function _dmDrawEmpty(canvas, msg) {

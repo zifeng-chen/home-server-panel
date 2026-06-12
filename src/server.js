@@ -269,6 +269,39 @@ server.listen(PORT, () => {
   require('./services/cron-service'); // 启动定时任务
 });
 
+// 优雅关闭
+let _shuttingDown = false;
+async function _gracefulShutdown(signal) {
+  if (_shuttingDown) return;
+  _shuttingDown = true;
+  console.log(`\n🛑 收到 ${signal} 信号，正在优雅关闭...`);
+  try {
+    const monitor = require('./services/monitor-service');
+    monitor.stop();
+    console.log('  ✅ 监控采集已停止');
+  } catch (_) {}
+  try {
+    if (dbMode === 'mysql') {
+      const dbService = require('./services/db-service');
+      await dbService.close();
+      console.log('  ✅ MySQL 连接池已关闭');
+    }
+  } catch (_) {}
+  try {
+    const sqliteService = require('./services/sqlite-service');
+    sqliteService.close();
+    console.log('  ✅ SQLite 已关闭');
+  } catch (_) {}
+  server.close(() => {
+    console.log('  ✅ HTTP 服务已停止');
+    process.exit(0);
+  });
+  // 超时强制退出
+  setTimeout(() => { console.log('  ⚠️ 超时强制退出'); process.exit(1); }, 5000);
+}
+process.on('SIGTERM', () => _gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => _gracefulShutdown('SIGINT'));
+
 } // end async main()
 
 main().catch(err => {

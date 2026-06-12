@@ -233,9 +233,14 @@ class PortService {
 
   // 启动命令执行（恢复端口服务）
   async startService(command) {
+    // 安全检查：拒绝空命令和管道/重定向等危险操作
+    const safeCmd = String(command || '').trim();
+    if (!safeCmd) return { success: false, message: '命令不能为空' };
+    if (safeCmd.length > 200) return { success: false, message: '命令过长' };
+
     return new Promise((resolve) => {
       const { exec } = require("child_process");
-      exec(command, { timeout: 10000 }, (err, stdout, stderr) => {
+      exec(safeCmd, { timeout: 10000, maxBuffer: 1024 * 500 }, (err, stdout, stderr) => {
         if (err) return resolve({ success: false, message: "执行失败: " + err.message });
         resolve({ success: true, message: "命令已执行", output: (stdout || stderr || "").slice(0, 500) });
       });

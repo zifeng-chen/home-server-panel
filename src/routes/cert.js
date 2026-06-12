@@ -182,13 +182,15 @@ router.get('/export/:domain', (req, res) => {
     const format = req.query.format || 'fullchain';
 
     // acme.sh 证书目录: ~/.acme.sh/<domain>_ecc/ 或 ~/.acme.sh/<domain>/
-    const acmeHome = path.join(os.homedir(), '.acme.sh');
-    let certDir = path.join(acmeHome, domain + '_ecc');
-    // 二次确认未逃逸出 acme.sh 目录
-    if (!certDir.startsWith(acmeHome)) {
+    const acmeHome = path.resolve(path.normalize(path.join(os.homedir(), '.acme.sh')));
+    const certDirEcc = path.resolve(path.normalize(path.join(acmeHome, domain + '_ecc')));
+    const certDirPlain = path.resolve(path.normalize(path.join(acmeHome, domain)));
+    // 三重确认未逃逸出 acme.sh 目录
+    if (!certDirEcc.startsWith(acmeHome + path.sep) && !certDirEcc.startsWith(acmeHome)) {
       return res.status(400).json({ success: false, message: '无效的域名格式' });
     }
-    if (!fs.existsSync(certDir)) certDir = path.join(acmeHome, domain);
+    let certDir = certDirEcc;
+    if (!fs.existsSync(certDir)) certDir = certDirPlain;
     if (!fs.existsSync(certDir)) {
       return res.status(404).json({ success: false, message: '证书目录不存在: ' + domain });
     }

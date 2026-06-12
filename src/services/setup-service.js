@@ -142,42 +142,23 @@ class SetupService {
   }
 
   async _createTables(conn) {
-    // 系统设置表
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS settings (
-        \`key\` VARCHAR(64) PRIMARY KEY,
+    // 与 db-service._initSchema 保持一致，避免重复定义不同 schema
+    const tables = [
+      `CREATE TABLE IF NOT EXISTS settings (
+        \`key\` VARCHAR(100) PRIMARY KEY,
         \`value\` TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // 操作日志表（后续功能使用）
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        action VARCHAR(64) NOT NULL,
-        detail TEXT,
-        operator VARCHAR(64),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // DDNS 记录表
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS ddns_records (
+      )`,
+      `CREATE TABLE IF NOT EXISTS ddns_records (
         id INT AUTO_INCREMENT PRIMARY KEY,
         domain VARCHAR(255) NOT NULL,
-        type ENUM('A', 'AAAA') DEFAULT 'A',
-        record_id VARCHAR(128),
-        enabled TINYINT(1) DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-
-    // 反向代理规则表 (与 db-service.js 保持一致)
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS proxy_rules (
+        type ENUM('A','AAAA') DEFAULT 'A',
+        value VARCHAR(255),
+        \`enabled\` TINYINT(1) DEFAULT 1,
+        last_updated TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS proxy_rules (
         id INT AUTO_INCREMENT PRIMARY KEY,
         source VARCHAR(255) NOT NULL,
         source_host VARCHAR(255),
@@ -190,8 +171,31 @@ class SetupService {
         remark VARCHAR(500),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+      )`,
+      `CREATE TABLE IF NOT EXISTS ssl_certs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        domain VARCHAR(255) NOT NULL UNIQUE,
+        alias VARCHAR(255),
+        wildcard TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS operation_logs (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        time TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
+        module VARCHAR(50) DEFAULT 'system',
+        action VARCHAR(100) DEFAULT 'unknown',
+        level VARCHAR(20) DEFAULT 'info',
+        message TEXT,
+        detail TEXT,
+        \`user\` VARCHAR(100) DEFAULT 'admin',
+        INDEX idx_module (module),
+        INDEX idx_time (time),
+        INDEX idx_level (level)
+      )`
+    ];
+    for (const sql of tables) {
+      await conn.query(sql);
+    }
   }
 
   _patchEnv(existingEnv, updates) {

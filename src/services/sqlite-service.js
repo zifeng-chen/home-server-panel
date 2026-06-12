@@ -182,6 +182,12 @@ class SqliteService {
         updated_at TEXT
       )
     `);
+    this._db.run(`
+      CREATE TABLE IF NOT EXISTS monitor_history (
+        ts INTEGER PRIMARY KEY,
+        data TEXT NOT NULL
+      )
+    `);
     this._save();
   }
 
@@ -672,6 +678,30 @@ class SqliteService {
     }
 
     this._runMulti(actions);
+  }
+
+  // ==================== 监控历史持久化 ====================
+
+  saveMonitorHistory(history) {
+    if (!this._ready || !this._db) return;
+    try {
+      this._run('DELETE FROM monitor_history');
+      this._run('INSERT INTO monitor_history (ts, data) VALUES (?, ?)',
+        [Date.now(), JSON.stringify(history)]);
+    } catch (e) { /* 静默忽略 */ }
+  }
+
+  loadMonitorHistory() {
+    if (!this._ready || !this._db) return null;
+    try {
+      const row = this._get('SELECT data FROM monitor_history ORDER BY ts DESC LIMIT 1');
+      if (row && row.data) {
+        const data = JSON.parse(row.data);
+        const age = Date.now() - new Date(row.ts).getTime();
+        if (age < 30 * 60 * 1000) return data; // 30分钟内有效
+      }
+    } catch (e) { /* 静默忽略 */ }
+    return null;
   }
 
   // ==================== 工具方法 ====================

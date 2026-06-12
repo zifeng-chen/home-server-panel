@@ -122,6 +122,7 @@ router.post('/domains', async (req, res) => {
 
     // 同时在阿里云上创建 DNS 记录
     let dnsRecord = null;
+    let dnsWarning = null;
     try {
       const currentIp = recordType === 'AAAA'
         ? await ddnsService.getPublicIpv6()
@@ -130,13 +131,15 @@ router.post('/domains', async (req, res) => {
       const rr = subdomain === '@' ? '@' : (subdomain || '@');
       dnsRecord = await ddnsService.addRecord(name.replace(/^@\./, ''), rr, recordType || 'A', v, ttl || 600);
     } catch (dnsErr) {
-      console.warn('[DDNS] 创建 DNS 记录失败(可能已存在):', dnsErr.message);
+      dnsWarning = `阿里云 DNS 记录创建失败: ${dnsErr.message}`;
+      console.warn('[DDNS]', dnsWarning);
     }
 
     res.json({
       success: true,
-      message: `域名 ${subdomain === '@' ? name : subdomain + '.' + name} 已添加`,
-      data: { domain, dnsRecord }
+      message: `域名 ${subdomain === '@' ? name : subdomain + '.' + name} 已添加` + (dnsWarning ? ' (但阿里云同步失败)' : ''),
+      data: { domain, dnsRecord },
+      warning: dnsWarning || null
     });
   } catch (err) {
     res.json({ success: false, message: err.message });

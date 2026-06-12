@@ -249,8 +249,7 @@ function _sshRender(keepTerm) {
   var page = document.getElementById('page-ssh');
   var isConnected = st.ws && st.ws.readyState === WebSocket.OPEN && st.current;
 
-  var html = '<div class="page-header"><h2>💻 Web SSH 终端</h2><p class="desc">安全连接到远程服务器</p></div>';
-  html += '<div class="ssh-layout">';
+  var html = '<div class="ssh-layout">';
 
   // 左侧：连接列表
   html += '<div class="ssh-sidebar"><div class="ssh-sidebar-hd">📋 连接记录</div><div class="ssh-conn-list" id="sshConnList">';

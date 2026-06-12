@@ -35,6 +35,9 @@ async function loadSettings() {
       dbConnected = dbRes.data.connected;
     }
     renderDbStatus();
+
+    // 自动加载操作日志面板
+    setTimeout(function() { _loadSettingsOpLog('all'); }, 300);
   } catch (err) {
     App.log('error', '加载设置失败:', err);
   }
@@ -243,9 +246,53 @@ window.startMigration = async () => {
 // ========== 操作日志 ==========
 
 window.showSettingsOpLog = () => {
-  const filter = document.getElementById('opLogModuleFilter')?.value || 'all';
-  Utils.showOpLog(filter, '操作日志');
+  var filterEl = document.getElementById('opLogModuleFilter');
+  var filter = filterEl ? filterEl.value : 'all';
+  if (!filter || filter === 'all') filter = 'all';
+  _loadSettingsOpLog(filter);
 };
+
+// 自动加载操作日志
+async function _loadSettingsOpLog(module) {
+  var listEl = document.querySelector('#page-settings .settings-card:nth-last-child(1) [style*="background:#f1f5f9"]:first-child');
+  // 更可靠的选择器
+  var allBgDivs = document.querySelectorAll('#page-settings [style*="background:#f1f5f9"]');
+  var logDiv = null;
+  for (var i = 0; i < allBgDivs.length; i++) {
+    if (allBgDivs[i].parentElement && allBgDivs[i].parentElement.previousElementSibling &&
+        allBgDivs[i].parentElement.previousElementSibling.textContent.includes('操作日志')) {
+      logDiv = allBgDivs[i];
+      break;
+    }
+  }
+  if (!logDiv) return;
+
+  try {
+    var params = 'limit=8';
+    if (module && module !== 'all') params += '&module=' + module;
+    var res = await Api.get('/log?' + params, null, { showError: false });
+    if (!res.success || !res.data) {
+      logDiv.innerHTML = '<span style="color:#64748b;">暂无操作记录</span>';
+      return;
+    }
+    var entries = res.data.list || res.data.records || res.data.entries || [];
+    if (!Array.isArray(entries) || entries.length === 0) {
+      logDiv.innerHTML = '<span style="color:#64748b;">暂无操作记录</span>';
+      return;
+    }
+    var recent = entries.slice(0, 8);
+    logDiv.innerHTML = recent.map(function(e) {
+      var time = e.time || e.timestamp || e.createdAt || '';
+      if (time && time.length > 16) time = time.slice(11, 16);
+      var modIcon = { ddns: '📡', ssl: '🔒', nginx: '🖥️', proxy: '🔄', port: '🔌', pm2: '⚡', docker: '🐳', ssh: '💻', system: '⚙️' };
+      var icon = modIcon[e.module] || '📌';
+      var text = e.message || e.action || e.desc || JSON.stringify(e).slice(0, 80);
+      return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px"><span style="color:#6b7280;font-family:Menlo,monospace">' + (time || '--:--') + '</span><span>' + icon + '</span><span style="flex:1">' + text + '</span></div>';
+    }).join('');
+  } catch(e) {
+    logDiv.innerHTML = '<span style="color:var(--danger)">加载失败: ' + (e.message || '') + '</span>';
+  }
+}
 
 // ========== 诊断日志（保留在系统设置页，隐藏态） ==========
 

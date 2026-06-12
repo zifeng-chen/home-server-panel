@@ -43,6 +43,7 @@ window.addEventListener('hashchange', () => {
     target.classList.remove('hidden');
     if (typeof Api !== 'undefined') Api._currentPage = pageName;
     App._currentPage = pageName;
+    try { sessionStorage.setItem('hsp_page', pageName); } catch(e) {}
     (App.pageLoaders || {})[pageName]?.();
   }
   // 清除 hash
@@ -54,6 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarToggle();
   initUserMenu();
   _topbarPollStart();
+
+  // 刷新时恢复当前页面（非默认仪表盘时）
+  var hash = window.location.hash.replace('#', '');
+  var navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', settings: 'settings' };
+  var restorePage = hash ? navMap[hash] : null;
+  // 从 sessionStorage 恢复（hash 优先）
+  if (!restorePage) {
+    try { restorePage = sessionStorage.getItem('hsp_page'); } catch(e) {}
+  }
+  if (restorePage && restorePage !== 'dashboard' && restorePage !== 'home') {
+    // 模拟点击导航项
+    var targetNav = document.querySelector('.nav-item[data-page="' + restorePage + '"]');
+    if (targetNav) {
+      targetNav.click();
+      return;
+    }
+  }
+
   loadDashboard();
   loadSettings();
 });
@@ -148,6 +167,7 @@ function initNavigation() {
       // 设置当前页面（用于诊断日志标记 + 重复点击检测）
       App._currentPage = pageName;
       if (typeof Api !== 'undefined') Api._currentPage = pageName;
+      try { sessionStorage.setItem('hsp_page', pageName); } catch(e) {}
 
       // 页面级懒加载
       (App.pageLoaders || {})[pageName]?.();

@@ -141,7 +141,7 @@ function _renderDashLogs(logs) {
   if (!listEl) return;
   var entries = [];
   if (logs && logs.success && logs.data) {
-    entries = (logs.data.records || logs.data.entries || logs.data.logs || logs.data || []);
+    entries = (logs.data.records || logs.data.entries || logs.data.logs || logs.data.list || []);
   }
   if (!Array.isArray(entries)) entries = [];
   if (entries.length === 0) {

@@ -74,8 +74,18 @@ router.get('/containers/:id', async (req, res) => {
 // DELETE /api/docker/containers/:id
 router.delete('/containers/:id', async (req, res) => {
   try {
-    const force = req.query.force === 'true';
-    const result = await docker.removeContainer(req.params.id, force);
+    var force = req.query.force === 'true' || req.query.force === '1';
+    var result = await docker.removeContainer(req.params.id, force);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/docker/containers/:id/update - 更新容器
+router.post('/containers/:id/update', async (req, res) => {
+  try {
+    var result = await docker.updateContainer(req.params.id);
     res.json({ success: true, ...result });
   } catch (err) {
     res.json({ success: false, message: err.message });

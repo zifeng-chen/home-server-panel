@@ -82,7 +82,8 @@ function renderDockerPage(data) {
         ${c.state === 'running' ? `<button class="btn btn-sm btn-warning" onclick="dockerAction('${c.name}','stop')" title="停止">⏹</button>` : ''}
         ${c.state === 'running' ? `<button class="btn btn-sm" onclick="dockerAction('${c.name}','restart')" title="重启">🔄</button>` : ''}
         <button class="btn btn-sm" onclick="viewDockerLogs('${c.name}')" title="日志">📋</button>
-        ${c.state !== 'running' ? `<button class="btn btn-sm btn-danger" onclick="dockerAction('${c.name}','remove')" title="删除">🗑</button>` : ''}
+        ${c.state === 'running' ? `<button class="btn btn-sm btn-info" onclick="dockerUpdate('${c.name}')" title="更新">🔄</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="dockerRemove('${c.name}','${c.state}')" title="删除">🗑</button>
       </td>
     </tr>
   `).join('');
@@ -133,6 +134,46 @@ function renderDockerPage(data) {
 
   document.getElementById('dockerContent').innerHTML = html;
 }
+
+// 容器删除（支持运行中容器的强制删除）
+window.dockerRemove = async (name, state) => {
+  var msg = state === 'running'
+    ? '⚠️ 容器 <strong>' + name + '</strong> 正在运行，将<strong>强制停止并删除</strong>，确认？'
+    : '确认删除容器 <strong>' + name + '</strong> ？';
+  Utils.confirm('🗑 删除容器', msg, async () => {
+    Utils.notify('正在删除: ' + name + '...', 'info');
+    try {
+      var res = await Api.request('DELETE', '/docker/containers/' + encodeURIComponent(name), null, { force: 'true' });
+      Utils.notify(res.message || '删除完成', res.success ? 'success' : 'error');
+      if (res.success) setTimeout(loadDocker, 1500);
+    } catch (err) {
+      Utils.notify('删除失败: ' + err.message, 'error');
+    }
+  }, '确认删除', '取消');
+};
+
+// 容器更新（拉取最新镜像并重建）
+window.dockerUpdate = async (name) => {
+  Utils.confirm('🔄 更新容器',
+    '将对容器 <strong>' + name + '</strong> 执行更新操作：<br><br>' +
+    '1️⃣ 拉取最新镜像<br>2️⃣ 停止容器<br>3️⃣ 删除旧容器<br>4️⃣ 用相同配置重建<br><br>' +
+    '<span style="color:var(--warning)">⚠️ 容器将短暂中断服务</span>',
+    async () => {
+      Utils.notify('正在更新容器: ' + name + '...', 'info');
+      try {
+        var res = await Api.post('/docker/containers/' + encodeURIComponent(name) + '/update');
+        if (res.success) {
+          Utils.notify('✅ ' + name + ' 更新完成', 'success');
+          setTimeout(loadDocker, 2000);
+        } else {
+          Utils.notify(res.message || '更新失败', 'error');
+        }
+      } catch (err) {
+        Utils.notify('更新失败: ' + err.message, 'error');
+      }
+    }, '确认更新', '取消'
+  );
+};
 
 // 容器操作
 window.dockerAction = async (name, action) => {

@@ -1,5 +1,8 @@
 // 认证中间件 - Session + Token 双重验证（单例模式）
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 
 const sqliteService = require('./sqlite-service');
 
@@ -7,6 +10,11 @@ const sqliteService = require('./sqlite-service');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const TOKEN_SECRET = process.env.TOKEN_SECRET || 'hsp-secret-' + Date.now();
+const ENV_FILE = path.join(__dirname, '..', '..', '.env');
+
+// 判断密码是否已是 bcrypt 哈希
+const isBcryptHash = (s) => s && (s.startsWith('$2a$') || s.startsWith('$2b$'));
+const USE_BCRYPT = isBcryptHash(ADMIN_PASS);
 
 // 登录速率限制
 const loginAttempts = new Map(); // IP → {count, firstAttempt}
@@ -28,20 +36,55 @@ class Auth {
     _instance = this;
   }
 
-  verifyLogin(username, password, ip) {
+  async verifyLogin(username, password, ip) {
     // 速率限制检查
     const rateCheck = this._checkRateLimit(ip || 'unknown');
     if (rateCheck.blocked) {
       return { success: false, message: `登录尝试过多，请 ${Math.ceil(rateCheck.remainingMs / 60000)} 分钟后再试` };
     }
 
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
+    if (username !== ADMIN_USER) {
+      return { success: false, message: '用户名或密码错误' };
+    }
+
+    let passwordOk = false;
+
+    if (USE_BCRYPT) {
+      // bcrypt 哈希模式
+      passwordOk = await bcrypt.compare(password, ADMIN_PASS);
+    } else {
+      // 明文模式（兼容旧配置）
+      passwordOk = (password === ADMIN_PASS);
+      // 自动升级：登录成功后把密码哈希写入 .env
+      if (passwordOk) {
+        this._upgradeToBcrypt(password).catch(() => {});
+      }
+    }
+
+    if (passwordOk) {
       this._clearRateLimit(ip || 'unknown');
       const token = this._generateToken(username);
       this._createSession(token);
       return { success: true, token };
     }
     return { success: false, message: '用户名或密码错误' };
+  }
+
+  // 自动升级：将 .env 中明文密码替换为 bcrypt 哈希
+  async _upgradeToBcrypt(password) {
+    try {
+      const hash = await bcrypt.hash(password, 10);
+      let content = fs.readFileSync(ENV_FILE, 'utf-8');
+      // 替换 ADMIN_PASS 行
+      content = content.replace(
+        /^ADMIN_PASS=.*$/m,
+        `ADMIN_PASS=${hash}`
+      );
+      fs.writeFileSync(ENV_FILE, content, 'utf-8');
+      console.log('[Auth] 密码已自动升级为 bcrypt 哈希');
+    } catch (e) {
+      console.warn('[Auth] 密码自动升级失败:', e.message);
+    }
   }
 
   _checkRateLimit(ip) {

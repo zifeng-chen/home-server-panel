@@ -1,5 +1,6 @@
 // 引导安装服务
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -70,10 +71,13 @@ class SetupService {
     // 生成随机 SESSION_SECRET
     const sessionSecret = crypto.randomBytes(32).toString('hex');
 
+    // bcrypt 哈希密码
+    const hashedPass = await bcrypt.hash(adminPass, 10);
+
     // 更新/替换 .env 中的关键字段
     const updates = {
       'ADMIN_USER': adminUser,
-      'ADMIN_PASS': adminPass,
+      'ADMIN_PASS': hashedPass,
       'SESSION_SECRET': sessionSecret,
       'DB_MODE': dbMode
     };

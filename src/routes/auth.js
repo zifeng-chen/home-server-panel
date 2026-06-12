@@ -3,14 +3,14 @@ const router = express.Router();
 const auth = require('../services/auth');
 
 // POST /api/auth/login - 登录
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({success: false, message: '用户名和密码不能为空' });
   }
 
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
-  const result = auth.verifyLogin(username, password, clientIp);
+  const result = await auth.verifyLogin(username, password, clientIp);
   if (result.success) {
     const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('hsp_token', result.token, {
@@ -28,7 +28,7 @@ router.post('/login', (req, res) => {
     });
   }
 
-  res.json({ success: false, message: result.message || '登录失败' });
+  res.status(401).json({ success: false, message: result.message || '登录失败' });
 });
 
 // POST /api/auth/logout - 登出

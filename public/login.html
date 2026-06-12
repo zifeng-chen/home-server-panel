@@ -16,22 +16,11 @@
       overflow: hidden;
     }
 
-    /* 背景装饰 */
-    .bg-decor {
+    /* 背景：全屏 Canvas 动画层 */
+    #bgCanvas {
       position: fixed;
-      top: -300px; right: -200px;
-      width: 700px; height: 700px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(184,134,11,0.06) 0%, transparent 70%);
-      z-index: 0;
-      pointer-events: none;
-    }
-    .bg-decor2 {
-      position: fixed;
-      bottom: -200px; left: -150px;
-      width: 500px; height: 500px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(196,30,58,0.04) 0%, transparent 70%);
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       z-index: 0;
       pointer-events: none;
     }
@@ -250,8 +239,7 @@
   </style>
 </head>
 <body>
-  <div class="bg-decor"></div>
-  <div class="bg-decor2"></div>
+  <canvas id="bgCanvas"></canvas>
 
   <div class="login-wrapper">
     <!-- 左侧品牌 -->
@@ -303,31 +291,137 @@
         <button type="submit" class="btn-login" id="loginBtn">登 录</button>
       </form>
 
-      <div class="login-footer">Home Server Panel v1.17.0</div>
+      <div class="login-footer">Home Server Panel v1.17.7</div>
     </div>
   </div>
 
   <script>
-    // 简笔画装饰（轻量，无 Canvas）
+    // === 动态粒子网络背景 ===
     (function() {
-      var decor1 = document.querySelector('.bg-decor');
-      var decor2 = document.querySelector('.bg-decor2');
-      var angle = 0;
-      function animate() {
-        if (document.hidden) { requestAnimationFrame(animate); return; }
-        angle += 0.002;
-        var x1 = -300 + Math.sin(angle) * 20;
-        var y1 = -200 + Math.cos(angle * 0.7) * 15;
-        var x2 = -250 + Math.cos(angle * 0.8) * 18;
-        var y2 = -150 + Math.sin(angle * 0.6) * 20;
-        decor1.style.transform = 'translate(' + x1 + 'px,' + y1 + 'px)';
-        decor2.style.transform = 'translate(' + x2 + 'px,' + y2 + 'px)';
-        requestAnimationFrame(animate);
+      var c = document.getElementById('bgCanvas');
+      var ctx = c.getContext('2d');
+      var w, h, particles = [], MAX = 80;
+      var mouseX = -1000, mouseY = -1000;
+
+      function resize() {
+        w = c.width = window.innerWidth;
+        h = c.height = window.innerHeight;
+        initParticles();
       }
-      animate();
+
+      function initParticles() {
+        particles = [];
+        for (var i = 0; i < MAX; i++) {
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.6,
+            vy: (Math.random() - 0.5) * 0.6,
+            r: Math.random() * 2 + 1,
+            o: Math.random() * 0.5 + 0.3,
+            type: Math.random() < 0.15 ? 'gold' : (Math.random() < 0.2 ? 'red' : 'dark')
+          });
+        }
+      }
+
+      function draw() {
+        if (document.hidden) { requestAnimationFrame(draw); return; }
+
+        ctx.clearRect(0, 0, w, h);
+
+        // 深色网格背景
+        ctx.strokeStyle = 'rgba(184, 134, 11, 0.03)';
+        ctx.lineWidth = 0.5;
+        var gap = 60;
+        for (var x = 0; x < w; x += gap) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (var y = 0; y < h; y += gap) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+        // 更新 & 绘制粒子
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = w;
+          if (p.x > w) p.x = 0;
+          if (p.y < 0) p.y = h;
+          if (p.y > h) p.y = 0;
+
+          // 鼠标吸引
+          var dx = mouseX - p.x, dy = mouseY - p.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150) {
+            p.vx += dx / dist * 0.02;
+            p.vy += dy / dist * 0.02;
+          }
+
+          // 速度摩擦
+          p.vx *= 0.999;
+          p.vy *= 0.999;
+
+          var color;
+          if (p.type === 'gold') color = 'rgba(184,134,11,' + p.o + ')';
+          else if (p.type === 'red') color = 'rgba(196,30,58,' + p.o + ')';
+          else color = 'rgba(156,163,175,' + p.o + ')';
+
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 发光
+          ctx.fillStyle = color.replace(/[\d.]+(?=\))/, '0.15');
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 近距离连线
+        for (var i = 0; i < particles.length; i++) {
+          for (var j = i + 1; j < particles.length; j++) {
+            var dx = particles[i].x - particles[j].x;
+            var dy = particles[i].y - particles[j].y;
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 120) {
+              var alpha = (1 - d / 120) * 0.15;
+              ctx.strokeStyle = 'rgba(184,134,11,' + alpha + ')';
+              ctx.lineWidth = 0.5;
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // 浮动数据流线条
+        var t = Date.now() * 0.001;
+        for (var i = 0; i < 5; i++) {
+          var lx = ((Math.sin(t * 0.3 + i * 1.3) + 1) * 0.5) * w;
+          var ly = ((Math.cos(t * 0.25 + i * 1.7) + 1) * 0.5) * h;
+          ctx.strokeStyle = 'rgba(196,30,58,0.06)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(lx - 40, ly);
+          ctx.lineTo(lx + 40, ly);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(196,30,58,0.03)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 25, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      document.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; });
       document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) requestAnimationFrame(animate);
+        if (!document.hidden) requestAnimationFrame(draw);
       });
+
+      resize();
+      requestAnimationFrame(draw);
     })();
 
     // 登录逻辑

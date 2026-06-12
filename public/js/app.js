@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.17.5',
+  version: '1.17.6',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
@@ -177,17 +177,35 @@ function initNavigation() {
 
 // 启动页加载映射
 App.pageLoaders = {
-  dashboard: loadDashboard,
-  ddns: loadDdns,
-  ssl: loadCert,
-  nginx: () => { loadNginx(); loadProxy(); },
-  port: loadPort,
-  pm2: loadPM2,
-  cron: loadCron,
-  docker: loadDocker,
-  ssh: loadSSH,
-  settings: loadSettings
+  dashboard: () => loadDashboard(),
+  ddns: () => _ensurePage('ddns', loadDdns),
+  ssl: () => _ensurePage('cert', loadCert),
+  nginx: () => _ensurePage('nginx', () => { loadNginx(); loadProxy(); }),
+  port: () => _ensurePage('port', loadPort),
+  pm2: () => _ensurePage('pm2', loadPM2),
+  cron: () => _ensurePage('cron', loadCron),
+  docker: () => _ensurePage('docker', loadDocker),
+  ssh: () => _ensurePage('ssh', loadSSH),
+  settings: () => loadSettings()
 };
+
+// 动态按需加载页面脚本
+function _ensurePage(name, fn) {
+  if (typeof fn === 'function') return fn();            // 已加载
+  // 首访：动态加载 JS 并缓存
+  const id = 'hsp-page-' + name;
+  if (document.getElementById(id)) return;              // 正在加载
+  const s = document.createElement('script');
+  s.id = id;
+  s.src = '/js/pages/' + name + '.js?v=' + (document.querySelector('meta[name="build-id"]')?.content || '');
+  s.onload = () => {
+    // 脚本加载后重新触发页面加载
+    const loader = App.pageLoaders?.[name];
+    if (loader) setTimeout(loader, 0);
+  };
+  s.onerror = () => console.warn('[App] 页面脚本加载失败:', name);
+  document.head.appendChild(s);
+}
 
 // 页面切换时停止仪表盘监控轮询 & 处理 SSH 连接
 var _origInitNav = initNavigation;

@@ -440,12 +440,15 @@
                       <option value="pm2">PM2</option>
                       <option value="docker">Docker</option>
                       <option value="ssh">SSH终端</option>
+                      <option value="monitor">系统监控</option>
                       <option value="system">系统</option>
                     </select>
                     <button class="btn btn-sm btn-primary" onclick="showSettingsOpLog()" style="font-size:11px;">🔍 查看</button>
+                    <button class="btn btn-sm btn-secondary" onclick="exportOpLog('json')" style="font-size:11px;" title="导出 JSON">📥 JSON</button>
+                    <button class="btn btn-sm btn-secondary" onclick="exportOpLog('csv')" style="font-size:11px;" title="导出 CSV">📊 CSV</button>
                   </span>
                 </div>
-                <div style="background:#f1f5f9;border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;font:12px/1.6 Menlo,Monaco,monospace;color:#1e293b;">
+                <div id="opLogContainer" style="background:#f1f5f9;border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;font:12px/1.6 Menlo,Monaco,monospace;color:#1e293b;">
                   <span style="color:#64748b;">点击「查看日志」加载操作记录</span>
                 </div>
               </div>
@@ -467,6 +470,7 @@
                       <option value="ssh">SSH终端</option>
                       <option value="settings">系统设置</option>
                     </select>
+                    <button class="btn btn-sm btn-secondary" onclick="exportDiagLog()" style="font-size:11px;" title="导出诊断日志">📥 导出</button>
                     <button class="btn btn-sm btn-secondary" onclick="Api.clearDiagLog();renderDiagLog();" style="font-size:11px;">🗑️ 清除</button>
                   </span>
                 </div>

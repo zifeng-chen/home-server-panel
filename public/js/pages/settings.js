@@ -254,17 +254,7 @@ window.showSettingsOpLog = () => {
 
 // 自动加载操作日志
 async function _loadSettingsOpLog(module) {
-  var listEl = document.querySelector('#page-settings .settings-card:nth-last-child(1) [style*="background:#f1f5f9"]:first-child');
-  // 更可靠的选择器
-  var allBgDivs = document.querySelectorAll('#page-settings [style*="background:#f1f5f9"]');
-  var logDiv = null;
-  for (var i = 0; i < allBgDivs.length; i++) {
-    if (allBgDivs[i].parentElement && allBgDivs[i].parentElement.previousElementSibling &&
-        allBgDivs[i].parentElement.previousElementSibling.textContent.includes('操作日志')) {
-      logDiv = allBgDivs[i];
-      break;
-    }
-  }
+  var logDiv = document.getElementById('opLogContainer');
   if (!logDiv) return;
 
   try {
@@ -440,3 +430,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (loadSettings) loadSettings();
 });
+
+// ========== 日志导出 ==========
+
+// 导出操作日志（从服务器 API）
+window.exportOpLog = async (format) => {
+  var filterEl = document.getElementById('opLogModuleFilter');
+  var module = filterEl ? filterEl.value : 'all';
+  if (!module || module === 'all') module = 'all';
+
+  try {
+    Utils.notify('正在导出日志...', 'info');
+    var token = localStorage.getItem('hsp_token');
+    var res = await fetch('/api/log/export?limit=100000&format=' + format + (module !== 'all' ? '&module=' + module : ''), {
+      headers: { 'x-auth-token': token }
+    });
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return {message:'导出失败'}; });
+      Utils.notify('导出失败: ' + (err.message || res.status), 'error');
+      return;
+    }
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.href = url;
+    a.download = 'hsp-oplog-' + now + '.' + format;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    Utils.notify('✅ 日志已导出 (.' + format + ')', 'success');
+  } catch (e) {
+    Utils.notify('导出失败: ' + (e.message || ''), 'error');
+  }
+};
+
+// 导出诊断日志（浏览器本地）
+window.exportDiagLog = () => {
+  var logs = Api.getDiagLog(null);
+  if (!logs || logs.length === 0) {
+    Utils.notify('暂无诊断日志可导出', 'error');
+    return;
+  }
+  var text = logs.map(function(e) {
+    return e.time + ' | ' + (e.page || '?') + ' | ' + (e.level || 'info') + ' | ' + e.msg;
+  }).join('\n');
+  var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.href = url;
+  a.download = 'hsp-diaglog-' + now + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  Utils.notify('✅ 诊断日志已导出 (.txt)', 'success');
+};

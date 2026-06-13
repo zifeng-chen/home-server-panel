@@ -34,6 +34,9 @@ class SqliteService {
         this._db.run('PRAGMA journal_mode = WAL');
         this._db.run('PRAGMA synchronous = NORMAL');
         this._db.run('PRAGMA cache_size = -8000');
+        // 每次启动运行表迁移（CREATE TABLE IF NOT EXISTS 幂等安全）
+        this._createTables();
+        this._save();
       } else {
         this._db = new SQL.Database();
         this._ready = true;
@@ -173,6 +176,18 @@ class SqliteService {
         last_run TEXT,
         last_result TEXT,
         created_at TEXT
+      )
+    `);
+    this._db.run(`
+      CREATE TABLE IF NOT EXISTS ssh_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        host TEXT NOT NULL DEFAULT '192.168.100.1',
+        port INTEGER DEFAULT 22,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL DEFAULT '',
+        created_at TEXT,
+        updated_at TEXT
       )
     `);
     this._db.run(`
@@ -459,6 +474,55 @@ class SqliteService {
   }
 
   deleteProxyRule(id) { this._run('DELETE FROM proxy_rules WHERE id = ?', [id]); }
+
+  // ==================== SSH 配置 ====================
+
+  getSshConfigs() {
+    return this._all('SELECT * FROM ssh_config ORDER BY id').map(r => ({
+      id: r.id, name: r.name, host: r.host, port: r.port,
+      username: r.username, password: r.password,
+      createdAt: r.created_at, updatedAt: r.updated_at
+    }));
+  }
+
+  getSshConfig(id) {
+    const r = this._get('SELECT * FROM ssh_config WHERE id = ?', [id]);
+    if (!r) return null;
+    return { id: r.id, name: r.name, host: r.host, port: r.port,
+      username: r.username, password: r.password,
+      createdAt: r.created_at, updatedAt: r.updated_at };
+  }
+
+  addSshConfig(config) {
+    const now = new Date().toISOString();
+    this._run(
+      'INSERT INTO ssh_config (name, host, port, username, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [config.name || 'Default', config.host || '192.168.100.1', config.port || 22,
+       config.username || 'root', config.password || '', now, now]
+    );
+    const rows = this._all('SELECT * FROM ssh_config ORDER BY id DESC LIMIT 1');
+    return rows.length > 0 ? this.getSshConfig(rows[0].id) : null;
+  }
+
+  updateSshConfig(id, updates) {
+    const row = this._get('SELECT * FROM ssh_config WHERE id = ?', [id]);
+    if (!row) throw new Error('SSH 配置不存在');
+    const now = new Date().toISOString();
+    this._run(
+      `UPDATE ssh_config SET name=?, host=?, port=?, username=?, password=?, updated_at=? WHERE id=?`,
+      [
+        updates.name !== undefined ? updates.name : row.name,
+        updates.host !== undefined ? updates.host : row.host,
+        updates.port !== undefined ? updates.port : row.port,
+        updates.username !== undefined ? updates.username : row.username,
+        updates.password !== undefined ? updates.password : row.password,
+        now, id
+      ]
+    );
+    return this.getSshConfig(id);
+  }
+
+  deleteSshConfig(id) { this._run('DELETE FROM ssh_config WHERE id = ?', [id]); }
 
   // ==================== SSL 配置 ====================
 

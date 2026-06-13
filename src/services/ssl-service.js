@@ -6,6 +6,16 @@ const path = require('path');
 const os = require('os');
 
 const sqliteService = require('./sqlite-service');
+
+let _dbService = null;
+function _getDb() {
+  if (!_dbService) _dbService = require('./db-service');
+  return _dbService;
+}
+function _syncMySQL(table) {
+  const db = _getDb();
+  if (db.mode === 'mysql') setImmediate(() => db.syncTable(table).catch(() => {}));
+}
 const ACME_HOME = path.join(os.homedir(), '.acme.sh');
 const ACME_BIN = path.join(ACME_HOME, 'acme.sh');
 
@@ -421,6 +431,7 @@ class SslService {
 
   _addCertConfig(domain, opts = {}) {
     sqliteService.addSslDomain(domain, { alias: opts.alias || domain, wildcard: opts.wildcard || false });
+    _syncMySQL('ssl_config');
   }
 
   getConfigDomains() {
@@ -430,6 +441,7 @@ class SslService {
   // 从面板移除域名，同时可选择删除实际证书文件
   removeConfigDomain(domain, deleteFiles = false) {
     sqliteService.removeSslDomain(domain);
+    _syncMySQL('ssl_config');
     if (deleteFiles) {
       this._deleteCertFiles(domain);
     }

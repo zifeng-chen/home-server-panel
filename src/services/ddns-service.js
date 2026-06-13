@@ -6,6 +6,16 @@ const dns = require('dns');
 
 const sqliteService = require('./sqlite-service');
 
+let _dbService = null;
+function _getDb() {
+  if (!_dbService) _dbService = require('./db-service');
+  return _dbService;
+}
+function _syncMySQL(table) {
+  const db = _getDb();
+  if (db.mode === 'mysql') setImmediate(() => db.syncTable(table).catch(() => {}));
+}
+
 class DdnsService {
   constructor() {
     this.client = null;
@@ -369,6 +379,7 @@ class DdnsService {
     this.config.lastRefresh = new Date().toISOString();
     sqliteService.setDdnsDomains(this.config.domains);
     sqliteService.setDdnsLastRefresh(this.config.lastRefresh);
+    _syncMySQL('ddns_config');
   }
 
   getDomains() { return sqliteService.getDdnsDomains(); }
@@ -376,18 +387,21 @@ class DdnsService {
   setDomains(domains) {
     sqliteService.setDdnsDomains(domains);
     this.config.domains = sqliteService.getDdnsDomains();
+    _syncMySQL('ddns_config');
     return this.config.domains;
   }
 
   addDomain(domain) {
     sqliteService.addDdnsDomain(domain);
     this.config.domains = sqliteService.getDdnsDomains();
+    _syncMySQL('ddns_config');
     return this.config.domains;
   }
 
   removeDomain(name, subdomain = '@', recordType) {
     sqliteService.removeDdnsDomain(name, subdomain, recordType);
     this.config.domains = sqliteService.getDdnsDomains();
+    _syncMySQL('ddns_config');
     return this.config.domains;
   }
 

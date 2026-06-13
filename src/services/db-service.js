@@ -116,6 +116,17 @@ class DbService {
         ts BIGINT NOT NULL,
         data LONGTEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS ssh_config (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        host VARCHAR(255) NOT NULL DEFAULT '192.168.100.1',
+        port INT DEFAULT 22,
+        username VARCHAR(100) NOT NULL,
+        password VARCHAR(255) NOT NULL DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`
     ];
 
@@ -471,6 +482,75 @@ class DbService {
     console.log('[DB] SQLite → MySQL 同步完成:', synced, '条记录');
     return { synced };
   }
+
+  // ========== 运行时单表同步（写操作后调用，保持 MySQL 实时） ==========
+
+  async syncTable(table) {
+    if (this.mode !== 'mysql' || !this._pool) return { synced: 0 };
+    try {
+      const sqliteService = require('./sqlite-service');
+      const synced = { synced: 0 };
+
+      if (table === 'ddns_config') {
+        await this._pool.query('DELETE FROM ddns_records');
+        const data = sqliteService.getDdnsDomains();
+        for (const d of data) {
+          await this._pool.query(
+            'INSERT INTO ddns_records (domain, type, value, `enabled`) VALUES (?, ?, ?, ?)',
+            [d.name, d.recordType || 'A', d.lastIp || '', d.enabled !== false ? 1 : 0]
+          );
+        }
+        synced.synced = data.length;
+      } else if (table === 'proxy_rules') {
+        await this._pool.query('DELETE FROM proxy_rules');
+        const data = sqliteService.getProxyRules();
+        for (const r of data) {
+          await this._pool.query(
+            'INSERT INTO proxy_rules (source, source_host, target_host, target, port, `ssl`, `websocket`, `enabled`, remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`,
+             r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
+          );
+        }
+        synced.synced = data.length;
+      } else if (table === 'ssl_config') {
+        await this._pool.query('DELETE FROM ssl_certs');
+        const data = sqliteService.getSslDomains();
+        for (const d of data) {
+          await this._pool.query(
+            'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?)',
+            [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
+          );
+        }
+        synced.synced = data.length;
+      } else if (table === 'cron_jobs') {
+        await this._pool.query('DELETE FROM cron_jobs');
+        const data = sqliteService.getCronJobs();
+        for (const j of data) {
+          await this._pool.query(
+            'INSERT INTO cron_jobs (id, name, interval_ms, enabled, `type`, last_run, last_result, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [j.id, j.name, j.interval, j.enabled ? 1 : 0, j.type || 'manual',
+             j.lastRun, j.lastResult ? JSON.stringify(j.lastResult) : null, j.createdAt]
+          );
+        }
+        synced.synced = data.length;
+      } else if (table === 'ssh_config') {
+        await this._pool.query('DELETE FROM ssh_config');
+        const data = sqliteService.getSshConfigs();
+        for (const c of data) {
+          await this._pool.query(
+            'INSERT INTO ssh_config (name, host, port, username, password) VALUES (?, ?, ?, ?, ?)',
+            [c.name, c.host, c.port, c.username, c.password]
+          );
+        }
+        synced.synced = data.length;
+      }
+      return synced;
+    } catch (e) {
+      console.error('[DB] syncTable error:', e.message);
+      return { synced: 0, error: e.message };
+    }
+  }
+
   async close() {
     if (this._pool) {
       await this._pool.end();

@@ -3,6 +3,16 @@ const { exec } = require("child_process");
 
 const sqliteService = require('./sqlite-service');
 
+let _dbService = null;
+function _getDb() {
+  if (!_dbService) _dbService = require('./db-service');
+  return _dbService;
+}
+function _syncMySQL(table) {
+  const db = _getDb();
+  if (db.mode === 'mysql') setImmediate(() => db.syncTable(table).catch(() => {}));
+}
+
 class CronService {
   constructor() {
     this.jobs = this._load();
@@ -106,6 +116,7 @@ class CronService {
 
   _save() {
     sqliteService.setCronJobs(this.jobs);
+    _syncMySQL('cron_jobs');
   }
 }
 

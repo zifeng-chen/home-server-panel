@@ -4,6 +4,16 @@ const path = require('path');
 
 const sqliteService = require('./sqlite-service');
 
+let _dbService = null;
+function _getDb() {
+  if (!_dbService) _dbService = require('./db-service');
+  return _dbService;
+}
+function _syncMySQL(table) {
+  const db = _getDb();
+  if (db.mode === 'mysql') setImmediate(() => db.syncTable(table).catch(() => {}));
+}
+
 class ProxyService {
   constructor() {
     // SQLite is the source of truth
@@ -42,15 +52,20 @@ class ProxyService {
       customHeaders: rule.customHeaders || []
     };
 
-    return sqliteService.addProxyRule(newRule);
+    const result = sqliteService.addProxyRule(newRule);
+    _syncMySQL('proxy_rules');
+    return result;
   }
 
   updateRule(id, updates) {
-    return sqliteService.updateProxyRule(id, updates);
+    const result = sqliteService.updateProxyRule(id, updates);
+    _syncMySQL('proxy_rules');
+    return result;
   }
 
   deleteRule(id) {
     sqliteService.deleteProxyRule(id);
+    _syncMySQL('proxy_rules');
   }
 
   toggleRule(id) {

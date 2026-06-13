@@ -393,7 +393,11 @@ window.showAddDdnsModal = () => {
 };
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+(function initDdnsButtons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDdnsButtons);
+    return;
+  }
   const refreshBtn = document.getElementById('btnDdnsRefresh');
   const addBtn = document.getElementById('btnDdnsAdd');
   const logBtn = document.getElementById('btnDdnsLog');
@@ -412,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (refreshBtn) refreshBtn.addEventListener('click', refreshAllDdns);
   if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
   if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ddns', 'DDNS'));
-});
+})();
 
 // 导出供 app.js 的 _ensurePage 调用
 window.loadDdns = loadDdns;

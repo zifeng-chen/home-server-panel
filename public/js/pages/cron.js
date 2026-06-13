@@ -25,7 +25,11 @@ async function loadCron() {
   } catch (err) { tbody.innerHTML = "<tr><td colspan='6'>加载失败: "+err.message+"</td></tr>"; }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+(function initCronButtons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCronButtons);
+    return;
+  }
   document.getElementById("btnCronAdd")?.addEventListener("click", () => {
     const body = `
       <div class="form-group">
@@ -76,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-});
+})();
 
 // 导出供 app.js 的 _ensurePage 调用
 window.loadCron = loadCron;

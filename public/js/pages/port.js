@@ -90,7 +90,11 @@ window.checkSinglePort = async (port) => {
 };
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+(function initPortButtons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPortButtons);
+    return;
+  }
   const scanBtn = document.getElementById('btnPortScan');
   const refreshBtn = document.getElementById('btnPortRefresh');
 
@@ -105,8 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     statsSpan.style.cssText = 'margin-left:16px;font-size:12px;color:var(--text-secondary);';
     toolbar.appendChild(statsSpan);
   }
-
-});
+})();
 // 终止端口进程
 window.killPort = async (port, process) => {
   Utils.confirm('终止端口进程', `确定要终止端口 ${port} 的进程 "${process}" 吗？`, async () => {

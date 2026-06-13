@@ -328,14 +328,17 @@ async function pm2Save() {
   App.notify((res && res.message) || '配置已保存', res.success ? 'success' : 'error');
 }
 
-// 页面加载时初始化
-document.addEventListener('DOMContentLoaded', () => {
+(function initPm2Buttons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPm2Buttons);
+    return;
+  }
   const btnRefresh = document.getElementById('btnPM2Refresh');
   if (btnRefresh) btnRefresh.addEventListener('click', loadPM2);
 
   const btnSave = document.getElementById('btnPM2Save');
   if (btnSave) btnSave.addEventListener('click', pm2Save);
-});
+})();
 
 // 导出供 app.js 的 _ensurePage 调用
 window.loadPM2 = loadPM2;

@@ -367,7 +367,11 @@ window.deleteCertFiles = (domain) => {
 };
 
 // 页面加载
-document.addEventListener('DOMContentLoaded', () => {
+(function initCertButtons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCertButtons);
+    return;
+  }
   const applyBtn = document.getElementById('btnCertApply');
   const logBtn = document.getElementById('btnCertLog');
   const acmeStatusEl = document.getElementById('acmeStatus');
@@ -405,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uninstallBtn.addEventListener('click', uninstallAcme);
     toolbar.appendChild(uninstallBtn);
   }
-});
+})();
 
 // 加载时检查 acme 状态并控制按钮显示
 const _origLoadCert = loadCert;

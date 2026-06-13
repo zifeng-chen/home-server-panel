@@ -363,7 +363,11 @@ window.exportProxyConfig = async () => {
 };
 
 // ========== 初始化 ==========
-document.addEventListener('DOMContentLoaded', () => {
+(function initNginxButtons() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNginxButtons);
+    return;
+  }
   // Nginx 操作按钮
   ['start', 'stop', 'reload', 'restart', 'test'].forEach(action => {
     const btn = document.getElementById(`btnNginx${action.charAt(0).toUpperCase() + action.slice(1)}`);
@@ -389,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 手动部署按钮
   var manualBtn = document.getElementById('btnNginxManual');
   if (manualBtn) manualBtn.addEventListener('click', showManualDeployModal);
-});
+})();
 
 // 手动部署 Nginx 项目
 window.showManualDeployModal = function() {

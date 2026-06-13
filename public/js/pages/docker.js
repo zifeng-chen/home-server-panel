@@ -236,6 +236,10 @@ window.viewDockerLogs = (name) => {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+(function initDockerPage() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDockerPage);
+    return;
+  }
   window.loadDocker = loadDocker;
-});
+})();

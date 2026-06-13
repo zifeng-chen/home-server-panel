@@ -87,6 +87,7 @@ router.post('/issue', async (req, res) => {
 router.get('/issue/stream', async (req, res) => {
   const domain = req.query.domain;
   const wildcard = req.query.wildcard === 'true';
+  const force = req.query.force === 'true';
 
   if (!domain) {
     return res.status(400).json({ success: false, message: '域名不能为空' });
@@ -104,10 +105,10 @@ router.get('/issue/stream', async (req, res) => {
   };
 
   try {
-    send('start', { message: `开始为 ${domain} 申请证书...` });
-    const result = await sslService.issueCertificateSSE(domain, { wildcard }, (type, data) => send(type, data));
+    send('start', { message: `开始为 ${domain} ${force ? '强制 ' : ''}申请证书...` });
+    const result = await sslService.issueCertificateSSE(domain, { wildcard, force }, (type, data) => send(type, data));
     if (result.success) {
-      send('done', { message: result.message || '证书申请完成' });
+      send('done', { message: result.message || '证书申请完成', alreadyExists: result.alreadyExists || false });
     } else {
       send('error', { message: result.message || '证书申请失败' });
     }

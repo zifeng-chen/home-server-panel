@@ -217,8 +217,12 @@ class SslService {
       ...domains.map(d => ['-d', d]).flat()
     ];
 
+    // 净化环境变量（避免 LOG_LEVEL 泄漏给 acme.sh 在 BusyBox 上报错）
+    const sanEnv = { ...process.env };
+    delete sanEnv.LOG_LEVEL;
+    delete sanEnv.DEBUG;
     const env = {
-      ...process.env,
+      ...sanEnv,
       Ali_Key: accessKeyId,
       Ali_Secret: accessKeySecret
     };
@@ -267,11 +271,32 @@ class SslService {
       ...domains.map(d => ['-d', d]).flat()
     ];
 
+    const sanEnv = { ...process.env };
+    delete sanEnv.LOG_LEVEL;
+    delete sanEnv.DEBUG;
     const env = {
-      ...process.env,
+      ...sanEnv,
       Ali_Key: accessKeyId,
       Ali_Secret: accessKeySecret
     };
+
+    // 预检：证书是否已存在且有效
+    const existingData = await this.listCertificates().catch(() => ({ certificates: [] }));
+    const existingCerts = existingData.certificates || [];
+    const existing = existingCerts.find(c => c.domain === cleanDomain);
+    if (existing && existing.expiresAt && !options.force) {
+      const expiresDate = new Date(existing.expiresAt);
+      const daysUntil = Math.ceil((expiresDate - Date.now()) / 86400000);
+      if (daysUntil > 0) {
+        onProgress('step', { text: `⏭️ 证书已存在（${daysUntil} 天后到期），跳过申请` });
+        return { success: true, domain: cleanDomain, message: `证书已存在，${daysUntil} 天后到期`, alreadyExists: true };
+      }
+    }
+
+    if (options.force) {
+      args.push('--force');
+      onProgress('step', { text: '⚡ 强制重新申请（--force）...' });
+    }
 
     onProgress('step', { text: `🔍 清理残留 DNS 记录: ${cleanDomain}...` });
     try {
@@ -294,21 +319,27 @@ class SslService {
         maxBuffer: 1024 * 1024
       });
 
+      let combinedOutput = '';
       proc.stdout.on('data', (data) => {
         const text = data.toString().trim();
-        if (text) onProgress('output', { text });
+        if (text) { combinedOutput += text; onProgress('output', { text }); }
       });
 
       proc.stderr.on('data', (data) => {
         const text = data.toString().trim();
-        if (text) onProgress('output', { text });
+        if (text) { combinedOutput += text; onProgress('output', { text }); }
       });
 
       proc.on('close', (code) => {
-        if (code === 0) {
-          onProgress('step', { text: '✅ 证书申请成功！' });
-          this._addCertConfig(cleanDomain, { alias: options.alias || cleanDomain, wildcard: options.wildcard });
-          resolve({ success: true, domain: cleanDomain, message: `证书申请成功: ${cleanDomain}` });
+        // exit code 2 = "Domains not changed"（证书已存在且未过期）
+        if (code === 0 || (code === 2 && combinedOutput.includes('Domains not changed'))) {
+          const alreadyExists = code === 2;
+          const msg = alreadyExists ? '证书已存在且有效，无需重新申请' : '✅ 证书申请成功！';
+          onProgress('step', { text: msg });
+          if (!alreadyExists) {
+            this._addCertConfig(cleanDomain, { alias: options.alias || cleanDomain, wildcard: options.wildcard });
+          }
+          resolve({ success: true, domain: cleanDomain, message: msg, alreadyExists });
         } else {
           onProgress('error', { message: `证书申请失败 (exit code: ${code})` });
           resolve({ success: false, message: `证书申请失败 (exit code: ${code})` });
@@ -329,8 +360,11 @@ class SslService {
       throw new Error('acme.sh 未安装');
     }
 
+    const sanEnv = { ...process.env };
+    delete sanEnv.LOG_LEVEL;
+    delete sanEnv.DEBUG;
     const env = {
-      ...process.env,
+      ...sanEnv,
       Ali_Key: process.env.ALIYUN_ACCESS_KEY_ID,
       Ali_Secret: process.env.ALIYUN_ACCESS_KEY_SECRET
     };
@@ -389,7 +423,7 @@ class SslService {
 
           // Task 14: 到期时发送 PushPlus 提醒
           if (days !== null && days >= 0 && days <= 90) {
-            this._maybeNotifyExpiry(mainDomain, days);
+            this._maybeNotifyExpiry(cert.mainDomain, days);
           }
 
           return {
@@ -496,10 +530,15 @@ class SslService {
 
   // ========== 内部方法 ==========
 
-  _execAcme(args, env = process.env) {
+  _execAcme(args, env = {}) {
+    // 净化环境变量：移除我们 app 的 LOG_LEVEL，避免 acme.sh 在 BusyBox ash 上
+    // 把字符串 "info" 当整数比较（[_debug() 内部 [ "$LOG_LEVEL" -ge 1 ]）
+    const sanEnv = { ...process.env };
+    delete sanEnv.LOG_LEVEL;
+    delete sanEnv.DEBUG;
     return new Promise((resolve, reject) => {
       execFile(ACME_BIN, args.split(' ').filter(Boolean), {
-        env,
+        env: { ...sanEnv, ...env },
         timeout: 120000,
         maxBuffer: 1024 * 1024
       }, (err, stdout, stderr) => {
@@ -524,9 +563,12 @@ class SslService {
     for (const line of lines) {
       if (!line.trim() || line.includes('Main_Domain')) continue;
 
-      // acme.sh --list 输出列间以连续空格分隔，部分列可能为空
-      // 列顺序: Main_Domain, KeyLength, SAN_Domains, Profile(空), CA, Created, Renew
-      const parts = line.split(/\s{2,}/).map(s => s.trim()).filter(Boolean);
+      // acme.sh v3.x --list 输出用 \t 分隔，兼容旧版空格分隔
+      let parts = line.split('\t').map(s => s.trim()).filter(Boolean);
+      if (parts.length < 4) {
+        // fallback: 旧版空格分隔
+        parts = line.split(/\s{2,}/).map(s => s.trim()).filter(Boolean);
+      }
       if (parts.length < 4) continue;
 
       // parts[0]=域名, parts[1]="ec-256", parts[2]=SAN域名, parts[3]=CA

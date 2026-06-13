@@ -84,6 +84,12 @@ window.showIssueCertModal = () => {
         <input type="checkbox" id="certWildcard"> 申请通配符证书 (*.domain.com)
       </label>
     </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="certForce"> 强制重新申请 (--force)
+        <small style="color:var(--warning)">如果证书已存在且未到期，默认会跳过</small>
+      </label>
+    </div>
     <div class="info-box" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:12px;font-size:12px;color:var(--text-secondary);margin-top:12px;">
       ℹ️ 使用阿里云 DNS (alidns) 自动验证，请确保已在「系统设置」中配置阿里云 AccessKey
     </div>
@@ -97,6 +103,7 @@ window.showIssueCertModal = () => {
   document.getElementById('certIssueConfirm').addEventListener('click', async () => {
     let domain = document.getElementById('certIssueDomain').value.trim();
     const wildcard = document.getElementById('certWildcard').checked;
+    const force = document.getElementById('certForce').checked;
 
     if (!domain) { Utils.notify('请输入域名', 'error'); return; }
 
@@ -118,12 +125,12 @@ window.showIssueCertModal = () => {
 
     Utils.closeModal();
     const displayName = wildcard ? `*.${domain}` : domain;
-    startCertIssueProgress(domain, wildcard, displayName);
+    startCertIssueProgress(domain, wildcard, displayName, force);
   });
 };
 
 // SSE 证书申请进度浮窗
-window.startCertIssueProgress = (domain, wildcard, displayName) => {
+window.startCertIssueProgress = (domain, wildcard, displayName, force) => {
   const body = `
     <div id="certIssueProgress">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -143,7 +150,7 @@ window.startCertIssueProgress = (domain, wildcard, displayName) => {
   if (!statusSpan || !logDiv) return;
 
   const token = localStorage.getItem('hsp_token');
-  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&token=${encodeURIComponent(token)}`);
+  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&force=${force ? 'true' : 'false'}&token=${encodeURIComponent(token)}`);
   let killed = false;
 
   es.addEventListener('message', (e) => {
@@ -163,8 +170,13 @@ window.startCertIssueProgress = (domain, wildcard, displayName) => {
           logDiv.scrollTop = logDiv.scrollHeight;
           break;
         case 'done':
-          statusSpan.textContent = '✅ ' + msg.message;
-          statusSpan.style.color = 'var(--success)';
+          if (msg.alreadyExists) {
+            statusSpan.textContent = 'ℹ️ ' + msg.message;
+            statusSpan.style.color = 'var(--primary)';
+          } else {
+            statusSpan.textContent = '✅ ' + msg.message;
+            statusSpan.style.color = 'var(--success)';
+          }
           statusSpan.parentElement.querySelector('.spinner').style.display = 'none';
           es.close();
           setTimeout(() => { Utils.closeModal(); loadCert(); }, 2000);

@@ -238,7 +238,7 @@ function formatTime(date) {
   });
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr) { return window.formatDate(dateStr); } window.formatDate = function(dateStr) {
   if (!dateStr) return '--';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;

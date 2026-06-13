@@ -137,7 +137,7 @@ class MonitorService {
     });
   }
 
-  // 网络流量
+  // 网络流量 — 只读 WAN 口 (pppoe-wan > eth0)，避免 LAN/虚拟接口造成 rx≈tx 假象
   _getNetwork() {
     const dir = '/sys/class/net';
     return new Promise(resolve => {
@@ -146,16 +146,33 @@ class MonitorService {
         this._getNetMac(resolve);
         return;
       }
-      // Linux: /sys/class/net/
       let totalRx = 0, totalTx = 0;
+      let found = false;
       try {
         const ifaces = fs.readdirSync(dir);
-        for (const iface of ifaces) {
-          if (iface === 'lo') continue;
-          try {
-            totalRx += parseInt(fs.readFileSync(`${dir}/${iface}/statistics/rx_bytes`, 'utf-8').trim()) || 0;
-            totalTx += parseInt(fs.readFileSync(`${dir}/${iface}/statistics/tx_bytes`, 'utf-8').trim()) || 0;
-          } catch (e) {}
+        // 优先 pppoe-wan (PPPoE 拨号口 → 真实互联网流量)
+        for (const want of ['pppoe-wan', 'eth0']) {
+          if (ifaces.includes(want)) {
+            try {
+              totalRx = parseInt(fs.readFileSync(`${dir}/${want}/statistics/rx_bytes`, 'utf-8').trim()) || 0;
+              totalTx = parseInt(fs.readFileSync(`${dir}/${want}/statistics/tx_bytes`, 'utf-8').trim()) || 0;
+              found = true;
+              break;
+            } catch (e) {}
+          }
+        }
+        // 兜底：没有任何匹配接口时取所有物理网卡的合计
+        if (!found) {
+          for (const iface of ifaces) {
+            if (iface === 'lo' || iface.startsWith('docker') || iface.startsWith('veth') ||
+                iface.startsWith('br-') || iface === 'bonding_masters' || iface.startsWith('tun') ||
+                iface.startsWith('sit') || iface.startsWith('gre') || iface.startsWith('erspan') ||
+                iface === 'dummy0' || iface === 'teql0' || iface.startsWith('ip6')) continue;
+            try {
+              totalRx += parseInt(fs.readFileSync(`${dir}/${iface}/statistics/rx_bytes`, 'utf-8').trim()) || 0;
+              totalTx += parseInt(fs.readFileSync(`${dir}/${iface}/statistics/tx_bytes`, 'utf-8').trim()) || 0;
+            } catch (e) {}
+          }
         }
       } catch (e) {}
       this._calcNetRate(totalRx, totalTx, resolve);

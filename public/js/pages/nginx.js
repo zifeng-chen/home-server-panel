@@ -375,24 +375,24 @@ window.exportProxyConfig = async () => {
   });
 
   const installBtn = document.getElementById('btnNginxInstall');
-  if (installBtn) installBtn.addEventListener('click', installNginx);
+  if (installBtn) installBtn.addEventListener('click', window.installNginx);
 
   // 反向代理按钮
   const addBtn = document.getElementById('btnProxyAdd');
-  if (addBtn) addBtn.addEventListener('click', showAddProxyModal);
+  if (addBtn) addBtn.addEventListener('click', window.showAddProxyModal);
 
   const previewBtn = document.getElementById('btnProxyPreview');
-  if (previewBtn) previewBtn.addEventListener('click', previewProxyConfig);
+  if (previewBtn) previewBtn.addEventListener('click', window.previewProxyConfig);
 
   const exportBtn = document.getElementById('btnProxyExport');
-  if (exportBtn) exportBtn.addEventListener('click', exportProxyConfig);
+  if (exportBtn) exportBtn.addEventListener('click', window.exportProxyConfig);
 
   // 默认隐藏操作按钮
   updateActionButtons(false);
 
   // 手动部署按钮
   var manualBtn = document.getElementById('btnNginxManual');
-  if (manualBtn) manualBtn.addEventListener('click', showManualDeployModal);
+  if (manualBtn) manualBtn.addEventListener('click', window.showManualDeployModal);
 })();
 
 // 手动部署 Nginx 项目

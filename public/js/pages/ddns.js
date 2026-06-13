@@ -169,7 +169,7 @@ async function loadDdns() {
     // 绑定全选复选框
     const selectAll = document.getElementById('ddnsSelectAll');
     if (selectAll) {
-      selectAll.onchange = ddnsToggleSelectAll;
+      selectAll.onchange = window.ddnsToggleSelectAll;
     }
     updateDdnsBatchBar();
   } catch (err) {
@@ -412,9 +412,9 @@ window.showAddDdnsModal = () => {
     toolbar.appendChild(ipSpan);
   }
 
-  if (selectAll) selectAll.onchange = ddnsToggleSelectAll;
-  if (refreshBtn) refreshBtn.addEventListener('click', refreshAllDdns);
-  if (addBtn) addBtn.addEventListener('click', showAddDdnsModal);
+  if (selectAll) selectAll.onchange = window.ddnsToggleSelectAll;
+  if (refreshBtn) refreshBtn.addEventListener('click', window.refreshAllDdns);
+  if (addBtn) addBtn.addEventListener('click', window.showAddDdnsModal);
   if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ddns', 'DDNS'));
 })();
 

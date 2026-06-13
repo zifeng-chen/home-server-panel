@@ -386,7 +386,7 @@ window.deleteCertFiles = (domain) => {
     toolbar.appendChild(statusSpan);
   }
 
-  if (applyBtn) applyBtn.addEventListener('click', showIssueCertModal);
+  if (applyBtn) applyBtn.addEventListener('click', window.showIssueCertModal);
   if (logBtn) logBtn.addEventListener('click', () => Utils.showOpLog('ssl', 'SSL 证书'));
 
   // 在工具栏插入「安装/卸载 acme.sh」按钮
@@ -397,7 +397,7 @@ window.deleteCertFiles = (domain) => {
     installBtn.textContent = '🔧 安装 acme.sh';
     installBtn.style.marginLeft = '8px';
     installBtn.style.display = 'none';
-    installBtn.addEventListener('click', installAcme);
+    installBtn.addEventListener('click', window.installAcme);
     toolbar.appendChild(installBtn);
 
     const uninstallBtn = document.createElement('button');
@@ -406,7 +406,7 @@ window.deleteCertFiles = (domain) => {
     uninstallBtn.textContent = '🗑 卸载 acme.sh';
     uninstallBtn.style.marginLeft = '8px';
     uninstallBtn.style.display = 'none';
-    uninstallBtn.addEventListener('click', uninstallAcme);
+    uninstallBtn.addEventListener('click', window.uninstallAcme);
     toolbar.appendChild(uninstallBtn);
   }
 })();

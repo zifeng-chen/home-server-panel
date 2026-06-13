@@ -109,6 +109,13 @@ class DbService {
         \`key\` VARCHAR(100) PRIMARY KEY,
         \`value\` TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS monitor_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ts BIGINT NOT NULL,
+        data LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
     ];
 
@@ -182,6 +189,91 @@ class DbService {
       }
     }
     return null;
+  }
+
+  // ========== 监控历史 ==========
+
+  async saveMonitorHistory(history) {
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        const json = JSON.stringify(history);
+        // 删旧存新，只保留最新一条
+        await this._pool.query('DELETE FROM monitor_history');
+        await this._pool.query('INSERT INTO monitor_history (ts, data) VALUES (?, ?)', [Date.now(), json]);
+      } catch (e) { /* 静默 */ }
+    }
+  }
+
+  async loadMonitorHistory() {
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        const [rows] = await this._pool.query('SELECT data FROM monitor_history ORDER BY ts DESC LIMIT 1');
+        if (rows.length > 0) return JSON.parse(rows[0].data);
+      } catch (e) { /* 静默 */ }
+    }
+    return null;
+  }
+
+  // ========== 配置持久化 ==========
+
+  async saveSetting(key, value) {
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        await this._pool.query(
+          'INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
+          [key, String(value)]
+        );
+      } catch (e) { /* 静默 */ }
+    }
+  }
+
+  async getSetting(key) {
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        const [rows] = await this._pool.query('SELECT `value` FROM settings WHERE `key` = ?', [key]);
+        return rows.length > 0 ? rows[0].value : null;
+      } catch (e) { return null; }
+    }
+    return null;
+  }
+
+  async getAllSettings() {
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        const [rows] = await this._pool.query('SELECT `key`, `value` FROM settings');
+        const obj = {};
+        rows.forEach(r => obj[r.key] = r.value);
+        return obj;
+      } catch (e) { return {}; }
+    }
+    return {};
+  }
+
+  // ========== 数据库完整检查 ==========
+
+  async checkIntegrity() {
+    const tables = ['ddns_records', 'proxy_rules', 'ssl_certs', 'operation_logs',
+      'settings', 'system_config', 'sessions', 'monitor_history'];
+    const result = { mode: this.mode, tables: {} };
+
+    if (this.mode === 'mysql' && this._pool) {
+      try {
+        for (const t of tables) {
+          try {
+            const [rows] = await this._pool.query(`SELECT COUNT(*) AS cnt FROM \`${t}\``);
+            result.tables[t] = { exists: true, rows: rows[0]?.cnt || 0 };
+          } catch (e) {
+            result.tables[t] = { exists: false, error: e.message };
+          }
+        }
+      } catch (e) {
+        result.error = e.message;
+      }
+    } else {
+      result.message = 'MySQL 未连接';
+    }
+
+    return result;
   }
 
   // ========== 导入/导出/迁移 ==========
@@ -332,7 +424,53 @@ class DbService {
     }
   }
 
-  // 关闭连接池
+  // 运行时增量同步：SQLite → MySQL（服务器启动时调用）
+  async syncFromSQLite() {
+    if (this.mode !== 'mysql' || !this._pool) return { synced: 0 };
+
+    const sqliteService = require('./sqlite-service');
+    let synced = 0;
+
+    // DDNS
+    try {
+      const ddns = sqliteService.getDdnsDomains();
+      for (const d of ddns) {
+        await this._pool.query(
+          'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), \`enabled\`=VALUES(\`enabled\`)',
+          [d.name, d.recordType || 'A', d.lastIp || '', d.enabled !== false ? 1 : 0]
+        );
+        synced++;
+      }
+    } catch (e) { console.error('[DB] DDNS sync error:', e.message); }
+
+    // Proxy
+    try {
+      const proxy = sqliteService.getProxyRules();
+      for (const r of proxy) {
+        await this._pool.query(
+          `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE target_host=VALUES(target_host), target=VALUES(target), port=VALUES(port), \`ssl\`=VALUES(\`ssl\`), \`websocket\`=VALUES(\`websocket\`), \`enabled\`=VALUES(\`enabled\`), remark=VALUES(remark)`,
+          [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
+        );
+        synced++;
+      }
+    } catch (e) { console.error('[DB] Proxy sync error:', e.message); }
+
+    // SSL
+    try {
+      const ssl = sqliteService.getSslDomains();
+      for (const d of ssl) {
+        await this._pool.query(
+          'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
+          [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
+        );
+        synced++;
+      }
+    } catch (e) { console.error('[DB] SSL sync error:', e.message); }
+
+    console.log('[DB] SQLite → MySQL 同步完成:', synced, '条记录');
+    return { synced };
+  }
   async close() {
     if (this._pool) {
       await this._pool.end();

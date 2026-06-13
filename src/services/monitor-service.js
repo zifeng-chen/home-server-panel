@@ -26,14 +26,14 @@ class MonitorService {
     if (this._collecting) return;
     this._collecting = true;
     // 从数据库恢复上次历史数据
-    this._restoreFromDb();
+    this._restoreFromDb().catch(() => {});
     this._tick();
     this._interval = setInterval(() => this._tick(), 10000);
   }
 
   stop() {
     this._collecting = false;
-    // 停止前最后持久化一次
+    // 暂停前最后持久化一次（SQLite + MySQL 双写）
     this._persist();
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
   }
@@ -193,12 +193,19 @@ class MonitorService {
   }
 
   // 从 SQLite 恢复历史数据（启动时调用）
-  _restoreFromDb() {
+  async _restoreFromDb() {
     try {
       if (!this._sqliteService) {
         this._sqliteService = require('./sqlite-service');
       }
-      const saved = this._sqliteService.loadMonitorHistory();
+      // 优先从 SQLite 读取，失败则从 MySQL
+      let saved = this._sqliteService.loadMonitorHistory();
+      if (!saved || !saved.cpu || saved.cpu.length === 0) {
+        const dbService = require('./db-service');
+        if (dbService.mode === 'mysql') {
+          saved = await dbService.loadMonitorHistory();
+        }
+      }
       if (saved && saved.cpu && saved.cpu.length > 0) {
         this.history = saved;
         console.log('[Monitor] 从数据库恢复历史数据 (', saved.cpu.length, '点)');
@@ -206,7 +213,7 @@ class MonitorService {
     } catch (e) { /* 静默 */ }
   }
 
-  // 持久化当前历史到 SQLite
+  // 持久化当前历史到 SQLite + MySQL
   _persist() {
     try {
       if (!this._sqliteService) {
@@ -214,6 +221,11 @@ class MonitorService {
       }
       if (this.history.cpu.length > 0) {
         this._sqliteService.saveMonitorHistory(this.history);
+        // 双写到 MySQL
+        const dbService = require('./db-service');
+        if (dbService.mode === 'mysql') {
+          dbService.saveMonitorHistory(this.history).catch(() => {});
+        }
       }
     } catch (e) { /* 静默 */ }
   }

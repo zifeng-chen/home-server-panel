@@ -64,6 +64,26 @@ router.post('/disconnect', async (req, res) => {
   }
 });
 
+// GET /api/db/check - 数据库完整性检查
+router.get('/check', async (req, res) => {
+  try {
+    const result = await dbService.checkIntegrity();
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({success: false, message: err.message });
+  }
+});
+
+// POST /api/db/sync - 手动触发 SQLite → MySQL 同步
+router.post('/sync', async (req, res) => {
+  try {
+    const result = await dbService.syncFromSQLite();
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({success: false, message: err.message });
+  }
+});
+
 // GET /api/db/export - 导出 SQLite 数据库文件 (.db)
 router.get('/export', (req, res) => {
   try {

@@ -136,7 +136,7 @@ class LogService {
     // GET 静默路径：高频轮询不记录日志
     const silentGets = new Set([
       "/api/monitor", "/api/system", "/api/auth/status",
-      "/api/dashboard", "/api/db/status"
+      "/api/dashboard", "/api/db/status", "/api/log/export"
     ]);
 
     return (req, res, next) => {

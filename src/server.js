@@ -19,6 +19,8 @@ if (dbMode === 'mysql') {
     const mysqlRes = await dbService.initMySQL();
     if (mysqlRes.success) {
       console.log('[DB] MySQL 连接成功');
+      // 启动时自动同步 SQLite → MySQL（增量，不覆盖已有数据）
+      setImmediate(() => dbService.syncFromSQLite().catch(() => {}));
     } else {
       console.log('[DB] MySQL 连接失败: ' + mysqlRes.message);
       dbService.mode = 'local';

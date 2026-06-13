@@ -108,6 +108,18 @@ router.post('/config', (req, res) => {
 
     fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
 
+    // 🔥 同步到 MySQL settings 表（用于备份恢复）
+    const dbService = require('../services/db-service');
+    const syncKeys = ['ALIYUN_ACCESS_KEY_ID', 'ALIYUN_ACCESS_KEY_SECRET', 'PUSHPLUS_TOKEN', 'ACME_EMAIL', 'ACME_DNS_PROVIDER', 'SERVER_PORT', 'LOG_LEVEL'];
+    for (const k of syncKeys) {
+      if (req.body[k] || process.env[k]) {
+        const v = req.body[k] || process.env[k];
+        if (v.indexOf('****') === -1) {
+          dbService.saveSetting(k.toLowerCase(), v).catch(() => {});
+        }
+      }
+    }
+
     // 🔥 立即生效：更新 process.env 并重载相关服务
     if (aliKeyId && aliKeyId.indexOf('****') === -1) process.env.ALIYUN_ACCESS_KEY_ID = aliKeyId;
     if (aliKeySecret && aliKeySecret !== '****') process.env.ALIYUN_ACCESS_KEY_SECRET = aliKeySecret;

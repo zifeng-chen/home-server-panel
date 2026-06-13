@@ -146,7 +146,7 @@ class SetupService {
   }
 
   async _createTables(conn) {
-    // 与 db-service._initSchema 保持一致，避免重复定义不同 schema
+    // 与 db-service._initSchema 完全一致，避免重复定义不同 schema
     const tables = [
       `CREATE TABLE IF NOT EXISTS settings (
         \`key\` VARCHAR(100) PRIMARY KEY,
@@ -195,6 +195,32 @@ class SetupService {
         INDEX idx_module (module),
         INDEX idx_time (time),
         INDEX idx_level (level)
+      )`,
+      `CREATE TABLE IF NOT EXISTS sessions (
+        token VARCHAR(128) PRIMARY KEY,
+        username VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS system_config (
+        \`key\` VARCHAR(100) PRIMARY KEY,
+        \`value\` TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS monitor_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ts BIGINT NOT NULL,
+        data LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS ssh_config (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        host VARCHAR(255) NOT NULL DEFAULT '192.168.100.1',
+        port INT DEFAULT 22,
+        username VARCHAR(100) NOT NULL,
+        password VARCHAR(255) NOT NULL DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`
     ];
     for (const sql of tables) {

@@ -1,3 +1,21 @@
+# v0.7.0-beta (2026-06-13)
+
+### 🆕 新增
+- **SSH 配置持久化** - SQLite ssh_config 表，新增 /api/ssh/config CRUD，密码脱敏，重启不丢
+- **SSL 自动续期** - ssl-renew-service 每 24h 检查，到期前 30 天自动 acme.sh --renew
+- **系统重启按钮** - 系统设置页新增重启服务按钮 + /api/system/restart
+- **MySQL 运行时同步** - DDNS/SSL/Proxy/Cron 写操作后实时 syncTable() 至 MySQL
+- **SQLite 启动迁移** - 旧数据库自动补建新表（启动时幂等 CREATE TABLE IF NOT EXISTS）
+- **引导安装表补全** - sessions / system_config / monitor_history / ssh_config 四张表
+- **系统设置运行时间** - 系统控制卡片实时显示面板 Uptime
+
+### 🔧 修复
+- dbService.close() 恢复 async 关键字
+- 版本号统一为 0.7.0-beta
+
+### ⚠️ 破坏性变更
+- 版本号从 v1.x 重置为 v0.x（beta 期）
+
 ## v1.16.1 - 2026-06-10 15:20
 
 ### 📐 2K / 4K 屏幕自适应

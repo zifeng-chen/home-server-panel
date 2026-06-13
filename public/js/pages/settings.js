@@ -325,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reinstallBtn = document.getElementById('btnReinstall');
   const exportBtn = document.getElementById('btnExportData');
   const importBtn = document.getElementById('btnImportData');
+  const restartBtn = document.getElementById('btnRestartService');
 
   if (saveBtn) saveBtn.addEventListener('click', async () => {
     const data = {
@@ -427,6 +428,68 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // ===== 重启服务 =====
+  if (restartBtn) restartBtn.addEventListener('click', () => {
+    Utils.confirm('🔄 重启服务',
+      '<div style="text-align:left">即将重启家庭服务器管理面板。<br><br>' +
+      '<strong>重启期间约3-5秒无法访问</strong>，完成后请刷新页面。</div>',
+      async () => {
+        try {
+          restartBtn.disabled = true;
+          restartBtn.textContent = '⏳ 重启中...';
+          await Api.post('/system/restart');
+          Utils.notify('服务已重启，3秒后自动刷新...', 'success');
+          // 轮询等待服务恢复
+          let retries = 0;
+          const checkInterval = setInterval(async () => {
+            retries++;
+            try {
+              const res = await fetch('/api/system/uptime');
+              if (res.ok) {
+                clearInterval(checkInterval);
+                window.location.reload();
+              }
+            } catch (e) {
+              if (retries > 15) {
+                clearInterval(checkInterval);
+                Utils.notify('服务未自动恢复，请手动刷新页面', 'error');
+                restartBtn.disabled = false;
+                restartBtn.textContent = '🔄 重启服务';
+              }
+            }
+          }, 1000);
+        } catch (e) {
+          Utils.notify('重启失败: ' + e.message, 'error');
+          restartBtn.disabled = false;
+          restartBtn.textContent = '🔄 重启服务';
+        }
+      }, '确认重启', '取消'
+    );
+  });
+
+  // 加载运行时间
+  const _updateSettingsUptime = async () => {
+    try {
+      const res = await Api.get('/system/uptime');
+      if (res.success && res.data) {
+        const seconds = Math.floor(res.data.uptime);
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        const parts = [];
+        if (d > 0) parts.push(d + '天');
+        if (h > 0) parts.push(h + '小时');
+        if (m > 0) parts.push(m + '分钟');
+        if (parts.length === 0) parts.push(s + '秒');
+        const el = document.getElementById('settingsUptime');
+        if (el) el.textContent = parts.join(' ');
+      }
+    } catch (e) { /* ignore */ }
+  };
+  _updateSettingsUptime();
+  setInterval(_updateSettingsUptime, 30000);
 
   if (loadSettings) loadSettings();
 });

@@ -272,6 +272,7 @@ server.listen(PORT, () => {
     message: `服务已启动，端口 ${PORT}，数据库模式 ${dbMode}`,
     detail: `Node ${process.version} | ${process.platform} ${process.arch}` });
   require('./services/cron-service'); // 启动定时任务
+  require('./services/ssl-renew-service'); // 启动 SSL 自动续期
 });
 
 // 优雅关闭

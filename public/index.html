@@ -81,7 +81,7 @@
         </a>
       </nav>
       <div class="sidebar-footer">
-        <span id="version">v1.17.7</span>
+        <span id="version">v0.7.0-beta</span>
       </div>
     </aside>
 
@@ -419,6 +419,14 @@
               <button class="btn btn-sm btn-secondary" id="btnImportData">📥 导入数据</button>
               <button class="btn btn-sm btn-danger" id="btnReinstall" style="margin-left:auto">🔧 重装向导</button>
             </div>
+          </div>
+
+          <!-- 系统控制 -->
+          <div class="settings-card" style="margin-top:20px;">
+            <h3>⚙️ 系统控制</h3>
+            <p style="color:var(--text-secondary);font-size:13px;">运行时间：<strong id="settingsUptime">加载中...</strong></p>
+            <button class="btn btn-danger" id="btnRestartService" style="margin-top:8px;">🔄 重启服务</button>
+            <span id="restartHint" style="color:var(--text-secondary);font-size:12px;margin-left:8px;">重启后约3-5秒恢复访问</span>
           </div>
 
           <!-- 操作日志 + 诊断日志（左右分栏） -->

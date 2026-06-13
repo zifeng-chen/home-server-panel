@@ -136,4 +136,19 @@ router.post('/config', (req, res) => {
   }
 });
 
+// POST /api/system/restart - 重启服务
+router.post('/restart', (req, res) => {
+  // 先响应客户端
+  res.json({ success: true, message: '服务正在重启...' });
+  
+  // 1秒后通过 shell 重启
+  setTimeout(() => {
+    const { exec } = require('child_process');
+    const cwd = require('path').join(__dirname, '..', '..');
+    exec(`cd ${cwd} && nohup node src/server.js > /tmp/hsp.log 2>&1 &`, () => {
+      process.exit(0);
+    });
+  }, 1000);
+});
+
 module.exports = router;

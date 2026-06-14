@@ -1,3 +1,24 @@
+# v0.7.1-beta (2026-06-14)
+
+### 🔧 修复
+- **SSL 证书到期日错误** - 修复 `_parseListOutput` 误用 acme.sh `--list` Renew 列（建议续期日）作为到期日，改为 openssl 读取真实到期时间
+- **SSL 证书 CA 显示** - issuer 从硬编码 `Let's Encrypt` 改为从 acme.sh `--list` 动态获取（实际 ZeroSSL.com）
+- **操作日志北京时间** - `logService.query()` 统一追加 `timeCst` 字段（服务端转换），解决浏览器时区兼容问题
+- **ws-service.js 崩溃** - `listeners` 变量作用域错误导致服务器反复挂掉
+- **SSL TXT 清理误删 DDNS 记录** - `_cleanDnsTxtRecords` 添加客户端二次过滤 `startsWith('_acme-challenge')`
+- **ssl-renew-service.js 方法不存在** - `getStatus()` → `checkAcme()`
+- **SQLite 列迁移** - 新增 `_runColumnMigrations()` 幂等追加 `notified_at` / `value` 列
+- **JSON 残留文件回滚** - 新增 `_cleanJsonBackups()` 启动时清理残留 `.json` / `.json.bak`
+- **DDNS 自动创建** - `refreshAll` 阿里云查询 0 条时自动调用 `addRecord()` 重建记录
+- **DNS TXT 记录冲突** - `renewCertificate()` 缺少 `_cleanDnsTxtRecords()` 导致续期失败
+- **全量时区审计** - 38 处时间代码扫描，修复 5 处时区缺陷（api.js / log-service.js / notify-service.js / routes/log.js）
+
+### 🆕 新增
+- **日志结构优化** - 模块中文名、耗时、IP 字段；SSL 续期显示强制/普通续期 + 状态标记
+- **仪表盘运行时间** - 添加秒显示
+- **全局版本号统一** - `__VERSION__` 常量统一管理所有文件版本号
+- **诊断与日志合并** - 设置页标签页切换（操作日志/诊断日志）
+
 # v0.7.0-beta (2026-06-13)
 
 ### 🆕 新增

@@ -1,6 +1,6 @@
 # Home Server Panel — 家庭服务器运维管理面板
 
-**版本**: v0.7.0-beta | **技术栈**: Node.js + Express + SQLite(SQL.js WASM) + MySQL + 原生 HTML/CSS/JS | **许可**: MIT
+**版本**: v0.7.1-beta | **技术栈**: Node.js + Express + SQLite(SQL.js WASM) + MySQL + 原生 HTML/CSS/JS | **许可**: MIT
 
 一款轻量级、零编译依赖的家庭服务器运维管理面板。支持 SQLite/MySQL 双模式持久化存储，兼容群晖 (Synology)、绿联 (UGREEN)、iStoreOS (OpenWRT)、Debian/Ubuntu 等 Linux 发行版，以及 macOS 开发环境。
 
@@ -453,6 +453,7 @@ home-server-panel/
 
 | 版本 | 日期 | 主要内容 |
 |------|------|----------|
+| v0.7.1-beta | 2026-06-14 | SSL 到期日/CA 修复 + 崩溃修复 + 全量时区审计 + 操作日志北京时间 |
 | v0.7.0-beta | 2026-06-13 | SSH 配置持久化 + SSL 自动续期 + 系统重启 + 引导安装表补全 |
 | v0.7.0 | 2026-06-12 | 代码审计 19 项修复 + bcrypt 密码哈希 + esbuild 构建 + Dashboard 骨架屏 |
 | v0.6.0 | 2026-06-10 | 白色主题重写 + 2K/4K 自适应 + DDNS 批量操作 + 页面懒加载 |

@@ -36,6 +36,8 @@ class SqliteService {
         this._db.run('PRAGMA cache_size = -8000');
         // 每次启动运行表迁移（CREATE TABLE IF NOT EXISTS 幂等安全）
         this._createTables();
+        this._runColumnMigrations();
+        this._cleanJsonBackups();
         this._save();
       } else {
         this._db = new SQL.Database();
@@ -45,6 +47,7 @@ class SqliteService {
         this._db.run('PRAGMA synchronous = NORMAL');
         this._db.run('PRAGMA cache_size = -8000');
         this._createTables();
+        this._runColumnMigrations();
         this._migrateFromJsonIfNeeded();
       }
       this._initPromise = null;
@@ -206,6 +209,32 @@ class SqliteService {
     this._save();
   }
 
+  // ==================== 增量列迁移 ====================
+  _runColumnMigrations() {
+    const migrations = [
+      { table: 'ssl_config', col: 'notified_at', type: 'INTEGER' },
+      { table: 'ddns_config', col: 'value', type: 'TEXT' }
+    ];
+    for (const { table, col, type } of migrations) {
+      try {
+        this._db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+        console.log(`[SQLite] 列迁移: ${table}.${col} (${type})`);
+      } catch (_) { /* column already exists - ok */ }
+    }
+  }
+
+  /** 清理残留的 JSON 迁移文件（已迁移到 SQLite 后安全删除） */
+  _cleanJsonBackups() {
+    const jsonFiles = ['ddns-config', 'proxy-config', 'ssl-config', 'sessions', 'cron-jobs'];
+    let cleaned = 0;
+    for (const f of jsonFiles) {
+      const jp = this._jsonFile(f);
+      try { if (fs.existsSync(jp)) { fs.unlinkSync(jp); cleaned++; } } catch (_) {}
+      try { if (fs.existsSync(jp + '.bak')) { fs.unlinkSync(jp + '.bak'); cleaned++; } } catch (_) {}
+    }
+    if (cleaned > 0) console.log(`[SQLite] 已清理 ${cleaned} 个残留 JSON 文件`);
+  }
+
   // ==================== 自动迁移 ====================
 
   _jsonFile(name) {
@@ -219,13 +248,21 @@ class SqliteService {
     const sessionCount = this._getScalar('SELECT COUNT(*) AS c FROM sessions');
     const cronCount = this._getScalar('SELECT COUNT(*) AS c FROM cron_jobs');
 
-    if ((ddnsCount || 0) + (proxyCount || 0) + (sslCount || 0) + (sessionCount || 0) + (cronCount || 0) > 0) {
-      return;
-    }
-
     const jsonFiles = ['ddns-config', 'proxy-config', 'ssl-config', 'sessions', 'cron-jobs'];
     const hasJson = jsonFiles.some(f => fs.existsSync(this._jsonFile(f)));
-    if (!hasJson) return;
+
+    // SQLite 已有数据时，删除残留的 JSON 文件，防止未来 DB 损坏时回滚到旧数据
+    if ((ddnsCount || 0) + (proxyCount || 0) + (sslCount || 0) + (sessionCount || 0) + (cronCount || 0) > 0) {
+      if (hasJson) {
+        for (const f of jsonFiles) {
+          const jp = this._jsonFile(f);
+          try { if (fs.existsSync(jp)) fs.unlinkSync(jp); } catch (_) {}
+          try { if (fs.existsSync(jp + '.bak')) fs.unlinkSync(jp + '.bak'); } catch (_) {}
+        }
+        console.log('[SQLite] 已清理残留的 JSON 迁移备份文件');
+      }
+      return;
+    }
 
     console.log('[SQLite] 检测到 JSON 文件，开始自动迁移...');
     const result = this.migrateFromJson();
@@ -248,7 +285,13 @@ class SqliteService {
       try {
         const data = JSON.parse(fs.readFileSync(fpath, 'utf-8'));
         fn(data);
-        fs.renameSync(fpath, fpath + '.bak');
+        // 如果 .bak 已存在（上次迁移残留），直接删除 .json；否则重命名为 .bak
+        const bakPath = fpath + '.bak';
+        if (fs.existsSync(bakPath)) {
+          fs.unlinkSync(fpath);
+        } else {
+          fs.renameSync(fpath, bakPath);
+        }
         result.migrated.push(`${filename}.json`);
       } catch (e) {
         result.errors.push(`${filename}.json: ${e.message}`);

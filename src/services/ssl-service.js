@@ -172,6 +172,9 @@ class SslService {
 
         const recordList = records.DomainRecords?.Record || [];
         for (const rec of recordList) {
+          // 二次过滤：只删除 RR 以 _acme-challenge 开头的记录
+          // 阿里云 API 的 RRKeyWord 有时模糊匹配，必须客户端再次校验
+          if (!rec.RR || !rec.RR.startsWith('_acme-challenge')) continue;
           try {
             await client.request('DeleteDomainRecord', { RecordId: rec.RecordId }, { method: 'POST' });
             cleaned.push(`${rec.RR}.${zone.DomainName}`);
@@ -370,6 +373,16 @@ class SslService {
     };
 
     try {
+      // 先清理上次申请可能残留的 DNS TXT 记录（避免 The DNS record already exists 错误）
+      const accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID;
+      const accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET;
+      if (accessKeyId && accessKeySecret) {
+        const cleaned = await this._cleanDnsTxtRecords(domain, accessKeyId, accessKeySecret);
+        if (cleaned.length > 0) {
+          console.log(`[SSL] renew 清理了 ${cleaned.length} 条残留 TXT 记录: ${cleaned.join(', ')}`);
+        }
+      }
+
       const args = `--renew -d ${domain}${options.force ? ' --force' : ''}`;
       const result = await this._execAcme(args, env);
       const skipped = result.includes('Skipping');

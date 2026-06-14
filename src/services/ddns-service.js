@@ -295,15 +295,33 @@ class DdnsService {
     for (const domain of domains) {
       try {
         const dnsRecords = await this.getDomainRecords(domain.name);
-        for (const rec of dnsRecords) {
+        
+        // 查找匹配的记录
+        const matched = dnsRecords.filter(rec => {
           const isMatch = (domain.subdomain === '@' && rec.RR === '@')
             || (domain.subdomain === '*' && rec.RR === '*')
             || (rec.RR === domain.subdomain);
-          if (!isMatch) continue;
+          return isMatch && (rec.Type === 'A' || rec.Type === 'AAAA');
+        });
 
-          // 处理 A 和 AAAA 记录
-          if (rec.Type !== 'A' && rec.Type !== 'AAAA') continue;
+        // 如果阿里云上找不到对应的记录，自动创建
+        if (matched.length === 0) {
+          const currentIp = domain.recordType === 'AAAA' ? ipv6 : ipv4;
+          if (!currentIp) {
+            results.push({ domain: `${domain.subdomain}.${domain.name}`, updated: false, reason: '无法获取公网 IP，跳过创建' });
+            continue;
+          }
+          try {
+            console.log(`[DDNS] 自动创建记录: ${domain.subdomain}.${domain.name} (${domain.recordType}) → ${currentIp}`);
+            const newRec = await this.addRecord(domain.name, domain.subdomain, domain.recordType, currentIp, domain.ttl || 600);
+            results.push({ domain: `${domain.subdomain}.${domain.name}`, type: domain.recordType, newIp: currentIp, updated: true, reason: '自动创建（阿里云记录丢失）' });
+          } catch (createErr) {
+            results.push({ domain: `${domain.subdomain}.${domain.name}`, error: createErr.message, updated: false });
+          }
+          continue;
+        }
 
+        for (const rec of matched) {
           // 禁用的记录跳过
           if (rec.Status === 'DISABLE') {
             results.push({ domain: `${rec.RR}.${domain.name}`, ip: rec.Value, updated: false, reason: '已停用' });
@@ -320,7 +338,6 @@ class DdnsService {
             console.log(`[DDNS] 更新: ${rec.RR}.${domain.name} (${rec.Type}) ${rec.Value} → ${currentIp}`);
             await this.updateRecord(rec.RecordId, rec.RR, rec.Type, currentIp, rec.TTL);
             results.push({ domain: `${rec.RR}.${domain.name}`, type: rec.Type, oldIp: rec.Value, newIp: currentIp, updated: true });
-            // Task 10: PushPlus 通知
             this._notifyChange(rec.RR, domain.name, rec.Type, rec.Value, currentIp);
           } else {
             results.push({ domain: `${rec.RR}.${domain.name}`, type: rec.Type, currentIp, updated: false, reason: 'IP 未变化' });

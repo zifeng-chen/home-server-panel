@@ -27,13 +27,13 @@ function init(httpServer) {
     }
 
     let sessionId = null;
+    let listeners = [];
 
     ws.on('message', (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
 
         // 具名监听器引用，用于断开时清理
-        const listeners = [];
         const onStatus = (sid, status) => {
           if (sid === sessionId && ws.readyState === ws.OPEN) {
             ws.send(JSON.stringify({ type: 'status', status }));

@@ -40,7 +40,7 @@ class SslRenewService {
 
     try {
       // 检查 acme.sh 是否可用
-      const status = sslService.getStatus();
+      const status = await sslService.checkAcme();
       if (!status || !status.installed) {
         console.log('[SSL-renew] acme.sh 未安装，跳过检查');
         return;

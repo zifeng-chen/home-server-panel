@@ -121,10 +121,10 @@ router.get('/issue/stream', async (req, res) => {
 // POST /api/cert/renew - 续期证书
 router.post('/renew', async (req, res) => {
   try {
-    const { domain } = req.body;
+    const { domain, force } = req.body;
     if (!domain) return res.status(400).json({success: false, message: '域名不能为空' });
 
-    const result = await sslService.renewCertificate(domain);
+    const result = await sslService.renewCertificate(domain, { force: !!force });
     res.json({ success: true, message: `证书续期成功: ${domain}`, data: result });
   } catch (err) {
     res.status(500).json({success: false, message: '证书续期失败: ' + err.message });

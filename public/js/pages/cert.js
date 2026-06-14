@@ -346,6 +346,9 @@ window.renewCert = async (domain) => {
   if (res.success) {
     Utils.notify('✅ ' + res.message, 'success');
     loadCert();
+  } else if (res.data?.skipped) {
+    // 证书未到期，跳过续期
+    Utils.notify('ℹ️ ' + (res.message || '证书未到期，无需续期'), 'info');
   } else {
     Utils.notify(res.message || '续期失败', 'error');
   }

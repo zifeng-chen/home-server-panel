@@ -355,7 +355,7 @@ class SslService {
 
   // ========== 证书续期 ==========
 
-  async renewCertificate(domain) {
+  async renewCertificate(domain, options = {}) {
     if (!fs.existsSync(ACME_BIN)) {
       throw new Error('acme.sh 未安装');
     }
@@ -370,7 +370,8 @@ class SslService {
     };
 
     try {
-      const result = await this._execAcme(`--renew -d ${domain}`, env);
+      const args = `--renew -d ${domain}${options.force ? ' --force' : ''}`;
+      const result = await this._execAcme(args, env);
       return { success: true, domain, message: `证书续期成功: ${domain}`, output: result };
     } catch (err) {
       throw new Error(`证书续期失败: ${err.message}`);
@@ -545,8 +546,8 @@ class SslService {
         if (err) {
           // acme.sh 有时返回非0但实际成功
           const combined = stdout + stderr;
-          // exit code 2 = "Domains not changed"，表示证书已存在且未过期，直接视为成功
-          if (combined.includes('Cert success') || combined.includes('Already exists') || combined.includes('Domains not changed')) {
+          // exit code 2 = "Domains not changed" / "Skipping"，表示证书已存在且未过期，直接视为成功
+          if (combined.includes('Cert success') || combined.includes('Already exists') || combined.includes('Domains not changed') || combined.includes('Skipping')) {
             return resolve(combined);
           }
           return reject(new Error(stderr || err.message));

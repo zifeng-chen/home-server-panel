@@ -179,7 +179,7 @@ function initNavigation() {
 App.pageLoaders = {
   dashboard: () => loadDashboard(),
   ddns: () => _ensurePage('ddns', window.loadDdns),
-  ssl: () => _ensurePage('cert', window.loadCert),
+  ssl: () => _ensurePage('cert', 'ssl', window.loadCert),
   nginx: () => _ensurePage('nginx', window.loadNginxPage),
   port: () => _ensurePage('port', window.loadPort),
   pm2: () => _ensurePage('pm2', window.loadPM2),
@@ -190,7 +190,9 @@ App.pageLoaders = {
 };
 
 // 动态按需加载页面脚本
-function _ensurePage(name, fn) {
+function _ensurePage(name, mapKey, fn) {
+  // 两参数调用: _ensurePage(name, fn) → mapKey 默认同 name
+  if (typeof mapKey !== 'string') { fn = mapKey; mapKey = name; }
   if (typeof fn === 'function') return fn();            // 已加载
   // 首访：动态加载 JS 并缓存
   const id = 'hsp-page-' + name;
@@ -200,7 +202,7 @@ function _ensurePage(name, fn) {
   s.src = '/js/pages/' + name + '.min.js?v=' + (document.querySelector('meta[name="build-id"]')?.content || '');
   s.onload = () => {
     // 脚本加载后重新触发页面加载
-    const loader = App.pageLoaders?.[name];
+    const loader = App.pageLoaders?.[mapKey];
     if (loader) setTimeout(loader, 0);
   };
   s.onerror = () => console.warn('[App] 页面脚本加载失败:', name);

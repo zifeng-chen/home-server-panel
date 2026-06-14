@@ -35,6 +35,7 @@ router.get('/info', (req, res) => {
         free: Math.round(os.freemem() / (1024 * 1024 * 1024) * 100) / 100
       },
       uptime: Math.floor(os.uptime()),
+      panelUptime: process.uptime(),
       loadavg: os.loadavg(),
       ips: ips,
       modules: ['DDNS','SSL','Nginx','Proxy','Port','Notify','Log','Cron','PM2','Docker','SSH']

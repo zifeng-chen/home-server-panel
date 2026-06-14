@@ -257,7 +257,7 @@ class MonitorService {
           return { used: Math.round(used/(1024*1024*1024)*100)/100, total: Math.round(total/(1024*1024*1024)*100)/100, pct: Math.round(used/total*10000)/100 };
         })(),
         load: os.loadavg(),
-        uptime: os.uptime(),
+        uptime: process.uptime(),
         cpus: os.cpus().length,
         platform: os.platform(),
         hostname: os.hostname()

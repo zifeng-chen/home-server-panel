@@ -53,7 +53,7 @@ async function loadDashboard() {
         '<div class="overview-row"><span class="overview-label">平台</span><span class="overview-value">' + (sys.platform || '--') + ' ' + (sys.arch || '') + '</span></div>' +
         '<div class="overview-row"><span class="overview-label">CPU 核心</span><span class="overview-value">' + (sys.cpus || '--') + '</span></div>' +
         '<div class="overview-row"><span class="overview-label">系统负载</span><span class="overview-value">' + loadStr + '</span></div>' +
-        '<div class="overview-row"><span class="overview-label">运行时长</span><span class="overview-value">' + formatUptime(sys.uptime || 0) + '</span></div>' +
+        '<div class="overview-row"><span class="overview-label">运行时长</span><span class="overview-value">' + formatUptime(sys.panelUptime || sys.uptime || 0) + '</span></div>' +
         '<div class="overview-row"><span class="overview-label">内存大小</span><span class="overview-value">' + mem.total + ' GB</span></div>' +
         '<div class="overview-row"><span class="overview-label">Node.js</span><span class="overview-value">' + (sys.nodeVersion || '--') + '</span></div>' +
         '<div class="overview-row"><span class="overview-label">面板版本</span><span class="overview-value">v' + (sys.panelVersion || '--') + '</span></div>' +
@@ -135,7 +135,7 @@ function _updateTopbarMetrics(sys) {
     var pct = sys.memory.total > 0 ? (usedGB / sys.memory.total * 100) : 0;
     if (elMem) elMem.textContent = pct.toFixed(0) + '%';
   }
-  if (elUp) elUp.textContent = formatUptime(sys.uptime || 0);
+  if (elUp) elUp.textContent = formatUptime(sys.panelUptime || sys.uptime || 0);
   // CPU will be updated by monitor poll
 }
 

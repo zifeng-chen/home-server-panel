@@ -344,7 +344,25 @@ window.renewCert = async (domain) => {
   Utils.notify(`正在为 ${domain} 续期证书...`, 'info');
   const res = await Api.post('/cert/renew', { domain });
   if (res.success && res.data?.skipped) {
-    Utils.notify('ℹ️ 证书未到期，无需续期（如需强制续期请使用 --force）', 'info');
+    // 证书未到期，询问是否强制续期
+    Utils.confirm(
+      '证书未到期',
+      `「${domain}」证书尚未到期，是否强制续期？<br><small style="color:var(--warning)">强制续期将重新申请证书</small>`,
+      async () => {
+        Utils.notify(`正在强制续期 ${domain}...`, 'info');
+        const fr = await Api.post('/cert/renew', { domain, force: true });
+        if (fr.success && fr.data?.skipped) {
+          Utils.notify('强制续期也跳过了，可能DNS记录未生效', 'warn');
+        } else if (fr.success) {
+          Utils.notify('✅ ' + (fr.message || '强制续期成功'), 'success');
+          loadCert();
+        } else {
+          Utils.notify(fr.message || '强制续期失败', 'error');
+        }
+      },
+      '🔄 强制续期',
+      '取消'
+    );
   } else if (res.success) {
     Utils.notify('✅ ' + res.message, 'success');
     loadCert();

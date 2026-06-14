@@ -125,7 +125,9 @@ router.post('/renew', async (req, res) => {
     if (!domain) return res.status(400).json({success: false, message: '域名不能为空' });
 
     const result = await sslService.renewCertificate(domain, { force: !!force });
-    res.json({ success: true, message: `证书续期成功: ${domain}`, data: result });
+    const action = force ? '🔁 强制续期' : '🔄 续期';
+    const status = result.skipped ? '跳过（未到期）' : result.alreadyExists ? '已存在' : '成功';
+    res.json({ success: true, message: `${action}: ${domain} → ${status}`, data: result });
   } catch (err) {
     res.status(500).json({success: false, message: '证书续期失败: ' + err.message });
   }

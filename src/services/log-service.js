@@ -225,7 +225,7 @@ class LogService {
         const detail = detailParts.join(" | ");
 
         // 服务端控制台日志（实时可见）
-        const timestamp = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        const timestamp = new Date().toLocaleTimeString("zh-CN", { hour12: false, timeZone: 'Asia/Shanghai' });
         const levelIcon = { success: "✅", info: "ℹ️", warn: "⚠️", error: "❌" }[level] || "📝";
         console.log(`${levelIcon} [${timestamp}] ${req.method} ${reqPath} → ${statusCode} (${duration}ms) | IP:${clientIP} | ${message}`);
 

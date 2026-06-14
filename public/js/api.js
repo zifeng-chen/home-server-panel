@@ -6,7 +6,7 @@ const Api = {
 
   _diag(msg, level) {
     level = level || 'info';
-    const entry = { page: this._currentPage, time: new Date().toLocaleTimeString(), msg, level };
+    const entry = { page: this._currentPage, time: new Date().toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }), msg, level };
     this._diagLog.push(entry);
     if (this._diagLog.length > 200) this._diagLog = this._diagLog.slice(-200);
     try { var d = document.getElementById('page-diag-content'); if(d) d.innerHTML+='<br><span style="color:#38bdf8">🌐 '+msg+'</span>'; } catch(e){}

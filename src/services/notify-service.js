@@ -100,7 +100,7 @@ ${lines}
       title: `🔒 SSL 证书${cert.daysRemaining < 0 ? '已过期' : '即将到期'}`,
       content: `<h3>SSL 证书到期提醒</h3>
 <p><strong>域名:</strong> ${cert.domain}</p>
-<p><strong>到期时间:</strong> ${new Date(cert.expiresAt).toLocaleDateString('zh-CN')}</p>
+<p><strong>到期时间:</strong> ${new Date(cert.expiresAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
 <p style="color:${color};font-size:24px;"><strong>剩余 ${cert.daysRemaining} 天</strong></p>
 ${cert.daysRemaining < 0 ? '<p style="color:#F44336">⚠️ 证书已过期，请立即续期！</p>' : 
   cert.daysRemaining < 7 ? '<p style="color:#F44336">⚠️ 证书即将过期，请尽快续期！</p>' :

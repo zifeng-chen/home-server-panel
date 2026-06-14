@@ -38,7 +38,7 @@ router.get('/export', async (req, res) => {
       const headers = ['时间', '模块', '操作', '级别', '消息', '详情', 'IP', '方法', '路径', '状态码', '耗时ms', '用户'];
       const fmtTime = (t) => {
         if (!t) return '';
-        try { return new Date(t).toISOString().replace('T', ' ').slice(0, 23); }
+        try { return new Date(t).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); }
         catch (_) { return String(t); }
       };
       const csv = [
@@ -66,7 +66,7 @@ router.get('/export', async (req, res) => {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="hsp-logs-${now}.json"`);
       res.json({
-        exportedAt: new Date().toISOString(),
+        exportedAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
         total: list.length,
         filters: { module, level, search },
         logs: list

@@ -444,7 +444,7 @@ class SslService {
           return {
             domain: cert.mainDomain,
             sanDomains: cert.sanDomains,
-            issuer: 'Let\'s Encrypt',
+            issuer: cert.ca || 'Unknown',
             expiresAt: cert.expiresAt,
             daysRemaining: days,
             status,
@@ -574,7 +574,7 @@ class SslService {
   _parseListOutput(output) {
     const lines = output.split('\n');
     const certificates = [];
-    
+
     for (const line of lines) {
       if (!line.trim() || line.includes('Main_Domain')) continue;
 
@@ -586,16 +586,15 @@ class SslService {
       }
       if (parts.length < 4) continue;
 
-      // parts[0]=域名, parts[1]="ec-256", parts[2]=SAN域名, parts[3]=CA
-      // parts[4]=Created(可能), parts[5]=Renew(可能)
+      // parts[0]=域名, parts[1]=keyLength, parts[2]=SAN域名, parts[3]=CA, parts[4]=Created, parts[5]=Renew(建议续期日)
       const mainDomain = parts[0];
       const keyLength = parts[1].replace(/"/g, '');
       const rawSanDomains = parts[2] || '';
-      const ca = parts[3] || 'ZeroSSL.com';
+      const ca = parts[3] || 'Unknown';
       const createdStr = parts.length >= 5 ? parts[4] : '';
-      const renewStr = parts.length >= 6 ? parts[5] : '';
 
-      const expiresAt = this._parseAcmeDate(renewStr);
+      // 从证书文件读取**真实**到期时间（acme.sh --list 的 Renew 列是建议续期日，非到期日）
+      const expiresAt = this._getCertFileExpiry(mainDomain);
       const daysRemaining = this._daysUntil(expiresAt);
 
       certificates.push({
@@ -614,6 +613,26 @@ class SslService {
     }
 
     return certificates;
+  }
+
+  /** 通过 openssl 读取证书文件真实到期时间 */
+  _getCertFileExpiry(domain) {
+    const { execSync } = require('child_process');
+    const certDirs = [
+      path.join(ACME_HOME, domain + '_ecc'),
+      path.join(ACME_HOME, domain)
+    ];
+    for (const dir of certDirs) {
+      const certFile = path.join(dir, 'fullchain.cer');
+      if (!fs.existsSync(certFile)) continue;
+      try {
+        const out = execSync(`openssl x509 -in "${certFile}" -noout -enddate 2>/dev/null`, { timeout: 5000, encoding: 'utf-8' });
+        // 输出格式: "notAfter=Sep 12 23:59:59 2026 GMT"
+        const match = out.match(/notAfter=(.*)/);
+        if (match) return new Date(match[1]).toISOString();
+      } catch (_) { /* openssl 失败，尝试下一个目录 */ }
+    }
+    return null;
   }
 
   _parseAcmeDate(dateStr) {

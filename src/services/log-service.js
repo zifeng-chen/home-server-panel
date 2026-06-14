@@ -45,24 +45,40 @@ class LogService {
   }
 
   async query({ module, level, search, limit = 100, offset = 0 } = {}) {
+    let list;
+    let total;
+
     try {
       const dbService = require("./db-service");
       if (dbService.mode === "mysql" && dbService.getPool()) {
         const dbResult = await dbService.queryLogs({ module, level, search, limit, offset });
-        if (dbResult) return dbResult;
+        if (dbResult) { list = dbResult.list; total = dbResult.total; }
       }
     } catch (_) {}
 
-    let list = [...this.entries];
-    if (module && module !== "all") list = list.filter(e => e.module === module);
-    if (level && level !== "all") list = list.filter(e => e.level === level);
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter(e =>
-        (e.message + " " + e.action + " " + e.detail + " " + e.ip + " " + e.body + " " + e.query).toLowerCase().includes(s)
-      );
+    if (!list) {
+      let raw = [...this.entries];
+      if (module && module !== "all") raw = raw.filter(e => e.module === module);
+      if (level && level !== "all") raw = raw.filter(e => e.level === level);
+      if (search) {
+        const s = search.toLowerCase();
+        raw = raw.filter(e =>
+          (e.message + " " + e.action + " " + e.detail + " " + e.ip + " " + e.body + " " + e.query).toLowerCase().includes(s)
+        );
+      }
+      total = raw.length;
+      list = raw.slice(offset, offset + limit);
     }
-    return { total: list.length, list: list.slice(offset, offset + limit) };
+
+    // 统一附加上北京时间字段（前端直接用 timeCst，避免浏览器时区兼容问题）
+    return { total, list: list.map(r => ({ ...r, timeCst: this._toCst(r.time) })) };
+  }
+
+  /** 将 UTC ISO 时间转为北京时间字符串 */
+  _toCst(isoTime) {
+    if (!isoTime) return '';
+    try { return new Date(isoTime).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); }
+    catch (_) { return String(isoTime); }
   }
 
   /** 构建可读的动作描述 */

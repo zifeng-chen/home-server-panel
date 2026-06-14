@@ -480,9 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const s = seconds % 60;
         const parts = [];
         if (d > 0) parts.push(d + '天');
-        if (h > 0) parts.push(h + '小时');
-        if (m > 0) parts.push(m + '分钟');
-        if (parts.length === 0) parts.push(s + '秒');
+        if (h > 0) parts.push(h + '时');
+        parts.push(m + '分' + s + '秒');
         const el = document.getElementById('settingsUptime');
         if (el) el.textContent = parts.join(' ');
       }

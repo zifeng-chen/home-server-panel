@@ -1,9 +1,16 @@
 // SSH 终端 V2 — 连接历史、跨页面保持、3分钟自动断连、蒙层重连
 // 全局状态: window.__SSH = { term, ws, fitAddon, current, idleTime, idleTimer }
-window.__SSH = window.__SSH || { connections: JSON.parse(localStorage.getItem('hsp_ssh_conns') || '[]') };
+window.__SSH = window.__SSH || { connections: [], _loaded: false };
 
 function _saveSSHConns() {
-  try { localStorage.setItem('hsp_ssh_conns', JSON.stringify(window.__SSH.connections)); } catch(e) {}
+  // 仅缓存密码到 localStorage（连接元数据由后端 API 管理）
+  try {
+    var pwMap = {};
+    (window.__SSH.connections || []).forEach(function(c) {
+      if (c.password && c.password !== '••••••') pwMap[c.host + ':' + c.username] = c.password;
+    });
+    localStorage.setItem('hsp_ssh_pw', JSON.stringify(pwMap));
+  } catch(e) {}
 }
 
 function _sshResetIdle() {
@@ -311,6 +318,8 @@ function _sshRender(keepTerm) {
       el.addEventListener('click', function(e) {
         e.stopPropagation();
         var idx = parseInt(el.dataset.delIdx);
+        var c = st.connections[idx];
+        if (c && c.id) Api.del('/ssh/config/' + c.id);
         st.connections.splice(idx, 1);
         _saveSSHConns();
         if (st.current && st.current === st.connections[idx]) st.current = null;
@@ -420,14 +429,25 @@ function _sshShowAddForm(editIdx) {
       var username = document.getElementById('sshFmUser').value.trim();
       var password = document.getElementById('sshFmPass').value.trim();
       if (!host || !username) { Utils.notify('请填写主机和用户名', 'error'); return null; }
-      // 编辑时如果密码留空则保留原密码
-      if (isEditing && !password && conn.password) password = conn.password;
+      // 编辑时如果密码留空则保留原密码（先从缓存取）
+      if (isEditing && !password) {
+        var pwCache = {};
+        try { pwCache = JSON.parse(localStorage.getItem('hsp_ssh_pw') || '{}'); } catch(e) {}
+        password = pwCache[host + ':' + username] || '';
+      }
       if (!password) { Utils.notify('请输入密码', 'error'); return null; }
       if (!name) name = username + '@' + host;
       return { name: name, host: host, port: port, username: username, password: password };
     };
 
-    var doSave = function(newConn) {
+    var doSave = async function(newConn) {
+      var body = { name: newConn.name, host: newConn.host, port: newConn.port, username: newConn.username, password: newConn.password };
+      if (isEditing && st.connections[_sshEditingIdx]?.id) {
+        await Api.put('/ssh/config/' + st.connections[_sshEditingIdx].id, body);
+      } else {
+        var res = await Api.post('/ssh/config', body);
+        if (res.success && res.data) newConn.id = res.data.id;
+      }
       if (isEditing) {
         st.connections[_sshEditingIdx] = newConn;
       } else {
@@ -485,7 +505,7 @@ function _sshRenderSidebar() {
       html += '<div class="ssh-conn-item' + (isActive ? ' active' : '') + '" onclick="(function(){var st=window.__SSH;var c=st.connections[' + i + '];if(st.ws&&st.ws.readyState===WebSocket.OPEN){try{st.ws.send(JSON.stringify({type:\"disconnect\"}));}catch(e){}try{st.ws.close();}catch(e){}st.ws=null;}if(st.term){try{st.term.dispose();}catch(e){}st.term=null;st.fitAddon=null;}_sshConnect(c);})()">';
       html += '<div><strong>' + c.name + '</strong><span class="conn-host">' + c.username + '@' + c.host + ':' + (c.port || 22) + '</span></div>';
       html += '<span class="conn-edit" onclick="event.stopPropagation();_sshShowAddForm(' + i + ');" title="编辑">✏️</span>';
-      html += '<span class="conn-del" onclick="event.stopPropagation();var st=window.__SSH;st.connections.splice(' + i + ',1);_saveSSHConns();_sshRender(true);">×</span>';
+      html += '<span class="conn-del" onclick="event.stopPropagation();var st=window.__SSH;var c=st.connections[' + i + '];if(c.id)Api.del(\'/ssh/config/\'+c.id);st.connections.splice(' + i + ',1);_saveSSHConns();_sshRender(true);">×</span>';
       html += '</div>';
     });
   }
@@ -493,8 +513,22 @@ function _sshRenderSidebar() {
 }
 
 // 主入口
-function loadSSH() {
+async function loadSSH() {
   var st = window.__SSH;
+  // 首次加载：从后端 API 拉取配置列表，合并密码缓存
+  if (!st._loaded) {
+    st._loaded = true;
+    try {
+      var res = await Api.get('/ssh/config');
+      if (res.success && res.data) {
+        var pwCache = {};
+        try { pwCache = JSON.parse(localStorage.getItem('hsp_ssh_pw') || '{}'); } catch(e) {}
+        st.connections = res.data.map(function(c) {
+          return { id: c.id, name: c.name, host: c.host, port: c.port, username: c.username, password: pwCache[c.host + ':' + c.username] || '' };
+        });
+      }
+    } catch(e) { console.warn('[SSH] 加载配置失败:', e.message); }
+  }
   var isConnected = st.ws && st.ws.readyState === WebSocket.OPEN && st.current;
   _sshRender(isConnected);
   if (isConnected) {

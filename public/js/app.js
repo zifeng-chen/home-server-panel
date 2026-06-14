@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '1.17.7',
+  version: '0.7.1-beta',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
@@ -233,4 +233,28 @@ initNavigation = function() {
       }
     });
   });
+};
+
+// 日志标签页切换
+window.switchLogTab = function(tab) {
+  var opPanel = document.getElementById('logPanelOplog');
+  var diagPanel = document.getElementById('logPanelDiag');
+  var tabs = document.querySelectorAll('.log-tab');
+  tabs.forEach(function(t) {
+    t.classList.remove('active');
+    t.style.color = 'var(--text-secondary)';
+    t.style.borderBottomColor = 'transparent';
+  });
+  if (tab === 'oplog') {
+    if (opPanel) opPanel.style.display = '';
+    if (diagPanel) diagPanel.style.display = 'none';
+    var opTab = document.querySelector('[data-log-tab="oplog"]');
+    if (opTab) { opTab.classList.add('active'); opTab.style.color = 'var(--brand)'; opTab.style.borderBottomColor = 'var(--brand)'; }
+  } else {
+    if (opPanel) opPanel.style.display = 'none';
+    if (diagPanel) diagPanel.style.display = '';
+    var diagTab = document.querySelector('[data-log-tab="diag"]');
+    if (diagTab) { diagTab.classList.add('active'); diagTab.style.color = 'var(--brand)'; diagTab.style.borderBottomColor = 'var(--brand)'; }
+    if (typeof renderDiagLog === 'function') renderDiagLog();
+  }
 };

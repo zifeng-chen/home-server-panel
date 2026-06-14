@@ -372,7 +372,8 @@ class SslService {
     try {
       const args = `--renew -d ${domain}${options.force ? ' --force' : ''}`;
       const result = await this._execAcme(args, env);
-      return { success: true, domain, message: `证书续期成功: ${domain}`, output: result };
+      const skipped = result.includes('Skipping');
+      return { success: true, skipped, domain, message: skipped ? `证书未到期，跳过: ${domain}` : `证书续期成功: ${domain}`, output: result };
     } catch (err) {
       throw new Error(`证书续期失败: ${err.message}`);
     }

@@ -217,10 +217,11 @@ function formatUptime(seconds) {
   var d = Math.floor(seconds / 86400);
   var h = Math.floor((seconds % 86400) / 3600);
   var m = Math.floor((seconds % 3600) / 60);
+  var s = Math.floor(seconds % 60);
   var parts = [];
   if (d > 0) parts.push(d + '天');
   if (h > 0) parts.push(h + '时');
-  parts.push(m + '分');
+  parts.push(m + '分' + s + '秒');
   return parts.join(' ');
 }
 

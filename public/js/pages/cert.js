@@ -343,12 +343,11 @@ window.doExportCert = (domain, format) => {
 window.renewCert = async (domain) => {
   Utils.notify(`正在为 ${domain} 续期证书...`, 'info');
   const res = await Api.post('/cert/renew', { domain });
-  if (res.success) {
+  if (res.success && res.data?.skipped) {
+    Utils.notify('ℹ️ 证书未到期，无需续期（如需强制续期请使用 --force）', 'info');
+  } else if (res.success) {
     Utils.notify('✅ ' + res.message, 'success');
     loadCert();
-  } else if (res.data?.skipped) {
-    // 证书未到期，跳过续期
-    Utils.notify('ℹ️ ' + (res.message || '证书未到期，无需续期'), 'info');
   } else {
     Utils.notify(res.message || '续期失败', 'error');
   }

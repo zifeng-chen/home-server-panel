@@ -155,7 +155,7 @@ function _renderDashLogs(logs) {
   var recent = entries.slice(0, 8);
   listEl.innerHTML = recent.map(function(e) {
     var time = e.time || e.timestamp || e.createdAt || '';
-    if (time && time.length > 16) time = time.slice(11, 16);
+    if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
     var text = e.message || e.action || e.desc || JSON.stringify(e).slice(0, 80);
     return '<div class="dash-log-item"><span class="dash-log-time">' + (time || '--:--') + '</span><span class="dash-log-text">' + text + '</span></div>';
   }).join('');

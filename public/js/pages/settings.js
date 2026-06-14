@@ -273,7 +273,7 @@ async function _loadSettingsOpLog(module) {
     var recent = entries.slice(0, 8);
     logDiv.innerHTML = recent.map(function(e) {
       var time = e.time || e.timestamp || e.createdAt || '';
-      if (time && time.length > 16) time = time.slice(11, 16);
+      if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
       var modIcon = { ddns: '📡', ssl: '🔒', nginx: '🖥️', proxy: '🔄', port: '🔌', pm2: '⚡', docker: '🐳', ssh: '💻', system: '⚙️' };
       var icon = modIcon[e.module] || '📌';
       var text = e.message || e.action || e.desc || '';

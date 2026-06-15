@@ -316,7 +316,8 @@ async function _dashboardMonitorFetch() {
 
     var net = hist.network.length > 0 ? hist.network[hist.network.length - 1] : { rxRate: 0, txRate: 0 };
     var nEl = document.getElementById('dmNet');
-    if (nEl) nEl.innerHTML = '🔽 ' + _dmFmtBytes(net.rxRate) + '/s<br>🔼 ' + _dmFmtBytes(net.txRate) + '/s';
+    if (nEl) nEl.innerHTML = '<span style="display:inline-block;font-size:12px;font-weight:500;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;vertical-align:middle;"></span>下行 ' + _dmFmtBytes(net.rxRate) + '/s</span>' +
+      '<span style="display:inline-block;margin-left:12px;font-size:12px;font-weight:500;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px;vertical-align:middle;"></span>上行 ' + _dmFmtBytes(net.txRate) + '/s</span>';
 
     var ld = live.load;
     var lEl = document.getElementById('dmLoad');
@@ -338,7 +339,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+  var pad = { top: 40, right: 20, bottom: 20, left: 70 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
@@ -355,7 +356,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
 
   // Y轴网格+标签（基于实际 maxVal）
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -387,7 +388,7 @@ function _dmDrawNetChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 80 };
+  var pad = { top: 40, right: 20, bottom: 20, left: 80 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
@@ -399,7 +400,7 @@ function _dmDrawNetChart(canvasId, data) {
   for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -410,6 +411,16 @@ function _dmDrawNetChart(canvasId, data) {
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
   _dmDrawLine(ctx, data, rxArr, scX, scY, '#22c55e');
   _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
+
+  // 图例圆点 — 右上角
+  ctx.textAlign = 'left'; ctx.font = '11px -apple-system, sans-serif';
+  var lx = pad.left + pw - 110, ly = pad.top - 16;
+  // 下行(下载) — 绿色
+  ctx.beginPath(); ctx.arc(lx, ly - 2, 5, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
+  ctx.fillStyle = '#374151'; ctx.fillText('下行', lx + 10, ly + 3);
+  // 上行(上传) — 橙色
+  ctx.beginPath(); ctx.arc(lx + 52, ly - 2, 5, 0, Math.PI * 2); ctx.fillStyle = '#f59e0b'; ctx.fill();
+  ctx.fillStyle = '#374151'; ctx.fillText('上行', lx + 62, ly + 3);
 }
 
 function _dmDrawLine(ctx, data, arr, scX, scY, color) {
@@ -422,7 +433,7 @@ function _dmDrawLoadChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+  var pad = { top: 40, right: 20, bottom: 20, left: 70 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
@@ -432,7 +443,7 @@ function _dmDrawLoadChart(canvasId, data) {
   maxVal = Math.ceil(maxVal * 2) / 2;
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '20px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;

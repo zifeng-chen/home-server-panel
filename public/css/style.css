@@ -846,7 +846,7 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
   color: var(--text-primary);
 }
 .monitor-card-val {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
@@ -854,6 +854,7 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 .monitor-chart {
   width: 100%;
   border-radius: 8px;
+  margin-top: 4px;
 }
 .monitor-disk-list { margin-top: 8px; }
 .disk-item {

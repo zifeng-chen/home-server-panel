@@ -322,18 +322,18 @@ async function saveProxy(id) {
   if (!data.sourceHost || !data.targetHost) { Utils.notify('来源域名和目标主机不能为空', 'error'); return; }
   Utils.closeModal();
   const res = id ? await Api.put(`/proxy/${id}`, data) : await Api.post('/proxy', data);
-  if (res.success) { Utils.notify(res.message || '操作完成', 'success'); loadProxy(); }
+  if (res.success) { Utils.notify(res.message || '操作完成', 'success'); loadProxy(); loadNginx(); }
 }
 
 window.toggleProxy = async (id) => {
   const res = await Api.post(`/proxy/${id}/toggle`);
-  if (res.success) { Utils.notify(res.message, 'success'); loadProxy(); }
+  if (res.success) { Utils.notify(res.message, 'success'); loadProxy(); loadNginx(); }
 };
 
 window.deleteProxy = async (id) => {
   Utils.confirm('删除代理规则', '确定要删除这条代理规则吗？', async () => {
     const res = await Api.del(`/proxy/${id}`);
-    if (res.success) { Utils.notify(res.message, 'success'); loadProxy(); }
+    if (res.success) { Utils.notify(res.message, 'success'); loadProxy(); loadNginx(); }
   });
 };
 

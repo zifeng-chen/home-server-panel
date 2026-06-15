@@ -272,8 +272,16 @@ async function _loadSettingsOpLog(module) {
     }
     var recent = entries.slice(0, 8);
     logDiv.innerHTML = recent.map(function(e) {
-      var time = e.time || e.timestamp || e.createdAt || '';
-      if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
+      // 优先使用服务端北京时间，避免浏览器 ICU 兼容问题
+      var time = e.timeCst || '';
+      if (!time) {
+        time = e.time || e.timestamp || e.createdAt || '';
+        if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
+      } else {
+        // timeCst 格式: "6/15/2026, 12:27:07" — 提取 HH:MM:SS
+        var m = time.match(/(\d{2}:\d{2}:\d{2})/);
+        if (m) time = m[1].slice(0, 5); // 只取 HH:MM
+      }
       var modIcon = { ddns: '📡', ssl: '🔒', nginx: '🖥️', proxy: '🔄', port: '🔌', pm2: '⚡', docker: '🐳', ssh: '💻', system: '⚙️' };
       var icon = modIcon[e.module] || '📌';
       var text = e.message || e.action || e.desc || '';

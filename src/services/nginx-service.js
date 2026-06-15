@@ -687,7 +687,7 @@ class NginxService {
     const filePath = path.join(confDir, opts.name.replace(/[^a-zA-Z0-9_-]/g, "-") + ".conf");
     fs.writeFileSync(filePath, config);
     try {
-      const reloadRes = this.reload();
+      const reloadRes = await this.reload();
       return { success: true, message: "项目已部署到 " + filePath + (reloadRes.success ? " 并重载生效" : " (请手动重载)"), filePath: filePath };
     } catch (e) {
       return { success: true, message: "配置已写入 " + filePath + "，重载失败: " + e.message, filePath: filePath };

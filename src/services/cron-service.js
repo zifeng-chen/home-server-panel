@@ -3,6 +3,9 @@ const { exec } = require("child_process");
 
 const sqliteService = require('./sqlite-service');
 
+// 限制：单次定时任务最长执行 60 秒
+const JOB_TIMEOUT = 60_000;
+
 let _dbService = null;
 function _getDb() {
   if (!_dbService) _dbService = require('./db-service');
@@ -29,6 +32,8 @@ class CronService {
       interval: job.interval || 3600000,
       enabled: job.enabled !== false,
       type: job.type || "manual",
+      script: job.script || "",        // 自定义脚本内容
+      apiPath: job.apiPath || "",      // 自定义 API 路径（兼容旧版）
       lastRun: null,
       lastResult: null
     };
@@ -53,6 +58,8 @@ class CronService {
     if (patch.name !== undefined) j.name = patch.name;
     if (patch.interval !== undefined) j.interval = patch.interval;
     if (patch.type !== undefined) j.type = patch.type;
+    if (patch.script !== undefined) j.script = patch.script;
+    if (patch.apiPath !== undefined) j.apiPath = patch.apiPath;
     if (patch.enabled !== undefined) {
       j.enabled = !!patch.enabled;
       this._stopJob(id);
@@ -76,9 +83,15 @@ class CronService {
     j.lastRun = new Date().toISOString();
     j.lastResult = null;
     try {
-      if (j.type === "ddns") {
+      if (j.type === "ddns" || j.type === "ddns_refresh") {
         const ddns = require("../services/ddns-service");
         const result = await ddns.checkAndUpdate();
+        j.lastResult = JSON.stringify(result).slice(0, 500);
+      } else if (j.type === "custom" && j.script) {
+        j.lastResult = await this._execScript(j.script);
+      } else if (j.type === "ssl_renew") {
+        const ssl = require("../services/ssl-service");
+        const result = await ssl.renewAllCertificates();
         j.lastResult = JSON.stringify(result).slice(0, 500);
       } else {
         j.lastResult = "任务类型不支持自动执行";
@@ -90,14 +103,37 @@ class CronService {
     return { lastResult: j.lastResult };
   }
 
+  /** 执行自定义 shell 脚本，最长 60 秒超时 */
+  _execScript(script) {
+    return new Promise((resolve) => {
+      // 安全检查：禁止危险命令
+      const dangerous = /(?:rm\s+(-rf?|--recursive)\s*\/|mkfs|dd\s+if=.*of=\/dev|>\s*\/dev\/sd)/;
+      if (dangerous.test(script)) {
+        return resolve("安全拦截：脚本包含危险操作");
+      }
+      exec(script, { timeout: JOB_TIMEOUT, maxBuffer: 1024 * 1024, shell: '/bin/sh' }, (err, stdout, stderr) => {
+        const out = (stdout + (stderr ? '\n[stderr] ' + stderr : '')).trim().slice(0, 1000);
+        resolve(err && !out ? (stderr || err.message) : (out || '(无输出)'));
+      });
+    });
+  }
+
   _startJob(job) {
     if (this.timers[job.id]) return;
     const ms = parseInt(job.interval) || 3600000;
-    this.timers[job.id] = setInterval(() => {
-      job.lastRun = new Date().toISOString();
-      if (job.type === "ddns") {
-        require("../services/ddns-service").checkAndUpdate().catch(() => {});
-      }
+    this.timers[job.id] = setInterval(async () => {
+      const j = this.jobs.find(x => x.id === job.id);
+      if (!j) return;
+      j.lastRun = new Date().toISOString();
+      try {
+        if (j.type === "ddns" || j.type === "ddns_refresh") {
+          await require("../services/ddns-service").checkAndUpdate().catch(() => {});
+        } else if (j.type === "custom" && j.script) {
+          j.lastResult = await this._execScript(j.script);
+        } else if (j.type === "ssl_renew") {
+          await require("../services/ssl-service").renewAllCertificates().catch(() => {});
+        }
+      } catch (_) {}
       this._save();
     }, ms);
   }

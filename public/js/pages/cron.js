@@ -41,15 +41,17 @@ async function loadCron() {
         <input type="number" id="cronAddInterval" class="form-input" value="3600" min="60" max="86400">
       </div>
       <div class="form-group">
-        <label>执行命令/API</label>
+        <label>执行类型</label>
         <select id="cronAddType" class="form-input">
           <option value="ddns_refresh">刷新 DDNS</option>
-          <option value="custom">自定义 API</option>
+          <option value="ssl_renew">SSL 证书续期</option>
+          <option value="custom">自定义脚本</option>
         </select>
       </div>
       <div class="form-group" id="cronAddCustomGroup" style="display:none">
-        <label>目标 API 路径</label>
-        <input type="text" id="cronAddApiPath" class="form-input" placeholder="例如：/api/ddns/refresh">
+        <label>Shell 脚本内容</label>
+        <textarea id="cronAddScript" class="form-input" rows="4" placeholder="例如：&#10;curl -s http://localhost:3456/api/ddns&#10;# 支持任意 shell 命令，最长 60 秒超时&#10;echo 'hello' >> /tmp/cron.log"></textarea>
+        <small style="color:var(--text-secondary)">支持任意 shell 命令，最大超时 60 秒。禁止 rm -rf / 等危险操作。</small>
       </div>
     `;
     const footer = `
@@ -66,12 +68,17 @@ async function loadCron() {
       const name = document.getElementById('cronAddName').value.trim() || '定时任务';
       const interval = parseInt(document.getElementById('cronAddInterval').value) || 3600;
       const type = document.getElementById('cronAddType').value;
-      const apiPath = document.getElementById('cronAddApiPath').value.trim();
+      const script = document.getElementById('cronAddScript').value.trim();
+
+      if (type === 'custom' && !script) {
+        Utils.notify('请输入脚本内容', 'error');
+        return;
+      }
 
       Utils.closeModal();
       Utils.notify('正在添加...', 'info');
 
-      const res = await Api.post('/cron', { name, interval: interval * 1000, type, apiPath });
+      const res = await Api.post('/cron', { name, interval: interval * 1000, type, script });
       if (res.success) {
         Utils.notify(res.message || '定时任务已添加', 'success');
         loadCron();

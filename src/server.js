@@ -254,7 +254,10 @@ app.use((req, res, next) => {
 // 全局错误处理
 app.use((err, req, res, next) => {
   console.error(`[${new Date().toISOString()}] ${err.stack}`);
-  res.status(500).json({ success: false, message: err.message || '服务器内部错误' });
+  // 🔒 安全：对外脱敏，不暴露内部 err.message（可能含路径/栈) 
+  // 但保留已知的错误类型消息（由 route 层抛出的用户可读错误）
+  const safeMsg = err.expose ? err.message : '服务器内部错误';
+  res.status(err.status || 500).json({ success: false, message: safeMsg });
 });
 
 const server = http.createServer(app);

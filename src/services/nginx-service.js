@@ -671,13 +671,19 @@ class NginxService {
     if (!fs.existsSync(confDir)) {
       return { success: false, message: "Nginx 配置目录 " + confDir + " 不存在，请先安装 Nginx" };
     }
+    // 安全：清洗 Nginx 配置注入字符
+    const safeHost = (v) => (v || '').replace(/[^a-zA-Z0-9.\-:*\[\]]/g, '');
+    const safeDomain = safeHost(opts.domain || '');
+    const safeTarget = (opts.target || '').replace(/[^a-zA-Z0-9.\-:_\/]/g, '');
+    if (!safeDomain) return { success: false, message: '域名包含非法字符' };
+    if (!safeTarget) return { success: false, message: '目标地址包含非法字符' };
     const wsSection = opts.websocket ? "\n    # WebSocket 支持\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection \"upgrade\";\n    proxy_http_version 1.1;" : "";
     const config = "server {\n" +
       "    listen 80;\n" +
-      "    server_name " + opts.domain + ";\n" +
+      "    server_name " + safeDomain + ";\n" +
       "\n" +
       "    location / {\n" +
-      "        proxy_pass " + opts.target + ";\n" +
+      "        proxy_pass " + safeTarget + ";\n" +
       "        proxy_set_header Host $host;\n" +
       "        proxy_set_header X-Real-IP $remote_addr;\n" +
       "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n" +

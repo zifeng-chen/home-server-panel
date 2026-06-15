@@ -144,8 +144,8 @@ class Auth {
 
       const token =
         req.headers['x-auth-token'] ||
-        req.cookies?.hsp_token ||
-        req.query.token;
+        req.cookies?.hsp_token;
+      // 🔒 安全：不再支持 URL 参数传 token（防止泄露到日志/history/referer）
 
       if (token && this.verifyToken(token)) {
         req.user = { username: this.sessions[token]?.username || ADMIN_USER };

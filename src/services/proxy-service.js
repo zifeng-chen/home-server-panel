@@ -14,6 +14,16 @@ function _syncMySQL(table) {
   if (db.mode === 'mysql') setImmediate(() => db.syncTable(table).catch(() => {}));
 }
 
+// 防御 Nginx 配置注入：仅允许合法字符
+function _safeNginxHost(v) {
+  if (!v || typeof v !== 'string') return '';
+  return v.replace(/[^a-zA-Z0-9.\-:*\[\]]/g, '');
+}
+function _safeNginxHeader(v) {
+  if (!v || typeof v !== 'string') return '';
+  return v.replace(/[;{}<>"'`\\]/g, '');
+}
+
 class ProxyService {
   constructor() {
     // SQLite is the source of truth
@@ -30,20 +40,20 @@ class ProxyService {
   }
 
   addRule(rule) {
-    if (!rule.sourceHost || !rule.targetHost) {
-      throw new Error('来源域名和目标地址不能为空');
-    }
+    const srcHost = _safeNginxHost(rule.sourceHost || '');
+    const tgtHost = _safeNginxHost(rule.targetHost || '');
+    if (!srcHost || !tgtHost) throw new Error('域名/地址包含非法字符或为空');
 
     const newRule = {
       id: this._generateId(),
-      name: rule.name || `${rule.sourceHost} → ${rule.targetHost}`,
+      name: rule.name || `${srcHost} → ${tgtHost}`,
       description: rule.description || '',
       enabled: rule.enabled !== false,
       sourceProtocol: rule.sourceProtocol || 'http',
-      sourceHost: rule.sourceHost,
+      sourceHost: srcHost,
       sourcePort: parseInt(rule.sourcePort) || 80,
       targetProtocol: rule.targetProtocol || 'http',
-      targetHost: rule.targetHost,
+      targetHost: tgtHost,
       targetPort: parseInt(rule.targetPort) || 80,
       ssl: rule.ssl || false,
       sslCert: rule.sslCert || null,
@@ -58,6 +68,9 @@ class ProxyService {
   }
 
   updateRule(id, updates) {
+    // 安全：清洗 Nginx 配置注入字符
+    if (updates.sourceHost !== undefined) updates.sourceHost = _safeNginxHost(updates.sourceHost);
+    if (updates.targetHost !== undefined) updates.targetHost = _safeNginxHost(updates.targetHost);
     const result = sqliteService.updateProxyRule(id, updates);
     _syncMySQL('proxy_rules');
     return result;
@@ -78,9 +91,13 @@ class ProxyService {
 
   generateNginxConfig(rule) {
     const lines = [];
-    const serverName = rule.sourceHost;
+    // 安全：二次清洗，防御直接调用此方法
+    const serverName = _safeNginxHost(rule.sourceHost);
+    const targetHost = _safeNginxHost(rule.targetHost);
     const listen = rule.sourcePort;
+    const targetPort = rule.targetPort;
     const ssl = rule.ssl;
+    if (!serverName || !targetHost) throw new Error('域名/地址无效');
 
     lines.push(`# ${rule.name}`);
     lines.push(`# 由 Server Panel 自动生成 - ${new Date().toISOString()}`);
@@ -114,7 +131,9 @@ class ProxyService {
       lines.push('    # 自定义 Headers');
       for (const h of rule.customHeaders) {
         if (h.name && h.value) {
-          lines.push(`    proxy_set_header ${h.name} ${h.value};`);
+          var hn = h.name.replace(/[^a-zA-Z0-9_\-]/g, '');
+          var hv = _safeNginxHeader(h.value);
+          if (hn && hv) lines.push(`    proxy_set_header ${hn} ${hv};`);
         }
       }
     }
@@ -127,7 +146,7 @@ class ProxyService {
     lines.push('    proxy_set_header X-Forwarded-Proto $scheme;');
     lines.push('');
     lines.push(`    location / {`);
-    lines.push(`        proxy_pass ${rule.targetProtocol}://${rule.targetHost}:${rule.targetPort};`);
+    lines.push(`        proxy_pass ${rule.targetProtocol}://${targetHost}:${targetPort};`);
     lines.push('        proxy_read_timeout 120s;');
     lines.push('        proxy_connect_timeout 10s;');
     lines.push('        proxy_buffering off;');

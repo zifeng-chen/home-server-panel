@@ -18,8 +18,8 @@ function init(httpServer) {
       .map(c => c.trim())
       .find(c => c.startsWith('hsp_token='))
       ?.split('=')[1];
-    const token = cookieToken || url.searchParams.get('token');
-
+    const token = cookieToken;
+    // 🔒 安全：仅支持 Cookie 认证（URL 参数 token 会泄露到日志/history/referer）
     if (!token || !auth.verifyToken(token)) {
       ws.send(JSON.stringify({ type: 'error', message: '未登录或 token 已过期' }));
       ws.close(4001, 'Unauthorized');

@@ -287,10 +287,10 @@ async function _loadSettingsOpLog(module) {
       var text = e.message || e.action || e.desc || '';
       // 附加简要 meta（IP + 耗时）
       var meta = [];
-      if (e.ip && e.ip !== '-') meta.push(e.ip);
+      if (e.ip && e.ip !== '-') meta.push(escapeHtml(e.ip));
       if (e.duration) meta.push(e.duration + 'ms');
       var metaStr = meta.length ? '<span style="color:#9ca3af;font-size:10px">[' + meta.join(', ') + ']</span> ' : '';
-      return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px"><span style="color:#6b7280;font-family:Menlo,monospace">' + (time || '--:--') + '</span><span>' + icon + '</span>' + metaStr + '<span style="flex:1">' + text + '</span></div>';
+      return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px"><span style="color:#6b7280;font-family:Menlo,monospace">' + escapeHtml(time || '--:--') + '</span><span>' + icon + '</span>' + metaStr + '<span style="flex:1">' + escapeHtml(text) + '</span></div>';
     }).join('');
   } catch(e) {
     logDiv.innerHTML = '<span style="color:var(--danger)">加载失败: ' + (e.message || '') + '</span>';

@@ -245,6 +245,13 @@ function formatDate(dateStr) { return window.formatDate(dateStr); } window.forma
   return d.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
 }
 
+// 🔒 安全：HTML 实体转义（防御 XSS）
+function escapeHtml(s) { return window.escapeHtml(s); }
+window.escapeHtml = function(s) {
+  if (!s || typeof s !== 'string') return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const target = new Date(dateStr);

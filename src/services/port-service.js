@@ -233,10 +233,14 @@ class PortService {
 
   // 启动命令执行（恢复端口服务）
   async startService(command) {
-    // 安全检查：拒绝空命令和管道/重定向等危险操作
+    // 安全检查：拒绝危险操作
     const safeCmd = String(command || '').trim();
     if (!safeCmd) return { success: false, message: '命令不能为空' };
     if (safeCmd.length > 200) return { success: false, message: '命令过长' };
+    // 拒绝重定向/管道/命令替换/危险操作符
+    if (/[&|;><`$()]/.test(safeCmd)) {
+      return { success: false, message: '命令包含不允许的字符 (禁用: & | ; > < ` $() )' };
+    }
 
     return new Promise((resolve) => {
       const { exec } = require("child_process");

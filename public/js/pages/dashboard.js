@@ -165,7 +165,7 @@ function _renderDashLogs(logs) {
       if (m) time = m[1];
     }
     var text = e.message || e.action || e.desc || JSON.stringify(e).slice(0, 80);
-    return '<div class="dash-log-item"><span class="dash-log-time">' + (time || '--:--') + '</span><span class="dash-log-text">' + text + '</span></div>';
+    return '<div class="dash-log-item"><span class="dash-log-time">' + escapeHtml(time || '--:--') + '</span><span class="dash-log-text">' + escapeHtml(text) + '</span></div>';
   }).join('');
 }
 

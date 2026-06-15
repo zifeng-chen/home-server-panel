@@ -1,6 +1,8 @@
 // 系统设置页面
 let dbMode = 'local';
 let dbConnected = false;
+let dbPreferred = 'local';
+let dbFallbackReason = null;
 
 async function loadSettings() {
   try {
@@ -33,6 +35,8 @@ async function loadSettings() {
     if (dbRes.success && dbRes.data) {
       dbMode = dbRes.data.mode || 'local';
       dbConnected = dbRes.data.connected;
+      dbPreferred = dbRes.data.preferred || dbMode;
+      dbFallbackReason = dbRes.data.fallback || null;
     }
     renderDbStatus();
 
@@ -47,7 +51,26 @@ async function loadSettings() {
 
 function renderDbStatus() {
   const el = document.getElementById('dbStatusText');
+  const warnEl = document.getElementById('dbFallbackNote');
   if (!el) return;
+
+  // 偏好 MySQL 但实际在 SQLite → 显示回退警告
+  if (dbPreferred === 'mysql' && dbMode === 'local') {
+    el.innerHTML = '<span style="color:var(--warning)">⚠️ 已回退到 SQLite（MySQL 不可达）</span>';
+    if (warnEl) {
+      var reason = dbFallbackReason ? '（' + dbFallbackReason + '）' : '';
+      warnEl.innerHTML = '<div class="alert alert-warning" style="font-size:13px;padding:10px 14px;">' +
+        '💡 系统偏好使用 MySQL 存储，但当前 MySQL 不可达' + reason + '，已自动回退到本地 SQLite。' +
+        'MySQL 恢复后<a href="#" onclick="location.reload()">重启服务</a>即可自动切换。</div>';
+      warnEl.style.display = 'block';
+    }
+    var migrateSection = document.getElementById('dbMigrateSection');
+    var btnSwitch = document.getElementById('btnDbSwitch');
+    if (migrateSection) migrateSection.style.display = 'none';
+    if (btnSwitch) btnSwitch.style.display = 'none';
+    return;
+  }
+  if (warnEl) warnEl.style.display = 'none';
 
   if (dbMode === 'mysql' && dbConnected) {
     el.innerHTML = '<span style="color:var(--success)">✅ MySQL 已连接</span>';

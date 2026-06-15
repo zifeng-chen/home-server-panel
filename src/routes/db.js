@@ -23,15 +23,9 @@ router.post('/connect', async (req, res) => {
   }
 });
 
-// GET /api/db/status - 获取数据库状态
+// GET /api/db/status - 获取数据库状态（含偏好与回退信息）
 router.get('/status', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      mode: dbService.getMode(),
-      connected: dbService.mode === 'mysql' && !!dbService.getPool()
-    }
-  });
+  res.json({ success: true, data: dbService.getStatus() });
 });
 
 // POST /api/db/migrate - 从本地 JSON 迁移到 MySQL

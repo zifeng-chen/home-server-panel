@@ -8,7 +8,25 @@ const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 class DbService {
   constructor() {
     this._pool = null;
-    this.mode = 'local'; // local | mysql
+    this.mode = 'local';      // 当前实际使用的模式: local | mysql
+    this._preferred = 'local'; // 用户偏好的数据库模式（持久化记忆）
+    this._fallbackReason = null; // MySQL 不可达原因
+  }
+
+  /** 设置用户偏好（安装引导/配置变更时调用） */
+  setPreferred(mode, reason) {
+    this._preferred = mode;
+    this._fallbackReason = reason || null;
+  }
+
+  /** 获取完整数据库状态（含偏好与回退信息） */
+  getStatus() {
+    return {
+      mode: this.mode,
+      preferred: this._preferred,
+      connected: this.mode === 'mysql' && !!this._pool,
+      fallback: this._fallbackReason
+    };
   }
 
   // ========== MySQL 连接 ==========

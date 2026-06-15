@@ -124,6 +124,7 @@
             <!-- 右上：服务状态 -->
             <div class="dash-panel dash-services">
               <div class="dash-panel-hd">🟢 服务状态</div>
+              <div id="dbFallbackWarning" style="display:none"></div>
               <div class="service-grid" id="servicesGrid">
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
@@ -410,6 +411,7 @@
               🗄️ 数据库管理
               <span id="dbStatusText" style="font-size:13px;font-weight:normal;">🗄️ SQLite 本地存储</span>
             </h3>
+            <div id="dbFallbackNote" style="display:none"></div>
             <div id="dbMigrateSection" style="margin-top:8px;">
               <button class="btn btn-sm btn-primary" onclick="showDbConfigModal()">🚀 迁移至 MySQL</button>
             </div>

@@ -102,6 +102,10 @@ class SetupService {
     const newEnv = this._patchEnv(existingEnv, updates);
     fs.writeFileSync(ENV_FILE, newEnv, 'utf-8');
 
+    // 持久化数据库偏好（不依赖 .env 存在与否）
+    const prefFile = path.join(DATA_DIR, '.db-preference.json');
+    fs.writeFileSync(prefFile, JSON.stringify({ mode: dbMode, updatedAt: new Date().toISOString() }, null, 2), 'utf-8');
+
     // 创建初始 sessions 文件
     const sessionsFile = path.join(DATA_DIR, 'sessions.json');
     if (!fs.existsSync(sessionsFile)) {

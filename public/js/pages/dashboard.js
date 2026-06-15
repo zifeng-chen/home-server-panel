@@ -78,8 +78,23 @@ async function loadDashboard() {
       proxyCount = pd.stats ? pd.stats.enabled : (pd.rules ? pd.rules.filter(function(r) { return r.enabled; }).length : 0);
     }
 
-    var dbMode = (dbStatus && dbStatus.data && dbStatus.data.mode) || 'local';
+    var ds = dbStatus && dbStatus.data ? dbStatus.data : {};
+    var dbMode = ds.mode || 'local';
+    var dbPreferred = ds.preferred || dbMode;
+    var dbFallback = ds.fallback;
     var dbLabel = dbMode === 'mysql' ? 'MySQL' : 'SQLite';
+    if (dbPreferred === 'mysql' && dbMode === 'local') dbLabel = 'SQLite ⚠️';
+
+    // 数据库回退警告横幅
+    var dbWarn = document.getElementById('dbFallbackWarning');
+    if (dbWarn) {
+      if (dbFallback) {
+        dbWarn.innerHTML = '<div class="alert alert-warning" style="margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:8px">' +
+          '<span>⚠️</span><span><strong>MySQL 不可达，已回退到 SQLite</strong> — 数据仅保存在本机。' +
+          'MySQL 恢复后<a href="#" onclick="location.reload()">刷新</a>即可。</span></div>';
+        dbWarn.style.display = 'block';
+      } else { dbWarn.style.display = 'none'; }
+    }
 
     var services = [
       { icon: '🐳', name: 'Docker', status: '查看', cls: 'up', nav: 'docker' },
@@ -87,7 +102,7 @@ async function loadDashboard() {
       { icon: '📡', name: 'DDNS', status: ddnsCount + ' 个域名', cls: ddnsCount > 0 ? 'up' : 'warn', nav: 'ddns' },
       { icon: '🔒', name: 'SSL', status: certCount + ' 个证书', cls: certCount > 0 ? 'up' : 'warn', nav: 'ssl' },
       { icon: '🔄', name: '反向代理', status: proxyCount + ' 条启用', cls: proxyCount > 0 ? 'up' : 'warn', nav: 'nginx' },
-      { icon: '🗄️', name: '数据库', status: dbLabel, cls: 'up', nav: 'settings' }
+      { icon: '🗄️', name: '数据库', status: dbLabel, cls: dbFallback ? 'warn' : 'up', nav: 'settings' }
     ];
 
     var sGrid = document.getElementById('servicesGrid');

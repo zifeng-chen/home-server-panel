@@ -7,28 +7,66 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 
+// ========== 数据库偏好持久化 ==========
+// 优先级: .env DB_MODE > data/.db-preference.json > 默认 local
+// 确保引导安装选定的数据库模式在 .env 丢失后仍被记住
+const fs = require('fs');
+const DB_PREF_FILE = path.join(__dirname, '..', 'data', '.db-preference.json');
+
+function loadDbPreference() {
+  if (process.env.DB_MODE) return { mode: process.env.DB_MODE, source: '.env' };
+  try {
+    if (fs.existsSync(DB_PREF_FILE)) {
+      const pref = JSON.parse(fs.readFileSync(DB_PREF_FILE, 'utf-8'));
+      if (pref.mode) return { mode: pref.mode, source: 'preference-file' };
+    }
+  } catch (e) { /* 文件损坏，忽略 */ }
+  return { mode: 'local', source: 'default' };
+}
+
+function saveDbPreference(mode) {
+  try {
+    const dir = path.dirname(DB_PREF_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DB_PREF_FILE, JSON.stringify({ mode, updatedAt: new Date().toISOString() }, null, 2), 'utf-8');
+  } catch (e) { console.warn('[DB] 无法写入偏好文件:', e.message); }
+}
+
 // 初始化数据库（根据 DB_MODE 选择 SQLite 或 MySQL）
 // SQLite 始终初始化（auth sessions 依赖），MySQL 作为业务数据存储
 const sqliteService = require('./services/sqlite-service');
 await sqliteService.init();
 
-const dbMode = process.env.DB_MODE || 'local';
+const dbPref = loadDbPreference();
+let dbMode = dbPref.mode;
+let dbFallbackReason = null;
+
+const dbServicePreInit = require('./services/db-service');
+
 if (dbMode === 'mysql') {
   try {
-    const dbService = require('./services/db-service');
-    const mysqlRes = await dbService.initMySQL();
+    const mysqlRes = await dbServicePreInit.initMySQL();
     if (mysqlRes.success) {
-      console.log('[DB] MySQL 连接成功');
-      // 启动时自动同步 SQLite → MySQL（增量，不覆盖已有数据）
-      setImmediate(() => dbService.syncFromSQLite().catch(() => {}));
+      console.log('[DB] ✅ MySQL 连接成功 (' + dbPref.source + ')');
+      saveDbPreference('mysql');
+      dbServicePreInit.setPreferred('mysql');
+      setImmediate(() => dbServicePreInit.syncFromSQLite().catch(() => {}));
     } else {
-      console.log('[DB] MySQL 连接失败: ' + mysqlRes.message);
-      dbService.mode = 'local';
+      dbFallbackReason = mysqlRes.message;
+      console.log('[DB] ⚠️  MySQL 不可达 (' + mysqlRes.message + ')，已回退到 SQLite');
+      console.log('[DB] 💡 SQLite 数据仅保存在本机。MySQL 恢复后重启服务即可自动切换。');
+      dbServicePreInit.setPreferred('mysql', mysqlRes.message);
+      dbMode = 'local';
     }
   } catch (e) {
-    console.log('[DB] MySQL 初始化异常: ' + e.message);
-    require('./services/db-service').mode = 'local';
+    dbFallbackReason = e.message;
+    console.log('[DB] ⚠️  MySQL 初始化异常 (' + e.message + ')，已回退到 SQLite');
+    dbServicePreInit.setPreferred('mysql', e.message);
+    dbMode = 'local';
   }
+} else {
+  console.log('[DB] 📦 使用 SQLite (' + dbPref.source + ')');
+  dbServicePreInit.setPreferred('local');
 }
 
 const auth = require('./services/auth');

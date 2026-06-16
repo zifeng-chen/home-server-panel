@@ -345,6 +345,517 @@ ${details}` : "";
     }
   };
   window.Api = Api;
+  var dashboardLoaded = false;
+  var dashboardInProgress = false;
+  async function loadDashboard() {
+    const dashGrid = document.getElementById("dashGrid");
+    if (!dashGrid) {
+      console.error("dashGrid not found");
+      return;
+    }
+    if (dashboardInProgress) {
+      console.log("dashboardInProgress, skip");
+      return;
+    }
+    if (dashboardLoaded) {
+      console.log("dashboardLoaded, skip");
+      return;
+    }
+    dashboardInProgress = true;
+    try {
+      console.log("[Dashboard] \u5F00\u59CB\u52A0\u8F7D...");
+      const safeFetch = async (path, fallback, timeoutMs) => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(function() {
+            controller.abort();
+          }, timeoutMs || 1e4);
+          const result = await Api.get(path, controller.signal);
+          clearTimeout(timer);
+          return result;
+        } catch (e) {
+          console.warn("[Dashboard]", path, "\u5931\u8D25:", e.message);
+          return fallback;
+        }
+      };
+      const [info, ddns, cert, nginxRes, proxy, dbStatus, logs] = await Promise.all([
+        safeFetch("/system/info", { success: false }),
+        safeFetch("/ddns", { success: false }),
+        safeFetch("/cert", { success: false }),
+        safeFetch("/nginx/status", { success: false }),
+        safeFetch("/proxy", { success: false }),
+        safeFetch("/db/status", { success: false }),
+        safeFetch("/log?limit=8", { success: false })
+      ]);
+      const sys = info && info.data || {};
+      const mem = sys.memory || { total: 0, free: 0 };
+      window._liveSysInfo = sys;
+      _updateTopbarMetrics(sys);
+      var ips = sys.ips && sys.ips.length > 0 ? sys.ips.join(", ") : "--";
+      var loadStr = (sys.loadavg || []).map(function(n) {
+        return n.toFixed(2);
+      }).join(" / ") || "--";
+      var overviewBody = document.getElementById("overviewBody");
+      if (overviewBody) {
+        overviewBody.innerHTML = '<div class="overview-row"><span class="overview-label">\u4E3B\u673A\u540D</span><span class="overview-value">' + (sys.hostname || "--") + '</span></div><div class="overview-row"><span class="overview-label">\u5E73\u53F0</span><span class="overview-value">' + (sys.platform || "--") + " " + (sys.arch || "") + '</span></div><div class="overview-row"><span class="overview-label">CPU \u6838\u5FC3</span><span class="overview-value">' + (sys.cpus || "--") + '</span></div><div class="overview-row"><span class="overview-label">\u7CFB\u7EDF\u8D1F\u8F7D</span><span class="overview-value">' + loadStr + '</span></div><div class="overview-row"><span class="overview-label">\u8FD0\u884C\u65F6\u957F</span><span class="overview-value">' + formatUptime(sys.panelUptime || sys.uptime || 0) + '</span></div><div class="overview-row"><span class="overview-label">\u5185\u5B58\u5927\u5C0F</span><span class="overview-value">' + mem.total + ' GB</span></div><div class="overview-row"><span class="overview-label">Node.js</span><span class="overview-value">' + (sys.nodeVersion || "--") + '</span></div><div class="overview-row"><span class="overview-label">\u9762\u677F\u7248\u672C</span><span class="overview-value">v' + (sys.panelVersion || "--") + '</span></div><div class="overview-row"><span class="overview-label">IP \u5730\u5740</span><span class="overview-value">' + ips + "</span></div>";
+      }
+      var ddnsCount = 0;
+      if (ddns && ddns.success) {
+        var dd = ddns.data || {};
+        ddnsCount = (dd.records || dd.domains || dd.rules || []).length;
+      }
+      var certCount = 0;
+      if (cert && cert.success) {
+        var cd = cert.data || {};
+        certCount = (cd.certificates || cd.certs || []).length;
+      }
+      var nginxRunning = nginxRes && nginxRes.success && (nginxRes.data || {}).running;
+      var proxyCount = 0;
+      if (proxy && proxy.success) {
+        var pd = proxy.data || {};
+        proxyCount = pd.stats ? pd.stats.enabled : pd.rules ? pd.rules.filter(function(r) {
+          return r.enabled;
+        }).length : 0;
+      }
+      var ds = dbStatus && dbStatus.data ? dbStatus.data : {};
+      var dbMode2 = ds.mode || "local";
+      var dbPreferred2 = ds.preferred || dbMode2;
+      var dbFallback = ds.fallback;
+      var dbLabel = dbMode2 === "mysql" ? "MySQL" : "SQLite";
+      if (dbPreferred2 === "mysql" && dbMode2 === "local") dbLabel = "SQLite \u26A0\uFE0F";
+      var dbWarn = document.getElementById("dbFallbackWarning");
+      if (dbWarn) {
+        if (dbFallback) {
+          dbWarn.innerHTML = '<div class="alert alert-warning" style="margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:8px"><span>\u26A0\uFE0F</span><span><strong>MySQL \u4E0D\u53EF\u8FBE\uFF0C\u5DF2\u56DE\u9000\u5230 SQLite</strong> \u2014 \u6570\u636E\u4EC5\u4FDD\u5B58\u5728\u672C\u673A\u3002MySQL \u6062\u590D\u540E<a href="#" onclick="location.reload()">\u5237\u65B0</a>\u5373\u53EF\u3002</span></div>';
+          dbWarn.style.display = "block";
+        } else {
+          dbWarn.style.display = "none";
+        }
+      }
+      var services = [
+        { icon: "\u{1F433}", name: "Docker", status: "\u67E5\u770B", cls: "up", nav: "docker" },
+        { icon: "\u{1F310}", name: "Nginx", status: nginxRunning ? "\u8FD0\u884C\u4E2D" : "\u672A\u8FD0\u884C", cls: nginxRunning ? "up" : "down", nav: "nginx" },
+        { icon: "\u{1F4E1}", name: "DDNS", status: ddnsCount + " \u4E2A\u57DF\u540D", cls: ddnsCount > 0 ? "up" : "warn", nav: "ddns" },
+        { icon: "\u{1F512}", name: "SSL", status: certCount + " \u4E2A\u8BC1\u4E66", cls: certCount > 0 ? "up" : "warn", nav: "ssl" },
+        { icon: "\u{1F504}", name: "\u53CD\u5411\u4EE3\u7406", status: proxyCount + " \u6761\u542F\u7528", cls: proxyCount > 0 ? "up" : "warn", nav: "nginx" },
+        { icon: "\u{1F5C4}\uFE0F", name: "\u6570\u636E\u5E93", status: dbLabel, cls: dbFallback ? "warn" : "up", nav: "settings" }
+      ];
+      var sGrid = document.getElementById("servicesGrid");
+      if (sGrid) {
+        sGrid.innerHTML = services.map(function(s) {
+          return `<div class="service-card" onclick="window.location.hash='` + s.nav + `'" title="\u70B9\u51FB\u67E5\u770B ` + s.name + '"><span class="service-card-icon">' + s.icon + '</span><div class="service-card-info"><span class="service-card-name">' + s.name + '</span><span class="service-card-status ' + s.cls + '">' + s.status + "</span></div></div>";
+        }).join("");
+      }
+      _renderDashLogs(logs);
+      _dashboardMonitorStart();
+      var verEl = document.getElementById("version");
+      if (verEl) verEl.textContent = "v" + App.version;
+      dashboardLoaded = true;
+      console.log("[Dashboard] \u6E32\u67D3\u5B8C\u6210");
+    } catch (err) {
+      console.error("[Dashboard] \u6E32\u67D3\u5931\u8D25:", err);
+      var ov = document.getElementById("overviewBody");
+      if (ov) ov.innerHTML = '<div style="color:var(--danger);padding:16px;">\u26A0\uFE0F ' + (err.message || "\u52A0\u8F7D\u5931\u8D25") + "</div>";
+    } finally {
+      dashboardInProgress = false;
+    }
+  }
+  function _updateTopbarMetrics(sys) {
+    var elCpu = document.getElementById("tbCpu");
+    var elMem = document.getElementById("tbMem");
+    var elUp = document.getElementById("tbUptime");
+    if (sys.memory) {
+      var usedGB = sys.memory.total - sys.memory.free;
+      var pct = sys.memory.total > 0 ? usedGB / sys.memory.total * 100 : 0;
+      if (elMem) elMem.textContent = pct.toFixed(0) + "%";
+    }
+    if (elUp) elUp.textContent = formatUptime(sys.panelUptime || sys.uptime || 0);
+  }
+  function _renderDashLogs(logs) {
+    var listEl = document.getElementById("dashLogList");
+    if (!listEl) return;
+    var entries = [];
+    if (logs && logs.success && logs.data) {
+      entries = logs.data.records || logs.data.entries || logs.data.logs || logs.data.list || [];
+    }
+    if (!Array.isArray(entries)) entries = [];
+    if (entries.length === 0) {
+      listEl.innerHTML = '<div class="dash-log-item"><span class="dash-log-text" style="color:var(--text-tertiary)">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span></div>';
+      return;
+    }
+    var recent = entries.slice(0, 8);
+    listEl.innerHTML = recent.map(function(e) {
+      var time = e.timeCst || "";
+      if (!time) {
+        time = e.time || e.timestamp || e.createdAt || "";
+        if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
+      } else {
+        var m = time.match(/(\d{2}:\d{2})/);
+        if (m) time = m[1];
+      }
+      var text = e.message || e.action || e.desc || JSON.stringify(e).slice(0, 80);
+      return '<div class="dash-log-item"><span class="dash-log-time">' + escapeHtml(time || "--:--") + '</span><span class="dash-log-text">' + escapeHtml(text) + "</span></div>";
+    }).join("");
+  }
+  var _topbarPollTimer = null;
+  function _topbarPollStart() {
+    if (_topbarPollTimer) return;
+    _topbarPoll();
+    _topbarPollTimer = setInterval(_topbarPoll, 5e3);
+    Api.get("/auth/status", null, { showError: false }).then(function(r) {
+      if (r.success && r.data.username) {
+        var uEl = document.getElementById("topbarUserBtn");
+        if (uEl) uEl.textContent = "\u{1F464} " + r.data.username;
+      }
+    }).catch(function() {
+    });
+  }
+  async function _topbarPoll() {
+    if (App._currentPage === "dashboard") return;
+    try {
+      var res = await Api.get("/monitor/live", null, { showError: false });
+      if (!res.success) return;
+      var live = res.data;
+      var cEl = document.getElementById("tbCpu");
+      var mEl = document.getElementById("tbMem");
+      var uEl = document.getElementById("tbUptime");
+      if (cEl) cEl.textContent = (live.cpu || 0).toFixed(0) + "%";
+      if (mEl) {
+        var mem = live.memory;
+        mEl.textContent = mem.pct.toFixed(0) + "%";
+      }
+      if (uEl && live.uptime) {
+        uEl.textContent = formatUptime(live.uptime);
+        window._liveUptime = live.uptime;
+      }
+    } catch (_) {
+    }
+  }
+  function formatUptime(seconds) {
+    if (!seconds || seconds <= 0) return "--";
+    var d = Math.floor(seconds / 86400);
+    var h = Math.floor(seconds % 86400 / 3600);
+    var m = Math.floor(seconds % 3600 / 60);
+    var s = Math.floor(seconds % 60);
+    var parts = [];
+    if (d > 0) parts.push(d + "\u5929");
+    if (h > 0) parts.push(h + "\u65F6");
+    parts.push(m + "\u5206" + s + "\u79D2");
+    return parts.join(" ");
+  }
+  var _dashMonTimer = null;
+  function _dashboardMonitorStart() {
+    var container = document.getElementById("dashboardMonitor");
+    if (!container) return;
+    container.innerHTML = '<div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F4CA} CPU</span><span id="dmCpu" class="monitor-card-val">--%</span></div><canvas id="dmChartCpu" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F9E0} \u5185\u5B58</span><span id="dmMem" class="monitor-card-val">--%</span></div><canvas id="dmChartMem" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F4BF} \u78C1\u76D8</span><span id="dmDisk" class="monitor-card-val">--</span></div><div id="dmDiskList" class="monitor-disk-list"></div></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F310} \u7F51\u7EDC</span><span id="dmNet" class="monitor-card-val">--</span></div><canvas id="dmChartNet" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u23F1\uFE0F \u8D1F\u8F7D</span><span id="dmLoad" class="monitor-card-val">--</span></div><canvas id="dmChartLoad" class="monitor-chart"></canvas></div>';
+    ["dmChartCpu", "dmChartMem", "dmChartNet", "dmChartLoad"].forEach(function(id) {
+      var cv = document.getElementById(id);
+      if (cv) {
+        var rect = cv.parentElement.getBoundingClientRect();
+        cv.width = Math.min(rect.width - 32, 600) * 2;
+        cv.height = 160 * 2;
+        cv.style.width = cv.width / 2 + "px";
+        cv.style.height = cv.height / 2 + "px";
+      }
+    });
+    _dashboardMonitorFetch();
+    if (_dashMonTimer) clearInterval(_dashMonTimer);
+    _dashMonTimer = setInterval(_dashboardMonitorFetch, 5e3);
+  }
+  async function _dashboardMonitorFetch() {
+    try {
+      var res = await Api.get("/monitor", null, { showError: false });
+      if (!res.success) return;
+      var live = res.data.live, hist = res.data.history;
+      var cpu = live.cpu || 0;
+      var cEl = document.getElementById("dmCpu");
+      if (cEl) {
+        cEl.textContent = cpu.toFixed(1) + "%";
+        cEl.style.color = cpu > 80 ? "var(--danger)" : cpu > 50 ? "var(--warning)" : "var(--success)";
+      }
+      var tbCpu = document.getElementById("tbCpu");
+      if (tbCpu) tbCpu.textContent = cpu.toFixed(0) + "%";
+      var mem = live.memory;
+      var mEl = document.getElementById("dmMem");
+      if (mEl) {
+        mEl.textContent = mem.pct.toFixed(1) + "%";
+        mEl.style.color = mem.pct > 90 ? "var(--danger)" : mem.pct > 70 ? "var(--warning)" : "var(--success)";
+      }
+      var tbMem = document.getElementById("tbMem");
+      if (tbMem) tbMem.textContent = mem.pct.toFixed(0) + "%";
+      var tbUptime = document.getElementById("tbUptime");
+      if (tbUptime && live.uptime) {
+        tbUptime.textContent = formatUptime(live.uptime);
+        window._liveUptime = live.uptime;
+      }
+      var diskItems = hist.disk.length > 0 ? hist.disk[hist.disk.length - 1].items : [];
+      if (diskItems.length > 0) {
+        var dkEl = document.getElementById("dmDisk");
+        if (dkEl) dkEl.textContent = diskItems.map(function(d) {
+          return d.pct + "%";
+        }).join(" ");
+        var dlEl = document.getElementById("dmDiskList");
+        if (dlEl) dlEl.innerHTML = diskItems.map(function(d) {
+          return '<div class="disk-item"><span class="disk-mount">\u{1F4C2} ' + d.mount + '</span><span class="disk-bar-wrap"><span class="disk-bar" style="width:' + Math.min(d.pct, 100) + "%;background:" + (d.pct > 90 ? "var(--danger)" : d.pct > 70 ? "var(--warning)" : "var(--primary)") + '"></span></span><span class="disk-info">' + d.used + "/" + d.size + "</span></div>";
+        }).join("");
+      }
+      var net = hist.network.length > 0 ? hist.network[hist.network.length - 1] : { rxRate: 0, txRate: 0 };
+      var nEl = document.getElementById("dmNet");
+      if (nEl) nEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>\u4E0B\u884C</span> <span style="color:#6b7280;font-weight:500;font-size:12px;margin-right:14px;">' + _dmFmtBytes(net.rxRate) + '/s</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>\u4E0A\u884C</span> <span style="color:#6b7280;font-weight:500;font-size:12px;">' + _dmFmtBytes(net.txRate) + "/s</span>";
+      var ld = live.load;
+      var lEl = document.getElementById("dmLoad");
+      if (lEl) lEl.innerHTML = "1m " + ld[0].toFixed(2) + " 5m " + ld[1].toFixed(2) + " 15m " + ld[2].toFixed(2);
+      window._liveUptime = live.uptime;
+      var upEl = document.getElementById("uptime");
+      if (upEl && live.uptime) upEl.textContent = _dmFmtUptime(live.uptime);
+      _dmDrawChart("dmChartCpu", hist.cpu, "pct", "%", "CPU");
+      _dmDrawChart("dmChartMem", hist.memory, "pct", "%", "\u5185\u5B58");
+      _dmDrawNetChart("dmChartNet", hist.network);
+      _dmDrawLoadChart("dmChartLoad", hist.load);
+    } catch (_) {
+    }
+  }
+  function _dmDrawChart(canvasId, data, field, unit, label) {
+    var cv = document.getElementById(canvasId);
+    if (!cv || data.length < 2) {
+      if (cv) _dmDrawEmpty(cv, "\u7B49\u5F85\u6570\u636E...");
+      return;
+    }
+    var ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+    var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    var maxVal = Math.max(Math.max.apply(null, data.map(function(d) {
+      return d[field];
+    })), 1);
+    var nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1e3];
+    var step = 1;
+    for (var s = 0; s < nice.length; s++) {
+      if (maxVal <= nice[s] * 5) {
+        step = nice[s];
+        break;
+      }
+      step = maxVal / 4;
+    }
+    maxVal = Math.ceil(maxVal / step) * step;
+    ctx.strokeStyle = "rgba(0,0,0,0.06)";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.textAlign = "right";
+    for (var i = 0; i <= 4; i++) {
+      var v = maxVal * (1 - i / 4);
+      var y = pad.top + ph / 4 * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + pw, y);
+      ctx.stroke();
+      var label = v === Math.floor(v) ? v.toFixed(0) + unit : v.toFixed(1) + unit;
+      ctx.fillText(label, pad.left - 12, y + 7);
+    }
+    var scY = function(v2) {
+      return pad.top + ph - v2 / maxVal * ph;
+    };
+    var scX = function(i2) {
+      return pad.left + i2 / (data.length - 1) * pw;
+    };
+    var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
+    grad.addColorStop(0, "rgba(184,134,11,0.18)");
+    grad.addColorStop(1, "rgba(184,134,11,0.02)");
+    ctx.beginPath();
+    ctx.moveTo(scX(0), scY(data[0][field]));
+    for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
+    ctx.lineTo(scX(data.length - 1), pad.top + ph);
+    ctx.lineTo(scX(0), pad.top + ph);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(scX(0), scY(data[0][field]));
+    for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
+    ctx.strokeStyle = "#daa520";
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    var last = data[data.length - 1];
+    ctx.beginPath();
+    ctx.arc(scX(data.length - 1), scY(last[field]), 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#daa520";
+    ctx.fill();
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  function _dmDrawNetChart(canvasId, data) {
+    var cv = document.getElementById(canvasId);
+    if (!cv || data.length < 2) {
+      if (cv) _dmDrawEmpty(cv, "\u7B49\u5F85\u6570\u636E...");
+      return;
+    }
+    var ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var pad = { top: 32, right: 20, bottom: 20, left: 80 };
+    var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    var rxArr = data.map(function(d) {
+      return d.rxRate;
+    });
+    var txArr = data.map(function(d) {
+      return d.txRate;
+    });
+    var maxVal = Math.max(Math.max.apply(null, rxArr), Math.max.apply(null, txArr), 1024);
+    var nice = [1024, 5120, 10240, 51200, 102400, 524288, 1048576, 5242880, 10485760];
+    for (var s = 0; s < nice.length; s++) {
+      if (maxVal <= nice[s]) {
+        maxVal = nice[s];
+        break;
+      }
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.06)";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.textAlign = "right";
+    for (var i = 0; i <= 4; i++) {
+      var v = maxVal * (1 - i / 4);
+      var y = pad.top + ph / 4 * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + pw, y);
+      ctx.stroke();
+      ctx.fillText(_dmFmtBytesShort(v), pad.left - 12, y + 7);
+    }
+    var scY = function(v2) {
+      return pad.top + ph - v2 / maxVal * ph;
+    };
+    var scX = function(i2) {
+      return pad.left + i2 / (data.length - 1) * pw;
+    };
+    _dmDrawLine(ctx, data, rxArr, scX, scY, "#22c55e");
+    _dmDrawLine(ctx, data, txArr, scX, scY, "#f59e0b");
+    ctx.textAlign = "left";
+    ctx.font = "bold 11px -apple-system, sans-serif";
+    var lgX = pad.left + 4, lgY = pad.top - 12;
+    ctx.beginPath();
+    ctx.arc(lgX + 4, lgY - 2, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "#22c55e";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#374151";
+    ctx.fillText("\u4E0B\u884C", lgX + 14, lgY + 4);
+    var txX = lgX + 56;
+    ctx.beginPath();
+    ctx.arc(txX + 4, lgY - 2, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.1)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#374151";
+    ctx.fillText("\u4E0A\u884C", txX + 14, lgY + 4);
+  }
+  function _dmDrawLine(ctx, data, arr, scX, scY, color) {
+    ctx.beginPath();
+    ctx.moveTo(scX(0), scY(arr[0]));
+    for (var i = 1; i < arr.length; i++) ctx.lineTo(scX(i), scY(arr[i]));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }
+  function _dmDrawLoadChart(canvasId, data) {
+    var cv = document.getElementById(canvasId);
+    if (!cv || data.length < 2) {
+      if (cv) _dmDrawEmpty(cv, "\u7B49\u5F85\u6570\u636E...");
+      return;
+    }
+    var ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+    var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    var allVals = [];
+    ["load1", "load5", "load15"].forEach(function(k) {
+      data.forEach(function(d) {
+        allVals.push(d[k]);
+      });
+    });
+    var maxVal = Math.max(Math.max.apply(null, allVals), 1);
+    maxVal = Math.ceil(maxVal * 2) / 2;
+    ctx.strokeStyle = "rgba(0,0,0,0.06)";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.textAlign = "right";
+    for (var i = 0; i <= 4; i++) {
+      var v = maxVal * (1 - i / 4);
+      var y = pad.top + ph / 4 * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + pw, y);
+      ctx.stroke();
+      ctx.fillText(v.toFixed(1), pad.left - 12, y + 7);
+    }
+    var scY = function(v2) {
+      return pad.top + ph - v2 / maxVal * ph;
+    };
+    var scX = function(i2) {
+      return pad.left + i2 / (data.length - 1) * pw;
+    };
+    var colors = ["#22c55e", "#f59e0b", "#c41e3a"];
+    var keys = ["load1", "load5", "load15"];
+    keys.forEach(function(key, idx) {
+      var vals = data.map(function(d) {
+        return d[key];
+      });
+      ctx.beginPath();
+      ctx.moveTo(scX(0), scY(vals[0]));
+      for (var i2 = 1; i2 < vals.length; i2++) ctx.lineTo(scX(i2), scY(vals[i2]));
+      ctx.strokeStyle = colors[idx];
+      ctx.lineWidth = 4;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    });
+  }
+  function _dmDrawEmpty(canvas, msg) {
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "28px -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 10);
+  }
+  function _dmFmtBytes(bytes) {
+    if (!bytes || bytes < 0) return "0 B";
+    var units = ["B", "KB", "MB", "GB"], i = 0;
+    while (bytes >= 1024 && i < 3) {
+      bytes /= 1024;
+      i++;
+    }
+    return bytes.toFixed(1) + " " + units[i];
+  }
+  function _dmFmtBytesShort(bytes) {
+    if (!bytes || bytes < 0) return "0 B";
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+    if (bytes >= 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return bytes + " B";
+  }
+  function _dmFmtUptime(sec) {
+    var d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+    var p = [];
+    if (d > 0) p.push(d + "\u5929");
+    if (h > 0) p.push(h + "\u65F6");
+    p.push(m + "\u5206");
+    return p.join(" ");
+  }
   var dbMode = "local";
   var dbConnected = false;
   var dbPreferred = "local";

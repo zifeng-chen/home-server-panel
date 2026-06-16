@@ -359,6 +359,8 @@ ${details}` : "";
         const cfg = cfgRes.data;
         setVal("cfgAliKeyId", cfg.aliKeyId || "");
         setVal("cfgAliKeySecret", cfg.aliKeySecret || "");
+        setVal("cfgTencentSecretId", cfg.tencentSecretId || "");
+        setVal("cfgTencentSecretKey", cfg.tencentSecretKey || "");
         setVal("cfgPushplusToken", cfg.pushplusToken);
         var tokEl = document.getElementById("cfgPushplusToken");
         if (tokEl && cfg.pushplusToken === "\u5DF2\u914D\u7F6E") {
@@ -681,6 +683,8 @@ ${details}` : "";
       const data = {
         aliKeyId: document.getElementById("cfgAliKeyId")?.value || "",
         aliKeySecret: document.getElementById("cfgAliKeySecret")?.value || "",
+        tencentSecretId: document.getElementById("cfgTencentSecretId")?.value || "",
+        tencentSecretKey: document.getElementById("cfgTencentSecretKey")?.value || "",
         pushplusToken: document.getElementById("cfgPushplusToken")?.value || "",
         acmeEmail: document.getElementById("cfgAcmeEmail")?.value || "",
         acmeDns: document.getElementById("cfgAcmeDns")?.value || "alidns"

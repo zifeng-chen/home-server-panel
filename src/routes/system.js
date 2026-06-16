@@ -55,9 +55,18 @@ router.get('/uptime', (req, res) => {
 
 // GET /api/system/config - 获取配置（脱敏）
 router.get('/config', (req, res) => {
+  const sqliteService = require('../services/sqlite-service');
+  const aliCreds = sqliteService.getAliyunCredentials();
+  const txCreds = sqliteService.getTencentCredentials();
+
+  const aliKeyId = aliCreds.accessKeyId || '';
+  const txSecretId = txCreds.secretId || '';
+
   const config = {
-    aliKeyId: (process.env.ALIYUN_ACCESS_KEY_ID || '').slice(0, 8) + '****',
-    aliKeySecret: '****',
+    aliKeyId: aliKeyId ? aliKeyId.slice(0, 8) + '****' : '',
+    aliKeySecret: aliCreds.accessKeySecret ? '****' : '',
+    tencentSecretId: txSecretId ? txSecretId.slice(0, 8) + '****' : '',
+    tencentSecretKey: txCreds.secretKey ? '****' : '',
     ddnsDomains: process.env.DDNS_DOMAINS || '',
     acmeEmail: process.env.ACME_EMAIL || '',
     acmeDnsProvider: process.env.ACME_DNS_PROVIDER || '',
@@ -81,6 +90,7 @@ router.post('/config', (req, res) => {
     const fs = require('fs');
     const path = require('path');
     const dotenvPath = path.join(__dirname, '..', '..', '.env');
+    const sqliteService = require('../services/sqlite-service');
 
     // 读取现有 .env
     let envContent = '';
@@ -100,18 +110,24 @@ router.post('/config', (req, res) => {
       }
     };
 
-    const { aliKeyId, aliKeySecret, pushplusToken, acmeEmail, acmeDns } = req.body;
+    const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, acmeEmail, acmeDns } = req.body;
     if (aliKeyId && aliKeyId.indexOf('****') === -1) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
     if (aliKeySecret && aliKeySecret !== '****') updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
+    if (tencentSecretId && tencentSecretId.indexOf('****') === -1) updater('TENCENT_SECRET_ID', tencentSecretId);
+    if (tencentSecretKey && tencentSecretKey !== '****') updater('TENCENT_SECRET_KEY', tencentSecretKey);
     if (pushplusToken) updater('PUSHPLUS_TOKEN', pushplusToken);
     if (acmeEmail) updater('ACME_EMAIL', acmeEmail);
     if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
 
     fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
 
+    // 🔥 同步到 SQLite settings 表
+    if (aliKeyId && aliKeyId.indexOf('****') === -1) sqliteService.setAliyunCredentials(aliKeyId, aliKeySecret);
+    if (tencentSecretId && tencentSecretId.indexOf('****') === -1) sqliteService.setTencentCredentials(tencentSecretId, tencentSecretKey);
+
     // 🔥 同步到 MySQL settings 表（用于备份恢复）
     const dbService = require('../services/db-service');
-    const syncKeys = ['ALIYUN_ACCESS_KEY_ID', 'ALIYUN_ACCESS_KEY_SECRET', 'PUSHPLUS_TOKEN', 'ACME_EMAIL', 'ACME_DNS_PROVIDER', 'SERVER_PORT', 'LOG_LEVEL'];
+    const syncKeys = ['ALIYUN_ACCESS_KEY_ID', 'ALIYUN_ACCESS_KEY_SECRET', 'TENCENT_SECRET_ID', 'TENCENT_SECRET_KEY', 'PUSHPLUS_TOKEN', 'ACME_EMAIL', 'ACME_DNS_PROVIDER', 'SERVER_PORT', 'LOG_LEVEL'];
     for (const k of syncKeys) {
       if (req.body[k] || process.env[k]) {
         const v = req.body[k] || process.env[k];
@@ -124,6 +140,8 @@ router.post('/config', (req, res) => {
     // 🔥 立即生效：更新 process.env 并重载相关服务
     if (aliKeyId && aliKeyId.indexOf('****') === -1) process.env.ALIYUN_ACCESS_KEY_ID = aliKeyId;
     if (aliKeySecret && aliKeySecret !== '****') process.env.ALIYUN_ACCESS_KEY_SECRET = aliKeySecret;
+    if (tencentSecretId && tencentSecretId.indexOf('****') === -1) process.env.TENCENT_SECRET_ID = tencentSecretId;
+    if (tencentSecretKey && tencentSecretKey !== '****') process.env.TENCENT_SECRET_KEY = tencentSecretKey;
     if (pushplusToken) {
       process.env.PUSHPLUS_TOKEN = pushplusToken;
       try { require('../services/notify-service').setToken(pushplusToken); } catch (_) {}

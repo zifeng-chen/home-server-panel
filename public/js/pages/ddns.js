@@ -1,37 +1,5 @@
-// DDNS 页面 - 支持 IPv4 + IPv6 + 多选操作 + 腾讯云/阿里云
+// DDNS 页面 - 双云并存，每条记录带 provider 字段
 let ddnsLoaded = false;
-
-// 切换 DDNS 提供商
-async function switchDdnsProvider() {
-  const select = document.getElementById('ddnsProvider');
-  if (!select) return;
-  const provider = select.value;
-  try {
-    await Api.post('/ddns/provider', { provider });
-    Utils.notify(`已切换到${provider === 'tencent' ? '腾讯云' : '阿里云'} DNS`);
-    loadDdns();
-  } catch (err) {
-    Utils.notify('切换失败: ' + err.message, 'error');
-    // 恢复选择
-    const current = await Api.get('/ddns/provider').catch(() => ({ data: { provider: 'aliyun' } }));
-    select.value = current.data?.provider || 'aliyun';
-  }
-}
-
-// 加载当前提供商
-async function loadDdnsProvider() {
-  const select = document.getElementById('ddnsProvider');
-  if (!select) return;
-  try {
-    const res = await Api.get('/ddns/provider');
-    select.value = res.data?.provider || 'aliyun';
-    // 更新批量删除按钮文案
-    const cloudBtn = document.getElementById('batchRemoveCloud');
-    const providerName = select.value === 'tencent' ? '腾讯云' : '阿里云';
-  } catch (_) {}
-}
-
-window.switchDdnsProvider = switchDdnsProvider;
 
 // 批量操作栏刷新
 function updateDdnsBatchBar() {
@@ -72,23 +40,23 @@ window.ddnsRowCheckChanged = () => {
 function getSelectedDdnsIds() {
   const ids = [];
   document.querySelectorAll('#ddnsTbody .ddns-row-checkbox:checked').forEach(cb => {
-    ids.push(cb.dataset.id);
+    ids.push({ id: cb.dataset.id, provider: cb.dataset.provider || 'aliyun' });
   });
   return ids;
 }
 
 // 批量启用/停用
 window.batchToggleDdns = async (enable) => {
-  const ids = getSelectedDdnsIds();
-  if (ids.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
+  const items = getSelectedDdnsIds();
+  if (items.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
 
   const status = enable ? 'ENABLE' : 'DISABLE';
   const action = enable ? '启用' : '停用';
-  Utils.notify(`正在批量${action} ${ids.length} 条记录...`, 'info');
+  Utils.notify(`正在批量${action} ${items.length} 条记录...`, 'info');
 
   let success = 0, fail = 0;
-  for (const id of ids) {
-    const res = await Api.post(`/ddns/record/${id}/toggle`, { status });
+  for (const { id, provider } of items) {
+    const res = await Api.post(`/ddns/record/${id}/toggle`, { status, provider });
     if (res.success) success++; else fail++;
   }
 
@@ -99,22 +67,19 @@ window.batchToggleDdns = async (enable) => {
 
 // 批量删除
 window.batchDeleteDdns = async () => {
-  const ids = getSelectedDdnsIds();
-  if (ids.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
-
-  const provider = document.getElementById('ddnsProvider')?.value || 'aliyun';
-  const cloudName = provider === 'tencent' ? '腾讯云' : '阿里云';
+  const items = getSelectedDdnsIds();
+  if (items.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
 
   const body = `
-    <p style="margin-bottom:16px;color:var(--text-secondary)">确认删除选中的 <strong style="color:var(--danger)">${ids.length}</strong> 条 DDNS 记录？</p>
+    <p style="margin-bottom:16px;color:var(--text-secondary)">确认删除选中的 <strong style="color:var(--danger)">${items.length}</strong> 条 DDNS 记录？</p>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-secondary" id="batchRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
         📋 <strong>仅移除面板跟踪</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>${cloudName} DNS 上的解析记录</small>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>云 DNS 上的解析记录</small>
       </button>
       <button class="btn btn-danger" id="batchRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
-        🗑 <strong>同时从${cloudName}删除</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>${cloudName} DNS 上的解析记录</small>
+        🗑 <strong>同时从云服务商删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>云 DNS 上的解析记录</small>
       </button>
     </div>
   `;
@@ -123,11 +88,11 @@ window.batchDeleteDdns = async () => {
 
   const doBatchDelete = async (localOnly) => {
     Utils.closeModal();
-    Utils.notify(localOnly ? '正在批量移除面板跟踪...' : '正在批量删除阿里云记录...', 'info');
+    Utils.notify(localOnly ? '正在批量移除面板跟踪...' : '正在批量删除云记录...', 'info');
 
     let success = 0, fail = 0;
-    for (const id of ids) {
-      const res = await Api.del(`/ddns/record/${id}?localOnly=${localOnly}`);
+    for (const { id, provider } of items) {
+      const res = await Api.del(`/ddns/record/${id}?localOnly=${localOnly}&provider=${provider}`);
       if (res.success) success++; else fail++;
     }
 
@@ -140,21 +105,27 @@ window.batchDeleteDdns = async () => {
   document.getElementById('batchRemoveCloud').addEventListener('click', () => doBatchDelete(false));
 };
 
+const PROVIDER_STYLE = {
+  aliyun: { label: '阿里云', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  tencent: { label: '腾讯云', color: '#06b6d4', bg: 'rgba(6,182,212,0.12)' }
+};
+
+function providerBadge(provider) {
+  const style = PROVIDER_STYLE[provider] || PROVIDER_STYLE.aliyun;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;color:${style.color};background:${style.bg}">${style.label}</span>`;
+}
+
 async function loadDdns() {
   const tbody = document.getElementById('ddnsTbody');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="9">加载中...</td></tr>';
-
-  // 加载提供商
-  await loadDdnsProvider();
-  const provider = document.getElementById('ddnsProvider')?.value || 'aliyun';
-  const cloudName = provider === 'tencent' ? '腾讯云' : '阿里云';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="10">加载中...</td></tr>';
 
   try {
     const res = await Api.get('/ddns');
     const ipv4 = res.data?.publicIpv4 || '--';
     const ipv6 = res.data?.publicIpv6 || '--';
+    const records = res.data?.records || [];
 
     // 更新公网 IP 显示
     const ipEl = document.getElementById('ddnsPublicIp');
@@ -162,24 +133,27 @@ async function loadDdns() {
       ipEl.innerHTML = `<span style="margin-right:16px">🌐 IPv4: <strong>${ipv4}</strong></span>${ipv6 && ipv6 !== '--' ? `<span title="${ipv6}">🔷 IPv6: <strong>${ipv6}</strong></span>` : '<span style="color:var(--text-secondary)">🔷 IPv6: 无</span>'}`;
     }
 
-    if (records.length === 0) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">暂无 DDNS 记录<br><small>点击「添加域名」开始配置</small></td></tr>`;
+    // 过滤掉错误行
+    const validRecords = records.filter(r => !r.error);
+    const errors = records.filter(r => r.error);
+
+    if (validRecords.length === 0) {
+      let errText = errors.map(e => `${e.domain}: ${e.error}`).join('<br>');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="10">暂无 DDNS 记录<br><small>点击「添加解析」开始配置</small>${errText ? '<br><small style="color:var(--danger)">' + errText + '</small>' : ''}</td></tr>`;
       updateDdnsBatchBar();
       return;
     }
 
-    tbody.innerHTML = records.map(r => {
-      if (r.error) {
-        return `<tr><td colspan="9" class="error-row">❌ ${r.domain}: ${r.error}</td></tr>`;
-      }
-
+    tbody.innerHTML = validRecords.map(r => {
       const needsUpdate = r.needsUpdate;
       const typeClass = r.recordType === 'AAAA' ? 'type-badge-ipv6' : 'type-badge';
       const enabled = r.enabled !== false;
+      const prov = r.provider || 'aliyun';
 
       return `
         <tr style="${enabled ? '' : 'opacity:0.5'}">
-          <td style="text-align:center"><input type="checkbox" class="ddns-row-checkbox" data-id="${r.id}" onchange="ddnsRowCheckChanged()"></td>
+          <td style="text-align:center"><input type="checkbox" class="ddns-row-checkbox" data-id="${r.id}" data-provider="${prov}" onchange="ddnsRowCheckChanged()"></td>
+          <td>${providerBadge(prov)}</td>
           <td><strong>${r.domain}</strong></td>
           <td><span class="${typeClass}">${r.recordType || 'A'}</span></td>
           <td><code style="${needsUpdate ? 'color:var(--warning)' : ''}">${r.ip || '--'}</code></td>
@@ -191,9 +165,9 @@ async function loadDdns() {
             </span>
           </td>
           <td>
-            <button class="btn btn-sm ${enabled ? 'btn-secondary' : 'btn-success'}" onclick="toggleDdnsRecord('${r.id}', '${enabled}')" title="${enabled ? '停用' : '启用'}">${enabled ? '⏸ 停用' : '▶ 启用'}</button>
-            <button class="btn btn-sm btn-primary" onclick="editDdnsRecord('${r.id}')">✏ 编辑</button>
-            <button class="btn btn-sm btn-danger" onclick="removeDdnsRecord('${r.id}', '${r.domain}')">🗑 移除</button>
+            <button class="btn btn-sm ${enabled ? 'btn-secondary' : 'btn-success'}" onclick="toggleDdnsRecord('${r.id}', '${enabled}', '${prov}')" title="${enabled ? '停用' : '启用'}">${enabled ? '⏸ 停用' : '▶ 启用'}</button>
+            <button class="btn btn-sm btn-primary" onclick="editDdnsRecord('${r.id}', '${prov}')">✏ 编辑</button>
+            <button class="btn btn-sm btn-danger" onclick="removeDdnsRecord('${r.id}', '${r.domain}', '${prov}')">🗑 移除</button>
           </td>
         </tr>
       `;
@@ -206,23 +180,22 @@ async function loadDdns() {
     }
     updateDdnsBatchBar();
   } catch (err) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">加载失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">加载失败: ${err.message}</td></tr>`;
     updateDdnsBatchBar();
   }
 }
 
 // 启停记录
-window.toggleDdnsRecord = async (recordId, currentlyEnabled) => {
+window.toggleDdnsRecord = async (recordId, currentlyEnabled, provider) => {
   const newStatus = currentlyEnabled === 'true' || currentlyEnabled === true ? 'DISABLE' : 'ENABLE';
   Utils.notify(`正在${newStatus === 'ENABLE' ? '启用' : '停用'}...`, 'info');
-  const res = await Api.post(`/ddns/record/${recordId}/toggle`, { status: newStatus });
+  const res = await Api.post(`/ddns/record/${recordId}/toggle`, { status: newStatus, provider });
   if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
   else Utils.notify(res.message || '操作失败', 'error');
 };
 
 // 编辑记录
-window.editDdnsRecord = (recordId) => {
-  // 先从已加载的数据中找记录
+window.editDdnsRecord = (recordId, provider) => {
   const rows = document.querySelectorAll('#ddnsTbody tr');
   let record = null;
   for (const row of rows) {
@@ -230,11 +203,11 @@ window.editDdnsRecord = (recordId) => {
     for (const btn of btns) {
       if (btn.getAttribute('onclick')?.includes(recordId)) {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 4) {
-          const domain = cells[1].textContent.trim();
-          const type = cells[2].textContent.trim();
-          const ip = cells[3].querySelector('code')?.textContent.trim() || '';
-          record = { id: recordId, domain, type, ip, ttl: 600 };
+        if (cells.length >= 5) {
+          const domain = cells[2].textContent.trim();
+          const type = cells[3].textContent.trim();
+          const ip = cells[4].querySelector('code')?.textContent.trim() || '';
+          record = { id: recordId, domain, type, ip, ttl: 600, provider };
         }
         break;
       }
@@ -244,9 +217,10 @@ window.editDdnsRecord = (recordId) => {
 
   if (!record) { Utils.notify('未找到记录信息', 'error'); return; }
 
+  const provName = provider === 'tencent' ? '腾讯云' : '阿里云';
   const body = `
     <div class="form-group">
-      <label>域名</label>
+      <label>域名 <small style="color:var(--text-secondary)">(${provName}${PROVIDER_STYLE[provider] ? '' : ''})</small></label>
       <code style="font-size:14px;">${record.domain}</code>
     </div>
     <div class="form-group">
@@ -280,24 +254,25 @@ window.editDdnsRecord = (recordId) => {
 
     Utils.closeModal();
     Utils.notify('正在更新...', 'info');
-    const res = await Api.put(`/ddns/record/${recordId}`, { type, value, ttl });
+    const res = await Api.put(`/ddns/record/${recordId}`, { type, value, ttl, provider });
     if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
     else Utils.notify(res.message || '更新失败', 'error');
   });
 };
 
 // 移除记录
-window.removeDdnsRecord = (recordId, domain) => {
+window.removeDdnsRecord = (recordId, domain, provider) => {
+  const provName = provider === 'tencent' ? '腾讯云' : '阿里云';
   const body = `
     <p style="margin-bottom:16px;color:var(--text-secondary)">选择「${domain}」的移除方式：</p>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-secondary" id="ddnsRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
         📋 <strong>仅移除面板跟踪</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>云 DNS 上的解析记录</small>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>${provName} DNS 上的解析记录</small>
       </button>
       <button class="btn btn-danger" id="ddnsRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
-        🗑 <strong>同时从云服务商删除</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>云 DNS 上的解析记录</small>
+        🗑 <strong>同时从${provName}删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>${provName} DNS 上的解析记录</small>
       </button>
     </div>
   `;
@@ -306,8 +281,8 @@ window.removeDdnsRecord = (recordId, domain) => {
 
   const doDelete = async (localOnly) => {
     Utils.closeModal();
-    Utils.notify(localOnly ? '正在移除面板跟踪...' : '正在删除阿里云记录...', 'info');
-    const res = await Api.del(`/ddns/record/${recordId}?localOnly=${localOnly}`);
+    Utils.notify(localOnly ? '正在移除面板跟踪...' : '正在删除云记录...', 'info');
+    const res = await Api.del(`/ddns/record/${recordId}?localOnly=${localOnly}&provider=${provider}`);
     if (res.success) { Utils.notify(res.message, 'success'); loadDdns(); }
     else Utils.notify(res.message || '移除失败', 'error');
   };
@@ -378,6 +353,13 @@ window.showAddDdnsModal = () => {
       <input type="text" id="ddnsAddSub" class="form-input" value="@">
     </div>
     <div class="form-group">
+      <label>DNS 提供商</label>
+      <select id="ddnsAddProvider" class="form-input">
+        <option value="aliyun">☁️ 阿里云 DNS</option>
+        <option value="tencent">☁️ 腾讯云 DNSPod</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>记录类型</label>
       <select id="ddnsAddType" class="form-input" onchange="onDdnsTypeChange()">
         <option value="A">A (IPv4)</option>
@@ -408,13 +390,15 @@ window.showAddDdnsModal = () => {
     const recordType = document.getElementById('ddnsAddType').value;
     const ttl = parseInt(document.getElementById('ddnsAddTtl').value) || 600;
     const value = document.getElementById('ddnsAddIp').value.trim() || undefined;
+    const provider = document.getElementById('ddnsAddProvider').value;
 
     if (!name) { Utils.notify('请输入主域名', 'error'); return; }
 
     Utils.closeModal();
-    Utils.notify(`正在添加 ${subdomain === '@' ? name : subdomain + '.' + name} (${recordType})...`, 'info');
+    const provName = provider === 'tencent' ? '腾讯云' : '阿里云';
+    Utils.notify(`正在向${provName}添加 ${subdomain === '@' ? name : subdomain + '.' + name} (${recordType})...`, 'info');
 
-    const res = await Api.post('/ddns/domains', { name, subdomain, recordType, ttl, value });
+    const res = await Api.post('/ddns/domains', { name, subdomain, recordType, ttl, value, provider });
     if (res.success) {
       Utils.notify(res.message, 'success');
       loadDdns();

@@ -16,6 +16,8 @@ async function loadSettings() {
       const cfg = cfgRes.data;
       setVal('cfgAliKeyId', cfg.aliKeyId || '');
       setVal('cfgAliKeySecret', cfg.aliKeySecret || '');
+      setVal('cfgTencentSecretId', cfg.tencentSecretId || '');
+      setVal('cfgTencentSecretKey', cfg.tencentSecretKey || '');
       setVal('cfgPushplusToken', cfg.pushplusToken);
       // 已配置 token 时显示提示 placeholder
       var tokEl = document.getElementById('cfgPushplusToken');
@@ -362,6 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = {
       aliKeyId: document.getElementById('cfgAliKeyId')?.value || '',
       aliKeySecret: document.getElementById('cfgAliKeySecret')?.value || '',
+      tencentSecretId: document.getElementById('cfgTencentSecretId')?.value || '',
+      tencentSecretKey: document.getElementById('cfgTencentSecretKey')?.value || '',
       pushplusToken: document.getElementById('cfgPushplusToken')?.value || '',
       acmeEmail: document.getElementById('cfgAcmeEmail')?.value || '',
       acmeDns: document.getElementById('cfgAcmeDns')?.value || 'alidns'

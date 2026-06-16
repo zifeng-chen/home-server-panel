@@ -213,7 +213,8 @@ class SqliteService {
   _runColumnMigrations() {
     const migrations = [
       { table: 'ssl_config', col: 'notified_at', type: 'INTEGER' },
-      { table: 'ddns_config', col: 'value', type: 'TEXT' }
+      { table: 'ddns_config', col: 'value', type: 'TEXT' },
+      { table: 'ddns_config', col: 'provider', type: "TEXT DEFAULT 'aliyun'" }
     ];
     for (const { table, col, type } of migrations) {
       try {
@@ -385,12 +386,20 @@ class SqliteService {
 
   // ==================== DDNS 配置 ====================
 
-  getDdnsDomains() {
-    const rows = this._all('SELECT * FROM ddns_config ORDER BY id');
+  getDdnsDomains(provider) {
+    let sql = 'SELECT * FROM ddns_config';
+    const params = [];
+    if (provider) {
+      sql += ' WHERE provider = ?';
+      params.push(provider);
+    }
+    sql += ' ORDER BY id';
+    const rows = this._all(sql, params);
     return rows.map(r => ({
       name: r.name, subdomain: r.subdomain, recordType: r.record_type,
       ttl: r.ttl, line: r.line, createdAt: r.created_at,
-      lastUpdate: r.last_update, lastIp: r.last_ip
+      lastUpdate: r.last_update, lastIp: r.last_ip,
+      provider: r.provider || 'aliyun'
     }));
   }
 
@@ -400,13 +409,18 @@ class SqliteService {
     this._setSetting('ddns_last_refresh', timestamp || new Date().toISOString());
   }
 
-  setDdnsDomains(domains) {
+  setDdnsDomains(domains, provider) {
     const now = new Date().toISOString();
-    this._run('DELETE FROM ddns_config');
+    if (provider) {
+      // Partial update: only delete domains for this provider
+      this._run('DELETE FROM ddns_config WHERE provider = ?', [provider]);
+    } else {
+      this._run('DELETE FROM ddns_config');
+    }
     for (const d of (domains || [])) {
       this._run(
-        'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [d.name || '', d.subdomain || '@', d.recordType || 'A', d.ttl || 600, d.line || 'default', d.createdAt || now, d.lastUpdate || null, d.lastIp || null]
+        'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, provider, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [d.name || '', d.subdomain || '@', d.recordType || 'A', d.ttl || 600, d.line || 'default', d.provider || provider || 'aliyun', d.createdAt || now, d.lastUpdate || null, d.lastIp || null]
       );
     }
     this.setDdnsLastRefresh(now);
@@ -418,22 +432,23 @@ class SqliteService {
     const recordType = domain.recordType || 'A';
     const ttl = domain.ttl || 600;
     const line = domain.line || 'default';
+    const provider = domain.provider || 'aliyun';
 
     const existing = this._get(
-      'SELECT * FROM ddns_config WHERE name = ? AND subdomain = ? AND record_type = ?',
-      [name, subdomain, recordType]
+      'SELECT * FROM ddns_config WHERE name = ? AND subdomain = ? AND record_type = ? AND provider = ?',
+      [name, subdomain, recordType, provider]
     );
 
     if (existing) {
       // 已存在：更新 TTL 和 Line，幂等处理
       this._run(
-        'UPDATE ddns_config SET ttl = ?, line = ?, last_update = ? WHERE name = ? AND subdomain = ? AND record_type = ?',
-        [ttl, line, new Date().toISOString(), name, subdomain, recordType]
+        'UPDATE ddns_config SET ttl = ?, line = ?, last_update = ? WHERE name = ? AND subdomain = ? AND record_type = ? AND provider = ?',
+        [ttl, line, new Date().toISOString(), name, subdomain, recordType, provider]
       );
     } else {
       this._run(
-        'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, subdomain, recordType, ttl, line, new Date().toISOString(), null, null]
+        'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, provider, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, subdomain, recordType, ttl, line, provider, new Date().toISOString(), null, null]
       );
     }
     return this.getDdnsDomains();
@@ -695,6 +710,32 @@ class SqliteService {
     };
   }
 
+  // ==================== 凭证存取（.env 优先，SQLite 降级） ====================
+
+  getAliyunCredentials() {
+    return {
+      accessKeyId: process.env.ALIYUN_ACCESS_KEY_ID || this._getSetting('aliyun_access_key_id') || null,
+      accessKeySecret: process.env.ALIYUN_ACCESS_KEY_SECRET || this._getSetting('aliyun_access_key_secret') || null
+    };
+  }
+
+  getTencentCredentials() {
+    return {
+      secretId: process.env.TENCENT_SECRET_ID || this._getSetting('tencent_secret_id') || null,
+      secretKey: process.env.TENCENT_SECRET_KEY || this._getSetting('tencent_secret_key') || null
+    };
+  }
+
+  setAliyunCredentials(accessKeyId, accessKeySecret) {
+    if (accessKeyId) this._setSetting('aliyun_access_key_id', accessKeyId);
+    if (accessKeySecret) this._setSetting('aliyun_access_key_secret', accessKeySecret);
+  }
+
+  setTencentCredentials(secretId, secretKey) {
+    if (secretId) this._setSetting('tencent_secret_id', secretId);
+    if (secretKey) this._setSetting('tencent_secret_key', secretKey);
+  }
+
   // ==================== 导入/导出 ====================
 
   exportAll() {
@@ -726,8 +767,8 @@ class SqliteService {
       actions.push({ sql: 'DELETE FROM ddns_config' });
       for (const d of data.ddnsDomains) {
         actions.push({
-          sql: 'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          params: [d.name, d.subdomain || '@', d.record_type || 'A', d.ttl || 600, d.line || 'default', d.created_at || new Date().toISOString(), d.last_update, d.last_ip]
+          sql: 'INSERT INTO ddns_config (name, subdomain, record_type, ttl, line, provider, created_at, last_update, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          params: [d.name, d.subdomain || '@', d.record_type || 'A', d.ttl || 600, d.line || 'default', d.provider || 'aliyun', d.created_at || new Date().toISOString(), d.last_update, d.last_ip]
         });
       }
     }

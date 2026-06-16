@@ -20,16 +20,23 @@ class DdnsService {
   constructor() {
     this.client = null;
     this.config = this._loadConfig();
-    this._initClient();
     this._cachedIpv4 = null;
     this._cachedIpv6 = null;
     this._cacheTime = 0;
   }
 
-  // 初始化阿里云 API 客户端
+  // 读取凭证（.env 优先，SQLite settings 降级）
+  _getCredentials() {
+    return sqliteService.getAliyunCredentials();
+  }
+
+  // 初始化阿里云 API 客户端（延迟初始化）
   _initClient() {
-    const accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID;
-    const accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET;
+    if (this.client) return;
+
+    const creds = this._getCredentials();
+    const accessKeyId = creds.accessKeyId;
+    const accessKeySecret = creds.accessKeySecret;
 
     if (!accessKeyId || !accessKeySecret) {
       console.warn('[DDNS] 阿里云密钥未配置，DDNS 功能不可用');
@@ -145,6 +152,9 @@ class DdnsService {
 
   // 使用 pop-core 发送阿里云 API 请求
   async _request(action, params) {
+    if (!this.client) {
+      this._initClient();
+    }
     if (!this.client) {
       throw new Error('阿里云 DNS 客户端未初始化，请检查密钥配置');
     }
@@ -385,39 +395,40 @@ class DdnsService {
     return { updated: false, reason: 'IP 未变化' };
   }
 
-  // 配置管理
+  // 配置管理 - 只加载 provider='aliyun' 的记录
   _loadConfig() {
-    const domains = sqliteService.getDdnsDomains();
+    const domains = sqliteService.getDdnsDomains('aliyun');
     const lastRefresh = sqliteService.getDdnsLastRefresh();
     return { domains, lastRefresh };
   }
 
   _saveConfig() {
     this.config.lastRefresh = new Date().toISOString();
-    sqliteService.setDdnsDomains(this.config.domains);
+    sqliteService.setDdnsDomains(this.config.domains, 'aliyun');
     sqliteService.setDdnsLastRefresh(this.config.lastRefresh);
     _syncMySQL('ddns_config');
   }
 
-  getDomains() { return sqliteService.getDdnsDomains(); }
+  getDomains() { return sqliteService.getDdnsDomains('aliyun'); }
 
   setDomains(domains) {
-    sqliteService.setDdnsDomains(domains);
-    this.config.domains = sqliteService.getDdnsDomains();
+    sqliteService.setDdnsDomains(domains, 'aliyun');
+    this.config.domains = sqliteService.getDdnsDomains('aliyun');
     _syncMySQL('ddns_config');
     return this.config.domains;
   }
 
   addDomain(domain) {
-    sqliteService.addDdnsDomain(domain);
-    this.config.domains = sqliteService.getDdnsDomains();
+    const d = { ...domain, provider: 'aliyun' };
+    sqliteService.addDdnsDomain(d);
+    this.config.domains = sqliteService.getDdnsDomains('aliyun');
     _syncMySQL('ddns_config');
     return this.config.domains;
   }
 
   removeDomain(name, subdomain = '@', recordType) {
     sqliteService.removeDdnsDomain(name, subdomain, recordType);
-    this.config.domains = sqliteService.getDdnsDomains();
+    this.config.domains = sqliteService.getDdnsDomains('aliyun');
     _syncMySQL('ddns_config');
     return this.config.domains;
   }

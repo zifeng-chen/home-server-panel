@@ -22,50 +22,82 @@ class DdnsTencentService {
     this.config = this._loadConfig();
   }
 
+  // 读取凭证（.env 优先，SQLite settings 降级）
+  _getCredentials() {
+    return sqliteService.getTencentCredentials();
+  }
+
   _loadConfig() {
-    const raw = sqliteService._getSetting('ddns_tencent_config') ||
-                sqliteService._getSetting('ddns_config') ||
-                sqliteService._getSetting('ddns');
-    if (!raw) return { domains: [] };
-    try {
-      if (typeof raw === 'string') return JSON.parse(raw);
-      if (raw.config) return typeof raw.config === 'string' ? JSON.parse(raw.config) : raw.config;
-      return raw;
-    } catch (e) {
-      return { domains: [] };
+    // 迁移旧配置：如果存在 ddns_tencent_config 旧格式，迁移到 ddns_config 表
+    const legacyRaw = sqliteService._getSetting('ddns_tencent_config');
+    if (legacyRaw) {
+      try {
+        const legacy = typeof legacyRaw === 'string' ? JSON.parse(legacyRaw) : legacyRaw;
+        const domains = legacy.domains || [];
+        if (domains.length > 0) {
+          let migrated = 0;
+          for (const d of domains) {
+            // 检查是否已存在于 ddns_config 表
+            const existing = sqliteService.getDdnsDomains('tencent');
+            const exists = existing.some(e => e.name === d.name && e.subdomain === (d.subdomain || '@') && e.recordType === (d.recordType || 'A'));
+            if (!exists) {
+              sqliteService.addDdnsDomain({
+                name: d.name,
+                subdomain: d.subdomain || '@',
+                recordType: d.recordType || 'A',
+                ttl: d.ttl || 600,
+                provider: 'tencent'
+              });
+              migrated++;
+            }
+          }
+          console.log(`[DDNS-Tencent] 已将 ${migrated} 条域名从旧配置迁移到统一 ddns_config 表`);
+        }
+        // 清除旧配置
+        sqliteService._setSetting('ddns_tencent_config', '');
+      } catch (e) {
+        console.warn('[DDNS-Tencent] 迁移旧配置失败:', e.message);
+      }
     }
+
+    // 从统一的 ddns_config 表读取 provider='tencent' 的记录
+    const domains = sqliteService.getDdnsDomains('tencent');
+    const lastRefresh = sqliteService.getDdnsLastRefresh();
+    return { domains, lastRefresh };
   }
 
   _saveConfig(config) {
-    this.config = config;
-    sqliteService._setSetting('ddns_tencent_config', JSON.stringify(config));
-    _syncMySQL('settings');
+    this.config = config || this.config;
+    sqliteService.setDdnsDomains(this.config.domains, 'tencent');
+    sqliteService.setDdnsLastRefresh(this.config.lastRefresh || new Date().toISOString());
+    _syncMySQL('ddns_config');
   }
 
   getDomains() {
-    return this.config.domains || [];
+    this.config.domains = sqliteService.getDdnsDomains('tencent');
+    return this.config.domains;
   }
 
   addDomain(info) {
-    const domains = [...(this.config.domains || [])];
-    domains.push({ ...info, enabled: true, id: `tx-${Date.now()}` });
-    this._saveConfig({ ...this.config, domains });
-    return info;
+    const d = { ...info, provider: 'tencent' };
+    sqliteService.addDdnsDomain(d);
+    this.config.domains = sqliteService.getDdnsDomains('tencent');
+    _syncMySQL('ddns_config');
+    return this.config.domains;
   }
 
   removeDomain(name, subdomain, recordType) {
-    const domains = this.config.domains || [];
-    this._saveConfig({
-      ...this.config,
-      domains: domains.filter(d => !(d.name === name && d.subdomain === subdomain && d.recordType === recordType))
-    });
+    sqliteService.removeDdnsDomain(name, subdomain || '@', recordType);
+    this.config.domains = sqliteService.getDdnsDomains('tencent');
+    _syncMySQL('ddns_config');
   }
 
   // ========== 腾讯云 API 请求 ==========
 
   async _request(action, params) {
-    const secretId = process.env.TENCENT_SECRET_ID;
-    const secretKey = process.env.TENCENT_SECRET_KEY;
+    const creds = this._getCredentials();
+    const secretId = creds.secretId;
+    const secretKey = creds.secretKey;
     if (!secretId || !secretKey) throw new Error('腾讯云密钥未配置，请设置 TENCENT_SECRET_ID 和 TENCENT_SECRET_KEY');
 
     const service = 'dnspod';
@@ -150,12 +182,9 @@ class DdnsTencentService {
       Value: value,
       TTL: ttl || 600
     };
-    // 子域名处理
     if (rr === '@') {
       params.RecordName = '@';
     } else {
-      // Tencent Cloud 的 SubDomain 不包括主域名
-      // 例如完整域名 home.example.com → SubDomain = home
       params.SubDomain = rr.replace(`.${domain}`, '').replace(domain, '');
     }
 
@@ -164,22 +193,25 @@ class DdnsTencentService {
   }
 
   async deleteRecord(recordId, domain) {
-    await this._request('DeleteRecord', { Domain: domain, RecordId: parseInt(recordId) });
+    // recordId from our system is tx-xxxxx-xxxxx; extract the real RecordId
+    const realId = recordId.includes('-') ? recordId.split('-').pop() : recordId;
+    await this._request('DeleteRecord', { Domain: domain, RecordId: parseInt(realId) });
   }
 
   async setRecordStatus(recordId, status, domain) {
-    const action = status === 'DISABLE' ? 'ModifyRecordStatus' : 'ModifyRecordStatus';
+    const realId = recordId.includes('-') ? recordId.split('-').pop() : recordId;
     await this._request('ModifyRecordStatus', {
       Domain: domain,
-      RecordId: parseInt(recordId),
+      RecordId: parseInt(realId),
       Status: status === 'DISABLE' ? 'DISABLE' : 'ENABLE'
     });
   }
 
   async editRecord(recordId, domain, updates) {
+    const realId = recordId.includes('-') ? recordId.split('-').pop() : recordId;
     const params = {
       Domain: domain,
-      RecordId: parseInt(recordId),
+      RecordId: parseInt(realId),
       RecordType: updates.type,
       Value: updates.value,
       TTL: updates.ttl || 600
@@ -198,37 +230,16 @@ class DdnsTencentService {
   // ========== 获取全部记录 ==========
 
   async getAllRecords() {
-    const self = this;
-    const getPublicIp = () => {
-      return new Promise((resolve, reject) => {
-        https.get('https://api.ipify.org', { timeout: 5000 }, (res) => {
-          let d = '';
-          res.on('data', chunk => d += chunk);
-          res.on('end', () => resolve(d.trim()));
-          res.on('error', () => reject(new Error()));
-        }).on('error', () => reject(new Error()));
-      });
-    };
-
-    const getPublicIpv6 = () => {
-      return new Promise((resolve, reject) => {
-        https.get('https://api6.ipify.org', { family: 6, timeout: 5000 }, (res) => {
-          let d = '';
-          res.on('data', chunk => d += chunk);
-          res.on('end', () => resolve(d.trim()));
-          res.on('error', () => reject(new Error()));
-        }).on('error', () => reject(new Error()));
-      });
-    };
-
     const [publicIpv4, publicIpv6] = await Promise.allSettled([
-      getPublicIp(),
-      getPublicIpv6()
+      this._getIpv4(),
+      this._getIpv6()
     ]);
 
     const ipv4 = publicIpv4.status === 'fulfilled' ? publicIpv4.value : null;
     const ipv6 = publicIpv6.status === 'fulfilled' ? publicIpv6.value : null;
 
+    // 刷新内存缓存
+    this.config.domains = sqliteService.getDdnsDomains('tencent');
     const domains = this.config.domains || [];
     const records = [];
 
@@ -244,8 +255,9 @@ class DdnsTencentService {
           if (rec.Type !== 'A' && rec.Type !== 'AAAA') continue;
 
           const currentPublicIp = rec.Type === 'A' ? ipv4 : rec.Type === 'AAAA' ? ipv6 : null;
+          const domainPrefix = 'tx-' + domain.name.replace(/\./g, '-');
           records.push({
-            id: domain.id + '-' + rec.RecordId,
+            id: domainPrefix + '-' + rec.RecordId,
             domain: domain.subdomain === '@' ? domain.name : `${domain.subdomain}.${domain.name}`,
             rr: domain.subdomain,
             recordType: rec.Type,
@@ -258,14 +270,13 @@ class DdnsTencentService {
             enabled: rec.Status === 'ENABLE',
             provider: 'tencent',
             needsUpdate: currentPublicIp !== rec.Value,
-            updated: currentPublicIp === rec.Value ? '已是最新' : '需更新',
-            createdAt: new Date().toISOString(),
-            updatedAt: rec.UpdatedOn || null
+            updatedAt: rec.UpdatedOn || null,
+            createdAt: new Date().toISOString()
           });
         }
       } catch (err) {
         records.push({
-          id: domain.id + '-err-' + Date.now(),
+          id: 'tx-err-' + Date.now(),
           domain: domain.name,
           recordType: 'A',
           error: err.message,
@@ -278,6 +289,8 @@ class DdnsTencentService {
   }
 
   async refreshAll() {
+    // 刷新内存缓存
+    this.config.domains = sqliteService.getDdnsDomains('tencent');
     const domains = this.config.domains || [];
     const results = { total: domains.length, updated: 0, skipped: 0, errors: 0, results: [] };
 

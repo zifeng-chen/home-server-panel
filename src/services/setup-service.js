@@ -163,6 +163,7 @@ class SetupService {
         type ENUM('A','AAAA') DEFAULT 'A',
         value VARCHAR(255),
         \`enabled\` TINYINT(1) DEFAULT 1,
+        provider VARCHAR(20) DEFAULT 'aliyun',
         last_updated TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -177,6 +178,8 @@ class SetupService {
         \`websocket\` TINYINT(1) DEFAULT 0,
         \`enabled\` TINYINT(1) DEFAULT 1,
         remark VARCHAR(500),
+        ssl_cert_path TEXT,
+        ssl_key_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
@@ -190,6 +193,7 @@ class SetupService {
       `CREATE TABLE IF NOT EXISTS operation_logs (
         id BIGINT AUTO_INCREMENT PRIMARY KEY,
         time TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
+        time_cst VARCHAR(24),
         module VARCHAR(50) DEFAULT 'system',
         action VARCHAR(100) DEFAULT 'unknown',
         level VARCHAR(20) DEFAULT 'info',

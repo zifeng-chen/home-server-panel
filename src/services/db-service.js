@@ -76,6 +76,7 @@ class DbService {
         type ENUM('A','AAAA') DEFAULT 'A',
         value VARCHAR(255),
         \`enabled\` TINYINT(1) DEFAULT 1,
+        provider VARCHAR(20) DEFAULT 'aliyun',
         last_updated TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -91,6 +92,8 @@ class DbService {
         \`websocket\` TINYINT(1) DEFAULT 0,
         \`enabled\` TINYINT(1) DEFAULT 1,
         remark VARCHAR(500),
+        ssl_cert_path TEXT,
+        ssl_key_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
@@ -106,6 +109,7 @@ class DbService {
       `CREATE TABLE IF NOT EXISTS operation_logs (
         id BIGINT AUTO_INCREMENT PRIMARY KEY,
         time TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
+        time_cst VARCHAR(24),
         module VARCHAR(50) DEFAULT 'system',
         action VARCHAR(100) DEFAULT 'unknown',
         level VARCHAR(20) DEFAULT 'info',
@@ -150,6 +154,24 @@ class DbService {
 
     for (const sql of tables) {
       await this._pool.query(sql);
+    }
+
+    // 列迁移：弥补旧 MySQL 缺失的新字段
+    await this._runColumnMigrations();
+  }
+
+  async _runColumnMigrations() {
+    const migrations = [
+      { table: 'ddns_records', col: 'provider', type: "VARCHAR(20) DEFAULT 'aliyun'" },
+      { table: 'proxy_rules', col: 'ssl_cert_path', type: 'TEXT' },
+      { table: 'proxy_rules', col: 'ssl_key_path', type: 'TEXT' },
+      { table: 'operation_logs', col: 'time_cst', type: 'VARCHAR(24)' }
+    ];
+    for (const { table, col, type } of migrations) {
+      try {
+        await this._pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${type}`);
+        console.log(`[MySQL] 列迁移: ${table}.${col} (${type})`);
+      } catch (_) { /* column already exists - ok */ }
     }
   }
 
@@ -467,8 +489,8 @@ class DbService {
       const ddns = sqliteService.getDdnsDomains();
       for (const d of ddns) {
         await this._pool.query(
-          'INSERT INTO ddns_records (domain, type, value, \`enabled\`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), \`enabled\`=VALUES(\`enabled\`)',
-          [d.name, d.recordType || 'A', d.lastIp || '', d.enabled !== false ? 1 : 0]
+          'INSERT INTO ddns_records (domain, type, value, provider, \`enabled\`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), provider=VALUES(provider), \`enabled\`=VALUES(\`enabled\`)',
+          [d.name, d.recordType || 'A', d.lastIp || '', d.provider || 'aliyun', d.enabled !== false ? 1 : 0]
         );
         synced++;
       }
@@ -479,9 +501,9 @@ class DbService {
       const proxy = sqliteService.getProxyRules();
       for (const r of proxy) {
         await this._pool.query(
-          `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE target_host=VALUES(target_host), target=VALUES(target), port=VALUES(port), \`ssl\`=VALUES(\`ssl\`), \`websocket\`=VALUES(\`websocket\`), \`enabled\`=VALUES(\`enabled\`), remark=VALUES(remark)`,
-          [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
+          `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark, ssl_cert_path, ssl_key_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE target_host=VALUES(target_host), target=VALUES(target), port=VALUES(port), \`ssl\`=VALUES(\`ssl\`), \`websocket\`=VALUES(\`websocket\`), \`enabled\`=VALUES(\`enabled\`), remark=VALUES(remark), ssl_cert_path=VALUES(ssl_cert_path), ssl_key_path=VALUES(ssl_key_path)`,
+          [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
         );
         synced++;
       }
@@ -516,8 +538,8 @@ class DbService {
         const data = sqliteService.getDdnsDomains();
         for (const d of data) {
           await this._pool.query(
-            'INSERT INTO ddns_records (domain, type, value, `enabled`) VALUES (?, ?, ?, ?)',
-            [d.name, d.recordType || 'A', d.lastIp || '', d.enabled !== false ? 1 : 0]
+            'INSERT INTO ddns_records (domain, type, value, provider, `enabled`) VALUES (?, ?, ?, ?, ?)',
+            [d.name, d.recordType || 'A', d.lastIp || '', d.provider || 'aliyun', d.enabled !== false ? 1 : 0]
           );
         }
         synced.synced = data.length;
@@ -526,9 +548,9 @@ class DbService {
         const data = sqliteService.getProxyRules();
         for (const r of data) {
           await this._pool.query(
-            'INSERT INTO proxy_rules (source, source_host, target_host, target, port, `ssl`, `websocket`, `enabled`, remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO proxy_rules (source, source_host, target_host, target, port, `ssl`, `websocket`, `enabled`, remark, ssl_cert_path, ssl_key_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`,
-             r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '']
+             r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
           );
         }
         synced.synced = data.length;

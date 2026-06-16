@@ -1,3 +1,32 @@
+# v0.7.1-beta (2026-06-16)
+
+### 🆕 新增
+- **DDNS 双云并存** - 新增腾讯云解析支持，`ddns_config` 表新增 `provider` 列，前端双凭证卡片，凭证优先级 .env > SQLite
+- **反向代理 SSL 域匹配** - proxy_rules 新增 ssl_cert_path / ssl_key_path 列，自动匹配证书到代理
+- **Docker 端口扫描** - 端口管理新增 Docker socket 扫描，支持容器端口映射显示
+- **仪表盘骨架屏** - 首屏加载骨架动画 + 超时自动消失
+- **MySQL 列迁移系统** - 新增 `_runColumnMigrations()`，启动时 ALTER TABLE 幂等补列
+
+### 🔒 安全审计（9 项修复）
+- **Nginx 配置注入** - `_safeNginxHost/_safeNginxHeader` 消毒 + manualDeploy 域名过滤
+- **Token URL 泄露** - 移除 query token，仅保持 Cookie/x-auth-token header 认证
+- **操作日志 XSS** - 新增 `escapeHtml()`，全站日志渲染转义
+- **Cron 黑名单扩展** - 新增 fork bomb / chmod 777 / curl 管道执行 / kill init 等 6 种模式
+- **Port 命令注入** - `startService` 拒绝 |&;><`$() 字符
+- **全局错误脱敏** - err.expose 判定，非 expose 错误返回'服务器内部错误'
+- **Proxy header 注入** - customHeaders 清洗 name/value
+- **日志 meta 字段** - IP 转义
+- **Cron 自定义类型** - shell 命令执行 60s 超时 + 安全检查
+
+### 🧠 数据库偏好持久化
+- `data/.db-preference.json` 持久化 dbMode，三级优先级：.env > preference 文件 > local
+- MySQL 连接失败自动回退 SQLite，仪表盘显示回退警告
+- Nginx 页面手动部署按钮修复（IIFE 函数定义顺序）
+- 监控图表 UI 深度优化（留白/字体/图例/网络图表双行布局）
+- 前端代理 CRUD 联动 Nginx 站点列表刷新
+- Cron 服务重写（含 `custom`/`ssl_renew` 类型）
+- iStoreOS 系统时钟偏差修正
+
 # v0.7.1-beta (2026-06-14)
 
 ### 🔧 修复

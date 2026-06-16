@@ -15,6 +15,7 @@ class LogService {
     const r = {
       id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
       time: new Date().toISOString(),
+      timeCst: (() => { try { return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); } catch(_) { return ''; } })(),
       module: entry.module || "system",
       action: entry.action || "unknown",
       level: entry.level || "info",
@@ -70,8 +71,8 @@ class LogService {
       list = raw.slice(offset, offset + limit);
     }
 
-    // 统一附加上北京时间字段（前端直接用 timeCst，避免浏览器时区兼容问题）
-    return { total, list: list.map(r => ({ ...r, timeCst: this._toCst(r.time) })) };
+    // timeCst 优先用记录时写入的值（MySQL time_cst / 内存 timeCst），否则用 UTC time 转换
+    return { total, list: list.map(r => ({ ...r, timeCst: r.timeCst || this._toCst(r.time) })) };
   }
 
   /** 将 UTC ISO 时间转为北京时间字符串 */

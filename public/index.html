@@ -159,9 +159,15 @@
         <!-- DDNS -->
         <section class="page hidden" id="page-ddns">
           <div class="page-toolbar">
-            <button class="btn btn-primary" id="btnDdnsRefresh">🔄 刷新解析</button>
-            <button class="btn btn-success" id="btnDdnsAdd">+ 添加解析</button>
-            <button class="btn btn-secondary" style="margin-left:8px" id="btnDdnsLog">📋 日志</button>
+            <div style="display:flex;align-items:center;gap:8px;flex:1">
+              <select id="ddnsProvider" class="form-input" style="width:130px;padding:6px 10px;font-size:13px" onchange="switchDdnsProvider()">
+                <option value="aliyun">☁️ 阿里云 DNS</option>
+                <option value="tencent">☁️ 腾讯云 DNS</option>
+              </select>
+              <button class="btn btn-primary" id="btnDdnsRefresh">🔄 刷新解析</button>
+              <button class="btn btn-success" id="btnDdnsAdd">+ 添加解析</button>
+              <button class="btn btn-secondary" style="margin-left:4px" id="btnDdnsLog">📋 日志</button>
+            </div>
           </div>
           <div id="ddnsBatchBar" class="batch-bar" style="display:none;margin-bottom:8px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;align-items:center;gap:8px">
             <span id="ddnsBatchCount" style="font-size:13px;color:var(--text-secondary)">已选 0 项</span>
@@ -338,10 +344,8 @@
         <!-- PM2 进程管理 -->
         <section class="page hidden" id="page-pm2">
           <div id="pm2Guide"></div>
-          <div class="stats-grid" id="pm2Overview" style="margin-bottom:16px;"></div>
           <div class="page-toolbar">
-            <button class="btn btn-primary" id="btnPM2Refresh">🔄 刷新</button>
-            <button class="btn" id="btnPM2Save">💾 保存配置</button>
+            <span style="color:var(--text-secondary);font-size:13px;">📋 进程列表</span>
           </div>
           <div class="table-wrapper">
             <table class="data-table" id="pm2Table">

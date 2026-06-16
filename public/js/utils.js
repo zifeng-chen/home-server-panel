@@ -102,7 +102,7 @@ const Utils = (window.Utils = {
           } else {
             const levelIcon = { success: '✅', info: 'ℹ️', warn: '⚠️', error: '❌' };
             const lines = list.map(e => {
-              const time = (e.time || '').replace('T', ' ').substring(0, 19);
+              const time = (e.timeCst || (e.time || '').replace('T', ' ').substring(0, 19));
               const icon = levelIcon[e.level] || '📝';
               const meta = [];
               if (e.ip && e.ip !== '-') meta.push(e.ip);

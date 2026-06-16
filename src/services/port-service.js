@@ -1,27 +1,269 @@
 // 端口管理服务
 const { exec } = require('child_process');
+const fs = require('fs');
 const os = require('os');
 
 class PortService {
   // 扫描本机所有被占用端口（TCP+UDP，含 LISTEN/ESTABLISHED 等）
   async scan() {
+    const results = await this._scanAll();
+    // 合并 Docker 容器端口
+    try {
+      const dockerPorts = await this._scanDockerPorts();
+      for (const dp of dockerPorts) {
+        // 避免重复：Docker 代理端口已在 /proc 中体现，这里标记为 Docker
+        const existing = results.find(r => r.port === dp.port && r.protocol === dp.protocol);
+        if (existing) {
+          existing.process = existing.process || dp.process;
+          existing.description = existing.description || dp.description;
+        } else {
+          results.push(dp);
+        }
+      }
+    } catch (_) { /* Docker 不可达时静默跳过 */ }
+    return this._sortPorts(results);
+  }
+
+  _scanAll() {
     return new Promise((resolve) => {
       const platform = os.platform();
-      
-      if (platform === 'darwin' || platform === 'linux') {
-        // 扫描 TCP LISTEN + 全部 UDP（UDP 无连接状态）
+
+      if (platform === 'darwin') {
         exec('lsof -iTCP -sTCP:LISTEN -nP 2>/dev/null; echo "---UDP---"; lsof -iUDP -nP 2>/dev/null', { timeout: 15000 }, (err, stdout) => {
-          if (err && !stdout) {
-            return this._fallbackScan(resolve);
-          }
+          if (err && !stdout) return this._fallbackScan(resolve);
           const parts = (stdout || '').split('---UDP---');
-          const tcpPorts = this._parseLsof(parts[0] || '', 'TCP');
-          const udpPorts = this._parseLsof(parts[1] || '', 'UDP');
-          resolve(this._sortPorts([...tcpPorts, ...udpPorts]));
+          resolve(this._sortPorts([...this._parseLsof(parts[0] || '', 'TCP'), ...this._parseLsof(parts[1] || '', 'UDP')]));
         });
+      } else if (platform === 'linux') {
+        // Linux: 优先用 /proc (无外部依赖，iStoreOS/BusyBox 可用)
+        const procPorts = this._parseProcNet();
+        if (procPorts.length > 0) {
+          // 同时尝试 lsof 获取进程名（/proc 的进程名可能不够详细）
+          exec('lsof -iTCP -sTCP:LISTEN -nP 2>/dev/null; echo "---UDP---"; lsof -iUDP -nP 2>/dev/null', { timeout: 5000 }, (err, stdout) => {
+            if (stdout) {
+              const parts = (stdout || '').split('---UDP---');
+              const lsofTcp = this._parseLsof(parts[0] || '', 'TCP');
+              const lsofUdp = this._parseLsof(parts[1] || '', 'UDP');
+              const lsofMap = new Map();
+              for (const p of [...lsofTcp, ...lsofUdp]) {
+                lsofMap.set(`${p.port}:${p.protocol}`, p);
+              }
+              // 用 lsof 的进程名丰富 /proc 数据
+              for (const pp of procPorts) {
+                const key = `${pp.port}:${pp.protocol}`;
+                if (lsofMap.has(key)) {
+                  pp.process = lsofMap.get(key).process || pp.process;
+                  pp.pid = lsofMap.get(key).pid || pp.pid;
+                }
+              }
+            }
+            resolve(this._sortPorts(procPorts));
+          });
+        } else {
+          // /proc 不可用，回退
+          this._fallbackScan(resolve);
+        }
       } else {
         resolve(this._parseFallback(''));
       }
+    });
+  }
+
+  // /proc/net 扫描器（Linux 通用，无需 lsof/netstat/ss）
+  _parseProcNet() {
+    const ports = [];
+    try {
+      // 扫描 TCP（仅 LISTEN 状态）
+      const tcpContent = fs.readFileSync('/proc/net/tcp', 'utf-8');
+      const tcpLines = tcpContent.trim().split('\n').slice(1);
+      for (const line of tcpLines) {
+        const fields = line.trim().split(/\s+/);
+        if (fields.length < 10) continue;
+        const localAddr = this._parseProcAddr(fields[1]);
+        if (!localAddr) continue;
+        const state = parseInt(fields[3], 16);
+        if (state !== 0x0A) continue; // TCP_LISTEN
+        const inode = fields[9];
+        const procInfo = this._resolveProcInode(inode);
+        ports.push({
+          port: localAddr.port,
+          protocol: 'TCP',
+          process: procInfo.name || 'kernel',
+          pid: procInfo.pid || 0,
+          host: localAddr.ip,
+          status: 'LISTEN',
+          description: this._getServiceName(localAddr.port, procInfo.name || '')
+        });
+      }
+
+      // 扫描 TCP6
+      try {
+        const tcp6Content = fs.readFileSync('/proc/net/tcp6', 'utf-8');
+        const tcp6Lines = tcp6Content.trim().split('\n').slice(1);
+        for (const line of tcp6Lines) {
+          const fields = line.trim().split(/\s+/);
+          if (fields.length < 10) continue;
+          const state = parseInt(fields[3], 16);
+          if (state !== 0x0A) continue;
+          const localAddr = this._parseProcAddrV6(fields[1]);
+          if (!localAddr) continue;
+          const inode = fields[9];
+          const procInfo = this._resolveProcInode(inode);
+          // 检查是否已存在（tcp 和 tcp6 可能有重复）
+          if (!ports.find(p => p.port === localAddr.port && p.protocol === 'TCP')) {
+            ports.push({
+              port: localAddr.port,
+              protocol: 'TCP',
+              process: procInfo.name || 'kernel',
+              pid: procInfo.pid || 0,
+              host: '::',
+              status: 'LISTEN',
+              description: this._getServiceName(localAddr.port, procInfo.name || '')
+            });
+          }
+        }
+      } catch (_) { /* tcp6 not available */ }
+
+      // 扫描 UDP
+      try {
+        const udpContent = fs.readFileSync('/proc/net/udp', 'utf-8');
+        const udpLines = udpContent.trim().split('\n').slice(1);
+        for (const line of udpLines) {
+          const fields = line.trim().split(/\s+/);
+          if (fields.length < 10) continue;
+          const localAddr = this._parseProcAddr(fields[1]);
+          if (!localAddr) continue;
+          const inode = fields[9];
+          const procInfo = this._resolveProcInode(inode);
+          ports.push({
+            port: localAddr.port,
+            protocol: 'UDP',
+            process: procInfo.name || 'kernel',
+            pid: procInfo.pid || 0,
+            host: localAddr.ip,
+            status: 'UDP',
+            description: this._getServiceName(localAddr.port, procInfo.name || '')
+          });
+        }
+      } catch (_) { /* udp not available */ }
+
+      // 扫描 UDP6
+      try {
+        const udp6Content = fs.readFileSync('/proc/net/udp6', 'utf-8');
+        const udp6Lines = udp6Content.trim().split('\n').slice(1);
+        for (const line of udp6Lines) {
+          const fields = line.trim().split(/\s+/);
+          if (fields.length < 10) continue;
+          const localAddr = this._parseProcAddrV6(fields[1]);
+          if (!localAddr) continue;
+          const inode = fields[9];
+          const procInfo = this._resolveProcInode(inode);
+          if (!ports.find(p => p.port === localAddr.port && p.protocol === 'UDP')) {
+            ports.push({
+              port: localAddr.port,
+              protocol: 'UDP',
+              process: procInfo.name || 'kernel',
+              pid: procInfo.pid || 0,
+              host: '::',
+              status: 'UDP',
+              description: this._getServiceName(localAddr.port, procInfo.name || '')
+            });
+          }
+        }
+      } catch (_) { /* udp6 not available */ }
+
+    } catch (err) {
+      // /proc/net not available (e.g., non-Linux)
+    }
+    return ports;
+  }
+
+  _parseProcAddr(field) {
+    try {
+      const parts = field.split(':');
+      const ipHex = parts[0];
+      const portHex = parts[1];
+      // IP is little-endian hex: 0100007F → 7F000001 → 127.0.0.1
+      const ip = parseInt(ipHex, 16);
+      const port = parseInt(portHex, 16);
+      const ipStr = `${(ip >>> 24) & 0xFF}.${(ip >>> 16) & 0xFF}.${(ip >>> 8) & 0xFF}.${ip & 0xFF}`;
+      return { ip: ipStr, port };
+    } catch (e) { return null; }
+  }
+
+  _parseProcAddrV6(field) {
+    try {
+      const parts = field.split(':');
+      const portHex = parts[parts.length - 1];
+      const port = parseInt(portHex, 16);
+      return { ip: '::', port };
+    } catch (e) { return null; }
+  }
+
+  _resolveProcInode(inode) {
+    // 遍历 /proc/*/fd/* 找到对应 socket inode
+    try {
+      const procDirs = fs.readdirSync('/proc').filter(d => /^\d+$/.test(d));
+      for (const pid of procDirs) {
+        try {
+          const fdDir = `/proc/${pid}/fd`;
+          const fds = fs.readdirSync(fdDir);
+          for (const fd of fds) {
+            try {
+              const link = fs.readlinkSync(`${fdDir}/${fd}`);
+              if (link.includes(`socket:[${inode}]`)) {
+                // 读进程名
+                const cmdline = fs.readFileSync(`/proc/${pid}/comm`, 'utf-8').trim();
+                return { name: cmdline, pid: parseInt(pid) };
+              }
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return { name: 'unknown', pid: 0 };
+  }
+
+  // 扫描 Docker 容器端口映射
+  async _scanDockerPorts() {
+    return new Promise((resolve, reject) => {
+      const sock = process.env.DOCKER_SOCK || '/var/run/docker.sock';
+      if (!fs.existsSync(sock)) return resolve([]);
+
+      const http = require('http');
+      const options = { socketPath: sock, path: '/containers/json?all=true', method: 'GET' };
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const containers = JSON.parse(data);
+            const ports = [];
+            for (const c of containers) {
+              const containerPorts = c.Ports || [];
+              for (const p of containerPorts) {
+                if (p.PublicPort && p.Type === 'tcp') {
+                  const name = (c.Names && c.Names[0]) ? c.Names[0].replace(/^\//, '') : c.Id.substring(0, 12);
+                  ports.push({
+                    port: p.PublicPort,
+                    protocol: 'TCP',
+                    process: `docker:${name}`,
+                    pid: 0,
+                    host: '0.0.0.0',
+                    status: 'LISTEN',
+                    description: `Docker 容器: ${name}`
+                  });
+                }
+              }
+            }
+            resolve(ports);
+          } catch (e) { resolve([]); }
+        });
+        res.on('error', () => resolve([]));
+      });
+      req.on('error', () => resolve([]));
+      req.setTimeout(5000, () => { req.destroy(); resolve([]); });
+      req.end();
     });
   }
 

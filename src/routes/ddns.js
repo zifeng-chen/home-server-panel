@@ -1,11 +1,41 @@
 const express = require('express');
 const router = express.Router();
 const ddnsService = require('../services/ddns-service');
+const ddnsTencent = require('../services/ddns-tencent');
+
+// 获取当前 DDNS 提供商
+function _getProvider() {
+  try {
+    const sqliteService = require('../services/sqlite-service');
+    const raw = sqliteService._getSetting('ddns_provider');
+    return raw || 'aliyun';
+  } catch (_) { return 'aliyun'; }
+}
+
+function _svc() {
+  return _getProvider() === 'tencent' ? ddnsTencent : ddnsService;
+}
+
+// GET /api/ddns/provider - 获取/设置 DDNS 提供商
+router.get('/provider', (req, res) => {
+  const provider = _getProvider();
+  res.json({ success: true, data: { provider } });
+});
+
+router.post('/provider', (req, res) => {
+  const { provider } = req.body;
+  if (!provider || !['aliyun', 'tencent'].includes(provider)) {
+    return res.status(400).json({ success: false, message: '提供商只能是 aliyun 或 tencent' });
+  }
+  const sqliteService = require('../services/sqlite-service');
+  sqliteService._setSetting('ddns_provider', provider);
+  res.json({ success: true, message: `已切换到${provider === 'tencent' ? '腾讯云' : '阿里云'} DNS` });
+});
 
 // GET /api/ddns - 获取所有 DDNS 记录及公网 IP (含 IPv4+IPv6)
 router.get('/', async (req, res) => {
   try {
-    const data = await ddnsService.getAllRecords();
+    const data = await _svc().getAllRecords();
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({success: false, message: err.message, data: { records: [], publicIpv4: null, publicIpv6: null } });
@@ -35,7 +65,7 @@ router.get('/ipv6', async (req, res) => {
 // POST /api/ddns/refresh - 手动刷新所有 DDNS 记录
 router.post('/refresh', async (req, res) => {
   try {
-    const results = await ddnsService.refreshAll();
+    const results = await _svc().refreshAll();
     const updated = results.results.filter(r => r.updated);
     res.json({
       success: true,
@@ -54,12 +84,12 @@ router.post('/record/:recordId/toggle', async (req, res) => {
   try {
     const { status } = req.body; // 'ENABLE' | 'DISABLE'
     // 先查当前状态，然后翻转
-    const records = (await ddnsService.getAllRecords()).records;
+    const records = (await _svc().getAllRecords()).records;
     const record = records.find(r => r.id === req.params.recordId);
     if (!record) return res.status(400).json({success: false, message: '记录不存在' });
 
     const newStatus = status || (record.enabled ? 'DISABLE' : 'ENABLE');
-    await ddnsService.setRecordStatus(req.params.recordId, newStatus);
+    await _svc().setRecordStatus(req.params.recordId, newStatus);
     res.json({ success: true, message: newStatus === 'ENABLE' ? '已启用' : '已停用' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
@@ -70,7 +100,7 @@ router.post('/record/:recordId/toggle', async (req, res) => {
 router.put('/record/:recordId', async (req, res) => {
   try {
     const { rr, type, value, ttl, line } = req.body;
-    await ddnsService.editRecord(req.params.recordId, { rr, type, value, ttl, line });
+    await _svc().editRecord(req.params.recordId, { rr, type, value, ttl, line });
     res.json({ success: true, message: 'DNS 记录已更新' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
@@ -83,16 +113,16 @@ router.delete('/record/:recordId', async (req, res) => {
     const localOnly = req.query.localOnly === 'true';
     if (localOnly) {
       // Task 12: 仅从面板移除，不删除阿里云记录
-      const records = (await ddnsService.getAllRecords()).records;
+      const records = (await _svc().getAllRecords()).records;
       const record = records.find(r => r.id === req.params.recordId);
       if (!record) return res.status(400).json({success: false, message: '记录不存在' });
       // 从 record 中提取主域名和子域名：domain=rr.mainDomain, rr=subdomain
       // record.domain 格式: 'rr.mainDomain' 或 'mainDomain'(当rr='@')
       const mainDomain = record.domain.replace(/^[^.]+\./, ''); // 去掉前缀子域名
-      ddnsService.removeDomain(mainDomain, record.rr || '@', record.recordType);
+      _svc().removeDomain(mainDomain, record.rr || '@', record.recordType);
       res.json({ success: true, message: '已从面板移除（阿里云 DNS 记录保留）' });
     } else {
-      await ddnsService.deleteRecord(req.params.recordId);
+      await _svc().deleteRecord(req.params.recordId);
       res.json({ success: true, message: 'DNS 记录已从阿里云删除' });
     }
   } catch (err) {
@@ -102,7 +132,7 @@ router.delete('/record/:recordId', async (req, res) => {
 
 // GET /api/ddns/domains - 获取已配置的域名列表
 router.get('/domains', (req, res) => {
-  const domains = ddnsService.getDomains();
+  const domains = _svc().getDomains();
   res.json({ success: true, data: { domains } });
 });
 
@@ -113,7 +143,7 @@ router.post('/domains', async (req, res) => {
     if (!name) return res.status(400).json({success: false, message: '域名不能为空' });
 
     // 保存到本地配置
-    const domain = ddnsService.addDomain({
+    const domain = _svc().addDomain({
       name: name.replace(/^@\./, ''),
       subdomain: subdomain || '@',
       recordType: recordType || 'A',
@@ -129,7 +159,7 @@ router.post('/domains', async (req, res) => {
         : await ddnsService.getPublicIp();
       const v = value || currentIp;
       const rr = subdomain === '@' ? '@' : (subdomain || '@');
-      dnsRecord = await ddnsService.addRecord(name.replace(/^@\./, ''), rr, recordType || 'A', v, ttl || 600);
+      dnsRecord = await _svc().addRecord(name.replace(/^@\./, ''), rr, recordType || 'A', v, ttl || 600);
     } catch (dnsErr) {
       dnsWarning = `阿里云 DNS 记录创建失败: ${dnsErr.message}`;
       console.warn('[DDNS]', dnsWarning);
@@ -152,7 +182,7 @@ router.delete('/domains', (req, res) => {
     const { name, subdomain, recordType } = req.body;
     if (!name) return res.status(400).json({success: false, message: '域名不能为空' });
 
-    ddnsService.removeDomain(name, subdomain || '@', recordType);
+    _svc().removeDomain(name, subdomain || '@', recordType);
     res.json({ success: true, message: '域名已删除' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });

@@ -273,12 +273,61 @@ function buildProxyForm(rule) {
       <div class="form-group"><label>端口</label><input type="number" id="proxyTgtPort" class="form-input" value="${defaults.targetPort}" min="1" max="65535"></div>
       <div style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin-top:4px;">⚙️ 高级选项</div>
       <div class="form-group" style="grid-column:1/-1;display:flex;gap:16px;">
-        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="proxySsl" ${defaults.ssl ? 'checked' : ''}> 🔒 启用 SSL</label>
+        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="proxySsl" ${defaults.ssl ? 'checked' : ''} onchange="proxySslChanged()"> 🔒 启用 SSL</label>
         <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="proxyWs" ${defaults.websocket ? 'checked' : ''}> 🔌 WebSocket 支持</label>
       </div>
-      ${defaults.ssl ? `<div class="form-group"><label>SSL 证书路径</label><input type="text" id="proxySslCert" class="form-input" value="${defaults.sslCert || ''}"></div><div class="form-group"><label>SSL 私钥路径</label><input type="text" id="proxySslKey" class="form-input" value="${defaults.sslKey || ''}"></div>` : ''}
+      <div id="proxySslCertArea" style="grid-column:1/-1;">
+        ${defaults.ssl ? '<div class="form-group"><label>🔐 选择 SSL 证书</label><select id="proxySslCertSelect" class="form-input"><option value="">⏳ 加载匹配证书...</option></select></div>' : ''}
+      </div>
     </div>
   `;
+}
+
+// SSL 复选框变更时加载匹配证书
+async function proxySslChanged() {
+  const sslChecked = document.getElementById('proxySsl')?.checked;
+  const area = document.getElementById('proxySslCertArea');
+  if (!area) return;
+
+  if (!sslChecked) {
+    area.innerHTML = '';
+    return;
+  }
+
+  const domain = document.getElementById('proxySrcHost')?.value.trim();
+  area.innerHTML = '<div class="form-group"><label>🔐 选择 SSL 证书</label><select id="proxySslCertSelect" class="form-input"><option value="">⏳ 正在查询匹配证书...</option></select></div>';
+
+  try {
+    const params = domain ? `?domain=${encodeURIComponent(domain)}` : '';
+    const res = await Api.get(`/proxy/cert-match${params}`);
+    const certs = res.data?.matched || [];
+    const totalCerts = res.data?.total || 0;
+
+    if (certs.length === 0) {
+      area.innerHTML = `<div class="form-group" style="grid-column:1/-1">
+        <label>🔐 SSL 证书</label>
+        <div style="padding:12px;background:var(--warning)15;border-radius:8px;color:var(--warning-dark,#856404);font-size:13px;">
+          ⚠️ 没有证书匹配域名 <strong>${domain || '(请输入来源域名)'}</strong><br>
+          <small>共 ${totalCerts} 张证书，无匹配。请先申请该域名的 SSL 证书。</small>
+        </div>
+      </div>`;
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>🔐 选择 SSL 证书</label>
+        <select id="proxySslCertSelect" class="form-input">
+          ${certs.map((c, i) => `
+            <option value="${i}" data-cert="${c.certPath || ''}" data-key="${c.keyPath || ''}">
+              ${c.domain} — ${c.issuer || 'Unknown'} (${c.daysRemaining != null ? c.daysRemaining + '天' : '未知'})
+            </option>`).join('')}
+        </select>
+        ${certs.length > 1 ? `<small style="color:var(--text-secondary);margin-top:4px;">${certs.length} 张证书匹配 ${domain}</small>` : ''}
+      </div>`;
+  } catch (err) {
+    area.innerHTML = `<div class="form-group" style="grid-column:1/-1"><label>🔐 SSL 证书</label><div style="color:var(--danger)">加载失败: ${err.message}</div></div>`;
+  }
 }
 
 window.showAddProxyModal = () => {
@@ -289,7 +338,7 @@ window.showAddProxyModal = () => {
 };
 
 window.editProxy = (id) => {
-  Api.get('/proxy').then(data => {
+  Api.get('/proxy').then(async data => {
     const rules = data.data?.rules || [];
     const rule = rules.find(r => r.id === id);
     if (!rule) { Utils.notify('规则不存在', 'error'); return; }
@@ -297,6 +346,22 @@ window.editProxy = (id) => {
     Utils.openModal('编辑反向代理规则', body, '<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button><button class="btn btn-primary" id="proxySaveBtn">💾 更新规则</button>');
     document.getElementById('proxySrcProto').addEventListener('change', toggleSslFields);
     document.getElementById('proxySaveBtn').addEventListener('click', () => saveProxy(id));
+    // 编辑时如果有 SSL 且已有证书路径，预加载证书列表
+    if (rule.ssl) {
+      await proxySslChanged();
+      // 预选已有的证书路径
+      setTimeout(() => {
+        const select = document.getElementById('proxySslCertSelect');
+        if (select && rule.sslCert) {
+          for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].dataset.cert === rule.sslCert) {
+              select.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      }, 500);
+    }
   });
 };
 
@@ -306,6 +371,16 @@ function toggleSslFields() {
 }
 
 async function saveProxy(id) {
+  const sslChecked = document.getElementById('proxySsl')?.checked;
+  let sslCert = null, sslKey = null;
+  if (sslChecked) {
+    const select = document.getElementById('proxySslCertSelect');
+    if (select?.selectedIndex > 0) {
+      const opt = select.options[select.selectedIndex];
+      sslCert = opt.dataset.cert || null;
+      sslKey = opt.dataset.key || null;
+    }
+  }
   const data = {
     name: document.getElementById('proxyName').value.trim(),
     sourceProtocol: document.getElementById('proxySrcProto').value,
@@ -314,9 +389,9 @@ async function saveProxy(id) {
     targetProtocol: document.getElementById('proxyTgtProto').value,
     targetHost: document.getElementById('proxyTgtHost').value.trim(),
     targetPort: parseInt(document.getElementById('proxyTgtPort').value) || 80,
-    ssl: document.getElementById('proxySsl').checked,
-    sslCert: document.getElementById('proxySslCert')?.value || null,
-    sslKey: document.getElementById('proxySslKey')?.value || null,
+    ssl: sslChecked,
+    sslCert: sslCert,
+    sslKey: sslKey,
     websocket: document.getElementById('proxyWs').checked
   };
   if (!data.sourceHost || !data.targetHost) { Utils.notify('来源域名和目标主机不能为空', 'error'); return; }

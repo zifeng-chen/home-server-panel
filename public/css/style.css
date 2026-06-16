@@ -830,23 +830,25 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 20px 16px;
+  padding: 10px;
   min-height: 220px;
   transition: border-color .2s;
   box-shadow: var(--shadow-sm);
+  margin: 10px;
 }
 .monitor-card:hover { border-color: var(--brand-primary); }
 .monitor-card-hd {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
+  gap: 8px;
 }
 .monitor-card-val {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);

@@ -1,5 +1,37 @@
-// DDNS 页面 - 支持 IPv4 + IPv6 + 多选操作
+// DDNS 页面 - 支持 IPv4 + IPv6 + 多选操作 + 腾讯云/阿里云
 let ddnsLoaded = false;
+
+// 切换 DDNS 提供商
+async function switchDdnsProvider() {
+  const select = document.getElementById('ddnsProvider');
+  if (!select) return;
+  const provider = select.value;
+  try {
+    await Api.post('/ddns/provider', { provider });
+    Utils.notify(`已切换到${provider === 'tencent' ? '腾讯云' : '阿里云'} DNS`);
+    loadDdns();
+  } catch (err) {
+    Utils.notify('切换失败: ' + err.message, 'error');
+    // 恢复选择
+    const current = await Api.get('/ddns/provider').catch(() => ({ data: { provider: 'aliyun' } }));
+    select.value = current.data?.provider || 'aliyun';
+  }
+}
+
+// 加载当前提供商
+async function loadDdnsProvider() {
+  const select = document.getElementById('ddnsProvider');
+  if (!select) return;
+  try {
+    const res = await Api.get('/ddns/provider');
+    select.value = res.data?.provider || 'aliyun';
+    // 更新批量删除按钮文案
+    const cloudBtn = document.getElementById('batchRemoveCloud');
+    const providerName = select.value === 'tencent' ? '腾讯云' : '阿里云';
+  } catch (_) {}
+}
+
+window.switchDdnsProvider = switchDdnsProvider;
 
 // 批量操作栏刷新
 function updateDdnsBatchBar() {
@@ -70,16 +102,19 @@ window.batchDeleteDdns = async () => {
   const ids = getSelectedDdnsIds();
   if (ids.length === 0) { Utils.notify('请先选择记录', 'error'); return; }
 
+  const provider = document.getElementById('ddnsProvider')?.value || 'aliyun';
+  const cloudName = provider === 'tencent' ? '腾讯云' : '阿里云';
+
   const body = `
     <p style="margin-bottom:16px;color:var(--text-secondary)">确认删除选中的 <strong style="color:var(--danger)">${ids.length}</strong> 条 DDNS 记录？</p>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-secondary" id="batchRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
         📋 <strong>仅移除面板跟踪</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>${cloudName} DNS 上的解析记录</small>
       </button>
       <button class="btn btn-danger" id="batchRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
-        🗑 <strong>同时从阿里云删除</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>阿里云 DNS 上的解析记录</small>
+        🗑 <strong>同时从${cloudName}删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>${cloudName} DNS 上的解析记录</small>
       </button>
     </div>
   `;
@@ -111,15 +146,13 @@ async function loadDdns() {
 
   tbody.innerHTML = '<tr class="empty-row"><td colspan="9">加载中...</td></tr>';
 
+  // 加载提供商
+  await loadDdnsProvider();
+  const provider = document.getElementById('ddnsProvider')?.value || 'aliyun';
+  const cloudName = provider === 'tencent' ? '腾讯云' : '阿里云';
+
   try {
     const res = await Api.get('/ddns');
-    if (!res.success) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${res.message || '加载失败'}<br><small>请先在「系统设置」中配置阿里云密钥，再添加域名</small></td></tr>`;
-      updateDdnsBatchBar();
-      return;
-    }
-
-    const records = res.data?.records || [];
     const ipv4 = res.data?.publicIpv4 || '--';
     const ipv6 = res.data?.publicIpv6 || '--';
 
@@ -260,11 +293,11 @@ window.removeDdnsRecord = (recordId, domain) => {
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-secondary" id="ddnsRemovePanel" style="text-align:left;justify-content:flex-start;padding:12px 16px">
         📋 <strong>仅移除面板跟踪</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>阿里云 DNS 上的解析记录</small>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除，<strong>不会删除</strong>云 DNS 上的解析记录</small>
       </button>
       <button class="btn btn-danger" id="ddnsRemoveCloud" style="text-align:left;justify-content:flex-start;padding:12px 16px">
-        🗑 <strong>同时从阿里云删除</strong><br>
-        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>阿里云 DNS 上的解析记录</small>
+        🗑 <strong>同时从云服务商删除</strong><br>
+        <small style="color:var(--text-secondary);margin-top:4px">从面板移除 + <strong style="color:var(--danger)">删除</strong>云 DNS 上的解析记录</small>
       </button>
     </div>
   `;

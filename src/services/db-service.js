@@ -186,9 +186,11 @@ class DbService {
   async addLog(entry) {
     if (this.mode === 'mysql' && this._pool) {
       try {
+        // time_cst 存 Node.js 进程北京时间，不再依赖 MySQL CURRENT_TIMESTAMP（NAS 时钟不准）
+        const timeCst = entry.timeCst || (() => { try { return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); } catch(_) { return ''; } })();
         await this._pool.query(
-          `INSERT INTO operation_logs (module, action, level, message, detail, \`user\`) VALUES (?, ?, ?, ?, ?, ?)`,
-          [entry.module || 'system', entry.action || 'unknown', entry.level || 'info', entry.message || '', entry.detail || '', entry.user || 'admin']
+          `INSERT INTO operation_logs (time_cst, module, action, level, message, detail, \`user\`) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [timeCst, entry.module || 'system', entry.action || 'unknown', entry.level || 'info', entry.message || '', entry.detail || '', entry.user || 'admin']
         );
       } catch (e) { /* MySQL 日志写入失败不阻塞主流程 */ }
     }
@@ -208,7 +210,7 @@ class DbService {
         const countSql = `SELECT COUNT(*) AS total FROM operation_logs${where}`;
         const [countResult] = await this._pool.query(countSql, params);
 
-        const dataSql = `SELECT time, module, action, level, message, detail, user FROM operation_logs${where} ORDER BY time DESC LIMIT ? OFFSET ?`;
+        const dataSql = `SELECT time, time_cst AS timeCst, module, action, level, message, detail, user FROM operation_logs${where} ORDER BY time DESC LIMIT ? OFFSET ?`;
         const dataParams = [...params, limit, offset];
         const [rows] = await this._pool.query(dataSql, dataParams);
 

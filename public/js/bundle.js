@@ -1,37 +1,449 @@
-/* HSP v0.7.1-beta (mqeszutn) */
-(()=>{const c=window.Utils={notify(e,t="info"){const n=document.getElementById("notifyBar");n&&(n.className=`notify-bar ${t}`,n.textContent=e,n.classList.remove("hidden"),n.classList.add("show"),setTimeout(()=>{n.classList.remove("show"),setTimeout(()=>n.classList.add("hidden"),400)},L.NOTIFY_DURATION))},openModal(e,t,n){const a=document.getElementById("modalOverlay"),r=document.getElementById("modalTitle"),s=document.getElementById("modalBody"),o=document.getElementById("modalFooter");a&&r&&s&&(r.textContent=e,s.innerHTML=t||"",o.innerHTML=n||"",a.classList.remove("hidden"))},closeModal(){const e=document.getElementById("modalOverlay");e&&e.classList.add("hidden")},confirm(e,t,n){c.openModal(e,`<p>${t}</p>`,`<button class="btn btn-secondary" onclick="Utils.closeModal()">\u53D6\u6D88</button>
-      <button class="btn btn-danger" id="modalConfirmBtn">\u786E\u8BA4</button>`),document.getElementById("modalConfirmBtn")?.addEventListener("click",()=>{c.closeModal(),n&&n()})},showError(e,t,n){const a=n?`
+(() => {
+  // <stdin>
+  var Utils = window.Utils = {
+    notify(message, type = "info") {
+      const bar = document.getElementById("notifyBar");
+      if (!bar) return;
+      bar.className = `notify-bar ${type}`;
+      bar.textContent = message;
+      bar.classList.remove("hidden");
+      bar.classList.add("show");
+      setTimeout(() => {
+        bar.classList.remove("show");
+        setTimeout(() => bar.classList.add("hidden"), 400);
+      }, App.NOTIFY_DURATION);
+    },
+    openModal(title, body, footer) {
+      const overlay = document.getElementById("modalOverlay");
+      const titleEl = document.getElementById("modalTitle");
+      const bodyEl = document.getElementById("modalBody");
+      const footerEl = document.getElementById("modalFooter");
+      if (overlay && titleEl && bodyEl) {
+        titleEl.textContent = title;
+        bodyEl.innerHTML = body || "";
+        footerEl.innerHTML = footer || "";
+        overlay.classList.remove("hidden");
+      }
+    },
+    closeModal() {
+      const overlay = document.getElementById("modalOverlay");
+      if (overlay) overlay.classList.add("hidden");
+    },
+    confirm(title, message, onConfirm) {
+      const footer = `<button class="btn btn-secondary" onclick="Utils.closeModal()">\u53D6\u6D88</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">\u786E\u8BA4</button>`;
+      Utils.openModal(title, `<p>${message}</p>`, footer);
+      document.getElementById("modalConfirmBtn")?.addEventListener("click", () => {
+        Utils.closeModal();
+        if (onConfirm) onConfirm();
+      });
+    },
+    // 错误弹窗 - 支持一键复制
+    showError(title, message, details) {
+      const detailStr = details ? `
 
 --- \u8BE6\u60C5 ---
-${n}`:"",r=(t||"").replace(/</g,"&lt;").replace(/>/g,"&gt;"),s=(n||"").replace(/</g,"&lt;").replace(/>/g,"&gt;"),o=t+a,i=`
-      <div style="margin-bottom:12px;padding:12px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;max-height:360px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap;word-break:break-all">${r}${n?`
-
-<span style="color:var(--text-secondary);font-size:12px">---</span>
-<span style="color:var(--text-secondary);font-size:12px">`+s+"</span>":""}</div>
-    `,l=`
+${details}` : "";
+      const displayMsg = (message || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const displayDetails = (details || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const fullText = message + detailStr;
+      const body = `
+      <div style="margin-bottom:12px;padding:12px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;max-height:360px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre-wrap;word-break:break-all">${displayMsg}${details ? '\n\n<span style="color:var(--text-secondary);font-size:12px">---</span>\n<span style="color:var(--text-secondary);font-size:12px">' + displayDetails + "</span>" : ""}</div>
+    `;
+      const footer = `
       <button class="btn btn-secondary btn-sm" onclick="Utils.copyErrorText()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button>
       <button class="btn btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>
-    `;this._lastErrorText=o,c.openModal("\u274C "+(e||"\u9519\u8BEF"),i,l)},copyErrorText(){const e=this._lastErrorText||"";if(!e){this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u5185\u5BB9","warn");return}if(navigator.clipboard)navigator.clipboard.writeText(e).then(()=>this.notify("\u2705 \u5DF2\u590D\u5236\u9519\u8BEF\u4FE1\u606F","success")).catch(()=>this.notify("\u590D\u5236\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u9009\u62E9","error"));else{const t=document.createElement("textarea");t.value=e,t.style.position="fixed",t.style.left="-9999px",document.body.appendChild(t),t.select(),document.execCommand("copy"),document.body.removeChild(t),this.notify("\u2705 \u9519\u8BEF\u4FE1\u606F\u5DF2\u590D\u5236","success")}},async showOpLog(e,t){c.openModal("\u{1F4CB} \u64CD\u4F5C\u65E5\u5FD7 - "+(t||e),`
+    `;
+      this._lastErrorText = fullText;
+      Utils.openModal("\u274C " + (title || "\u9519\u8BEF"), body, footer);
+    },
+    copyErrorText() {
+      const text = this._lastErrorText || "";
+      if (!text) {
+        this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u5185\u5BB9", "warn");
+        return;
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => this.notify("\u2705 \u5DF2\u590D\u5236\u9519\u8BEF\u4FE1\u606F", "success")).catch(() => this.notify("\u590D\u5236\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u9009\u62E9", "error"));
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        this.notify("\u2705 \u9519\u8BEF\u4FE1\u606F\u5DF2\u590D\u5236", "success");
+      }
+    },
+    // 显示操作日志弹窗（从后端 /api/log 查询）
+    async showOpLog(module, title) {
+      const body = `
       <div id="opLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">\u23F3 \u52A0\u8F7D\u4E2D...</div>
       <pre id="opLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
       <div id="opLogSummary" style="display:none;margin-top:8px;font-size:11px;color:var(--text-secondary);"></div>
-    `,'<button class="btn btn-sm btn-secondary" onclick="Utils.copyOpLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>');try{const r=window.Api,s=await(r?r.get("/log?module="+encodeURIComponent(e||"all")+"&limit=200"):fetch("/api/log?module="+encodeURIComponent(e||"all")+"&limit=200").then(d=>d.json())),o=document.getElementById("opLogLoader"),i=document.getElementById("opLogContent"),l=document.getElementById("opLogSummary");if(i&&o)if(o.style.display="none",i.style.display="block",s.success&&s.data&&s.data.list){const d=s.data.list;if(d.length===0)i.innerHTML='<span style="color:var(--text-secondary);">\u6682\u65E0\u64CD\u4F5C\u65E5\u5FD7</span>',window._hspOpLogText="";else{const p={success:"\u2705",info:"\u2139\uFE0F",warn:"\u26A0\uFE0F",error:"\u274C"},u=d.map(m=>{const f=(m.time||"").replace("T"," ").substring(0,19),g=p[m.level]||"\u{1F4DD}",b=[];m.ip&&m.ip!=="-"&&b.push(m.ip),m.duration&&b.push(m.duration+"ms"),m.statusCode&&b.push("HTTP "+m.statusCode);const y=b.length?" ["+b.join(", ")+"]":"",E=m.body?`
-  \u{1F4E9} `+m.body:"",h=m.detail?`
-  \u{1F4CE} `+m.detail:"";return`[${f}] ${g} [${m.module}] ${m.action}${y}: ${m.message}${E}${h}`});i.textContent=u.join(`
-`),l.style.display="block",l.textContent=`\u5171 ${s.data.total||d.length} \u6761\u64CD\u4F5C\u65E5\u5FD7`,window._hspOpLogText=u.join(`
-`)}}else i.innerHTML='<span style="color:var(--danger);">'+(s.message||"\u52A0\u8F7D\u5931\u8D25")+"</span>",window._hspOpLogText=""}catch(r){const s=document.getElementById("opLogLoader");s&&(s.textContent="\u274C \u52A0\u8F7D\u5931\u8D25: "+r.message),window._hspOpLogText=""}},copyOpLog(){const e=window._hspOpLogText||"";if(!e){this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u65E5\u5FD7","warn");return}if(navigator.clipboard)navigator.clipboard.writeText(e).then(()=>this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236","success")).catch(()=>this.notify("\u590D\u5236\u5931\u8D25","error"));else{const t=document.createElement("textarea");t.value=e,t.style.position="fixed",t.style.left="-9999px",document.body.appendChild(t),t.select(),document.execCommand("copy"),document.body.removeChild(t),this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236","success")}},showPageDiagLog(e,t){const n=t||(window.Api?v._currentPage:"dashboard"),a=window.Api?v.getDiagLog(n):[];if(a.length===0){const i=window.Api?v.getDiagLog():[];if(i.length===0){this.notify("\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7","info");return}const l=i.map(u=>`[${u.time}] [${u.page}] ${u.level.toUpperCase()} ${u.msg}`).join(`
-`);window._hspUtilsLog=l;const d=`
-        <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${l}</pre>
-        <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">\u5171 ${i.length} \u6761 API \u8C03\u7528\u8BB0\u5F55\uFF08\u5168\u90E8\u9875\u9762\uFF09</div>
-      `;c.openModal("\u{1F4CB} API\u8BCA\u65AD - "+(e||""),d,'<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>');return}const r=a.map(i=>`[${i.time}] ${i.level.toUpperCase()} ${i.msg}`).join(`
-`);window._hspUtilsLog=r;const s=`
-      <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${r}</pre>
-      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">\u5171 ${a.length} \u6761 API \u8C03\u7528\u8BB0\u5F55</div>
-    `;c.openModal("\u{1F4CB} API\u8BCA\u65AD - "+(e||""),s,'<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>')},async showLog(e,t){c.openModal("\u{1F4CB} "+(t||"\u65E5\u5FD7"),`
+    `;
+      const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyOpLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>`;
+      Utils.openModal("\u{1F4CB} \u64CD\u4F5C\u65E5\u5FD7 - " + (title || module), body, footer);
+      try {
+        const api = window.Api;
+        const res = await (api ? api.get("/log?module=" + encodeURIComponent(module || "all") + "&limit=200") : fetch("/api/log?module=" + encodeURIComponent(module || "all") + "&limit=200").then((r) => r.json()));
+        const loaderEl = document.getElementById("opLogLoader");
+        const contentEl = document.getElementById("opLogContent");
+        const summaryEl = document.getElementById("opLogSummary");
+        if (contentEl && loaderEl) {
+          loaderEl.style.display = "none";
+          contentEl.style.display = "block";
+          if (res.success && res.data && res.data.list) {
+            const list = res.data.list;
+            if (list.length === 0) {
+              contentEl.innerHTML = '<span style="color:var(--text-secondary);">\u6682\u65E0\u64CD\u4F5C\u65E5\u5FD7</span>';
+              window._hspOpLogText = "";
+            } else {
+              const levelIcon = { success: "\u2705", info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
+              const lines = list.map((e) => {
+                const time = e.timeCst || (e.time || "").replace("T", " ").substring(0, 19);
+                const icon = levelIcon[e.level] || "\u{1F4DD}";
+                const meta = [];
+                if (e.ip && e.ip !== "-") meta.push(e.ip);
+                if (e.duration) meta.push(e.duration + "ms");
+                if (e.statusCode) meta.push("HTTP " + e.statusCode);
+                const metaStr = meta.length ? " [" + meta.join(", ") + "]" : "";
+                const bodyInfo = e.body ? "\n  \u{1F4E9} " + e.body : "";
+                const detailStr = e.detail ? "\n  \u{1F4CE} " + e.detail : "";
+                return `[${time}] ${icon} [${e.module}] ${e.action}${metaStr}: ${e.message}${bodyInfo}${detailStr}`;
+              });
+              contentEl.textContent = lines.join("\n");
+              summaryEl.style.display = "block";
+              summaryEl.textContent = `\u5171 ${res.data.total || list.length} \u6761\u64CD\u4F5C\u65E5\u5FD7`;
+              window._hspOpLogText = lines.join("\n");
+            }
+          } else {
+            contentEl.innerHTML = '<span style="color:var(--danger);">' + (res.message || "\u52A0\u8F7D\u5931\u8D25") + "</span>";
+            window._hspOpLogText = "";
+          }
+        }
+      } catch (err) {
+        const loaderEl = document.getElementById("opLogLoader");
+        if (loaderEl) loaderEl.textContent = "\u274C \u52A0\u8F7D\u5931\u8D25: " + err.message;
+        window._hspOpLogText = "";
+      }
+    },
+    copyOpLog() {
+      const text = window._hspOpLogText || "";
+      if (!text) {
+        this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u65E5\u5FD7", "warn");
+        return;
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236", "success")).catch(() => this.notify("\u590D\u5236\u5931\u8D25", "error"));
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236", "success");
+      }
+    },
+    // 显示页面 API 诊断日志
+    showPageDiagLog(title, pageFilter) {
+      const filter = pageFilter || (window.Api ? Api._currentPage : "dashboard");
+      const entries = window.Api ? Api.getDiagLog(filter) : [];
+      if (entries.length === 0) {
+        const allEntries = window.Api ? Api.getDiagLog() : [];
+        if (allEntries.length === 0) {
+          this.notify("\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7", "info");
+          return;
+        }
+        const logText2 = allEntries.map((e) => `[${e.time}] [${e.page}] ${e.level.toUpperCase()} ${e.msg}`).join("\n");
+        window._hspUtilsLog = logText2;
+        const body2 = `
+        <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${logText2}</pre>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">\u5171 ${allEntries.length} \u6761 API \u8C03\u7528\u8BB0\u5F55\uFF08\u5168\u90E8\u9875\u9762\uFF09</div>
+      `;
+        const footer2 = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>`;
+        Utils.openModal("\u{1F4CB} API\u8BCA\u65AD - " + (title || ""), body2, footer2);
+        return;
+      }
+      const logText = entries.map((e) => `[${e.time}] ${e.level.toUpperCase()} ${e.msg}`).join("\n");
+      window._hspUtilsLog = logText;
+      const body = `
+      <pre style="max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;">${logText}</pre>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">\u5171 ${entries.length} \u6761 API \u8C03\u7528\u8BB0\u5F55</div>
+    `;
+      const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>`;
+      Utils.openModal("\u{1F4CB} API\u8BCA\u65AD - " + (title || ""), body, footer);
+    },
+    // 通用日志弹窗（供各页面使用）
+    async showLog(apiPath, title) {
+      const body = `
       <div id="utilsLogLoader" style="text-align:center;padding:20px;color:var(--text-secondary);">\u23F3 \u52A0\u8F7D\u4E2D...</div>
       <pre id="utilsLogContent" style="display:none;max-height:480px;overflow:auto;background:var(--bg-tertiary,#f8f9fa);padding:12px;border-radius:8px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#1a1a1a;margin:0;font-family:Menlo,Monaco,monospace;"></pre>
-    `,'<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>');try{const r=window.Api,s=await(r?r.get(e):fetch(e).then(l=>l.json())),o=document.getElementById("utilsLogContent"),i=document.getElementById("utilsLogLoader");o&&i&&(i.style.display="none",o.style.display="block",s.success&&s.data?(o.textContent=s.data.logs||"(\u7A7A)",window._hspUtilsLog=s.data.logs||""):(o.innerHTML='<span style="color:var(--danger)">'+(s.message||"\u52A0\u8F7D\u5931\u8D25")+"</span>",window._hspUtilsLog=""))}catch(r){const s=document.getElementById("utilsLogLoader");s&&(s.textContent="\u274C \u52A0\u8F7D\u5931\u8D25: "+r.message),window._hspUtilsLog=""}},copyLog(){const e=window._hspUtilsLog||"";if(!e){this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u65E5\u5FD7","warn");return}if(navigator.clipboard)navigator.clipboard.writeText(e).then(()=>this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236","success")).catch(()=>this.notify("\u590D\u5236\u5931\u8D25","error"));else{const t=document.createElement("textarea");t.value=e,t.style.position="fixed",t.style.left="-9999px",document.body.appendChild(t),t.select(),document.execCommand("copy"),document.body.removeChild(t),this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236","success")}}};window.closeModal=c.closeModal;window.openModal=c.openModal;document.addEventListener("click",e=>{(e.target.id==="modalOverlay"||e.target.id==="modalClose")&&c.closeModal()});window.formatDate=function(e){if(!e)return"--";const t=new Date(e);return isNaN(t.getTime())?e:t.toLocaleDateString("zh-CN",{timeZone:"Asia/Shanghai"})};function U(e){return window.escapeHtml(e)}window.escapeHtml=function(e){return!e||typeof e!="string"?"":e.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")};const v={baseUrl:"/api",_diagLog:[],_currentPage:"dashboard",_diag(e,t){t=t||"info";const n={page:this._currentPage,time:new Date().toLocaleTimeString("zh-CN",{hour12:!1,timeZone:"Asia/Shanghai"}),msg:e,level:t};this._diagLog.push(n),this._diagLog.length>200&&(this._diagLog=this._diagLog.slice(-200));try{var a=document.getElementById("page-diag-content");a&&(a.innerHTML+='<br><span style="color:#38bdf8">\u{1F310} '+e+"</span>")}catch{}},getDiagLog(e){return e?this._diagLog.filter(t=>t.page===e):this._diagLog},clearDiagLog(){this._diagLog=[]},_getToken(){return localStorage.getItem("hsp_token")},async request(e,t,n,a,r){r=r||{};const s=r.showError!==!1,o={"Content-Type":"application/json"},i=this._getToken();i&&(o["x-auth-token"]=i);const l={method:e,headers:o,credentials:"same-origin"};a&&(l.signal=a),n&&(e==="POST"||e==="PUT"||e==="PATCH")&&(l.body=JSON.stringify(n));const d=this.baseUrl+t;this._diag(e+" "+d+" | token="+(i?"\u2705":"\u274C"));try{const p=await fetch(d,l),u=p.headers.get("content-type")||"?",m=p.ok&&u.includes("json");if(this._diag(e+" "+d+" \u2192 HTTP "+p.status+" ct="+u,m?"success":"warn"),p.status===401)return localStorage.removeItem("hsp_token"),this._diag("\u{1F534} 401 \u672A\u767B\u5F55\uFF0C\u8DF3\u8F6C\u767B\u5F55\u9875","error"),window.location.href="/login.html",{success:!1,message:"\u672A\u767B\u5F55"};const f=await p.text();try{const g=JSON.parse(f);return!g.success&&s&&typeof c<"u"&&(s==="notify"?c.notify(g.message||"\u8BF7\u6C42\u5931\u8D25","error"):c.showError("\u8BF7\u6C42\u5931\u8D25",g.message||"\u672A\u77E5\u9519\u8BEF",e+" "+d)),g}catch{return this._diag("\u{1F7E0} JSON\u89E3\u6790\u5931\u8D25! \u54CD\u5E94\u4E0D\u662FJSON: "+f.substring(0,100),"error"),s&&typeof c<"u"&&c.showError("\u6570\u636E\u89E3\u6790\u5931\u8D25","\u670D\u52A1\u5668\u8FD4\u56DE\u4E86\u975E JSON \u54CD\u5E94","URL: "+d+`
-Content: `+f.substring(0,500)),{success:!1,message:"Invalid JSON: "+f.substring(0,80)}}}catch(p){return this._diag("\u{1F534} fetch\u5F02\u5E38: "+(p.name||"?")+" "+(p.message||""),"error"),s&&typeof c<"u"&&c.showError("\u7F51\u7EDC\u8BF7\u6C42\u5F02\u5E38",p.message||"\u8BF7\u6C42\u5931\u8D25",e+" "+d),{success:!1,message:p.message}}},get(e,t,n){return this.request("GET",e,null,t,n)},post(e,t,n){return this.request("POST",e,t,null,n)},put(e,t,n){return this.request("PUT",e,t,null,n)},del(e,t,n){return this.request("DELETE",e,t||{},null,n)}};window.Api=v;let J=!1,q=!1;async function te(){if(!document.getElementById("dashGrid")){console.error("dashGrid not found");return}if(q){console.log("dashboardInProgress, skip");return}if(J){console.log("dashboardLoaded, skip");return}q=!0;try{console.log("[Dashboard] \u5F00\u59CB\u52A0\u8F7D...");const w=async(k,re,ie)=>{try{const N=new AbortController,le=setTimeout(function(){N.abort()},ie||1e4),ce=await v.get(k,N.signal);return clearTimeout(le),ce}catch(N){return console.warn("[Dashboard]",k,"\u5931\u8D25:",N.message),re}},[S,B,j,F,Q,$,ae]=await Promise.all([w("/system/info",{success:!1}),w("/ddns",{success:!1}),w("/cert",{success:!1}),w("/nginx/status",{success:!1}),w("/proxy",{success:!1}),w("/db/status",{success:!1}),w("/log?limit=8",{success:!1})]),M=S&&S.data||{},se=M.memory||{total:0,free:0};window._liveSysInfo=M,de(M);var t=M.ips&&M.ips.length>0?M.ips.join(", "):"--",n=(M.loadavg||[]).map(function(k){return k.toFixed(2)}).join(" / ")||"--",a=document.getElementById("overviewBody");a&&(a.innerHTML='<div class="overview-row"><span class="overview-label">\u4E3B\u673A\u540D</span><span class="overview-value">'+(M.hostname||"--")+'</span></div><div class="overview-row"><span class="overview-label">\u5E73\u53F0</span><span class="overview-value">'+(M.platform||"--")+" "+(M.arch||"")+'</span></div><div class="overview-row"><span class="overview-label">CPU \u6838\u5FC3</span><span class="overview-value">'+(M.cpus||"--")+'</span></div><div class="overview-row"><span class="overview-label">\u7CFB\u7EDF\u8D1F\u8F7D</span><span class="overview-value">'+n+'</span></div><div class="overview-row"><span class="overview-label">\u8FD0\u884C\u65F6\u957F</span><span class="overview-value">'+O(M.panelUptime||M.uptime||0)+'</span></div><div class="overview-row"><span class="overview-label">\u5185\u5B58\u5927\u5C0F</span><span class="overview-value">'+se.total+' GB</span></div><div class="overview-row"><span class="overview-label">Node.js</span><span class="overview-value">'+(M.nodeVersion||"--")+'</span></div><div class="overview-row"><span class="overview-label">\u9762\u677F\u7248\u672C</span><span class="overview-value">v'+(M.panelVersion||"--")+'</span></div><div class="overview-row"><span class="overview-label">IP \u5730\u5740</span><span class="overview-value">'+t+"</span></div>");var r=0;if(B&&B.success){var s=B.data||{};r=(s.records||s.domains||s.rules||[]).length}var o=0;if(j&&j.success){var i=j.data||{};o=(i.certificates||i.certs||[]).length}var l=F&&F.success&&(F.data||{}).running,d=0;if(Q&&Q.success){var p=Q.data||{};d=p.stats?p.stats.enabled:p.rules?p.rules.filter(function(k){return k.enabled}).length:0}var u=$&&$.data?$.data:{},m=u.mode||"local",f=u.preferred||m,g=u.fallback,b=m==="mysql"?"MySQL":"SQLite";f==="mysql"&&m==="local"&&(b="SQLite \u26A0\uFE0F");var y=document.getElementById("dbFallbackWarning");y&&(g?(y.innerHTML='<div class="alert alert-warning" style="margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:8px"><span>\u26A0\uFE0F</span><span><strong>MySQL \u4E0D\u53EF\u8FBE\uFF0C\u5DF2\u56DE\u9000\u5230 SQLite</strong> \u2014 \u6570\u636E\u4EC5\u4FDD\u5B58\u5728\u672C\u673A\u3002MySQL \u6062\u590D\u540E<a href="#" onclick="location.reload()">\u5237\u65B0</a>\u5373\u53EF\u3002</span></div>',y.style.display="block"):y.style.display="none");var E=[{icon:"\u{1F433}",name:"Docker",status:"\u67E5\u770B",cls:"up",nav:"docker"},{icon:"\u{1F310}",name:"Nginx",status:l?"\u8FD0\u884C\u4E2D":"\u672A\u8FD0\u884C",cls:l?"up":"down",nav:"nginx"},{icon:"\u{1F4E1}",name:"DDNS",status:r+" \u4E2A\u57DF\u540D",cls:r>0?"up":"warn",nav:"ddns"},{icon:"\u{1F512}",name:"SSL",status:o+" \u4E2A\u8BC1\u4E66",cls:o>0?"up":"warn",nav:"ssl"},{icon:"\u{1F504}",name:"\u53CD\u5411\u4EE3\u7406",status:d+" \u6761\u542F\u7528",cls:d>0?"up":"warn",nav:"nginx"},{icon:"\u{1F5C4}\uFE0F",name:"\u6570\u636E\u5E93",status:b,cls:g?"warn":"up",nav:"settings"}],h=document.getElementById("servicesGrid");h&&(h.innerHTML=E.map(function(k){return`<div class="service-card" onclick="window.location.hash='`+k.nav+`'" title="\u70B9\u51FB\u67E5\u770B `+k.name+'"><span class="service-card-icon">'+k.icon+'</span><div class="service-card-info"><span class="service-card-name">'+k.name+'</span><span class="service-card-status '+k.cls+'">'+k.status+"</span></div></div>"}).join("")),me(ae),ue();var I=document.getElementById("version");I&&(I.textContent="v"+L.version),J=!0,console.log("[Dashboard] \u6E32\u67D3\u5B8C\u6210")}catch(w){console.error("[Dashboard] \u6E32\u67D3\u5931\u8D25:",w);var x=document.getElementById("overviewBody");x&&(x.innerHTML='<div style="color:var(--danger);padding:16px;">\u26A0\uFE0F '+(w.message||"\u52A0\u8F7D\u5931\u8D25")+"</div>")}finally{q=!1}}function de(e){var t=document.getElementById("tbCpu"),n=document.getElementById("tbMem"),a=document.getElementById("tbUptime");if(e.memory){var r=e.memory.total-e.memory.free,s=e.memory.total>0?r/e.memory.total*100:0;n&&(n.textContent=s.toFixed(0)+"%")}a&&(a.textContent=O(e.panelUptime||e.uptime||0))}function me(e){var t=document.getElementById("dashLogList");if(t){var n=[];if(e&&e.success&&e.data&&(n=e.data.records||e.data.entries||e.data.logs||e.data.list||[]),Array.isArray(n)||(n=[]),n.length===0){t.innerHTML='<div class="dash-log-item"><span class="dash-log-text" style="color:var(--text-tertiary)">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span></div>';return}var a=n.slice(0,8);t.innerHTML=a.map(function(r){var s=r.timeCst||"";if(!s)s=r.time||r.timestamp||r.createdAt||"",s&&s.length>16&&(s=new Date(s).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Asia/Shanghai"}));else{var o=s.match(/(\d{2}:\d{2})/);o&&(s=o[1])}var i=r.message||r.action||r.desc||JSON.stringify(r).slice(0,80);return'<div class="dash-log-item"><span class="dash-log-time">'+U(s||"--:--")+'</span><span class="dash-log-text">'+U(i)+"</span></div>"}).join("")}}var V=null;function pe(){V||(K(),V=setInterval(K,5e3),v.get("/auth/status",null,{showError:!1}).then(function(e){if(e.success&&e.data.username){var t=document.getElementById("topbarUserBtn");t&&(t.textContent="\u{1F464} "+e.data.username)}}).catch(function(){}))}async function K(){if(L._currentPage!=="dashboard")try{var e=await v.get("/monitor/live",null,{showError:!1});if(!e.success)return;var t=e.data,n=document.getElementById("tbCpu"),a=document.getElementById("tbMem"),r=document.getElementById("tbUptime");if(n&&(n.textContent=(t.cpu||0).toFixed(0)+"%"),a){var s=t.memory;a.textContent=s.pct.toFixed(0)+"%"}r&&t.uptime&&(r.textContent=O(t.uptime),window._liveUptime=t.uptime)}catch{}}function O(e){if(!e||e<=0)return"--";var t=Math.floor(e/86400),n=Math.floor(e%86400/3600),a=Math.floor(e%3600/60),r=Math.floor(e%60),s=[];return t>0&&s.push(t+"\u5929"),n>0&&s.push(n+"\u65F6"),s.push(a+"\u5206"+r+"\u79D2"),s.join(" ")}var C=null;function ue(){var e=document.getElementById("dashboardMonitor");e&&(e.innerHTML='<div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F4CA} CPU</span><span id="dmCpu" class="monitor-card-val">--%</span></div><canvas id="dmChartCpu" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F9E0} \u5185\u5B58</span><span id="dmMem" class="monitor-card-val">--%</span></div><canvas id="dmChartMem" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F4BF} \u78C1\u76D8</span><span id="dmDisk" class="monitor-card-val">--</span></div><div id="dmDiskList" class="monitor-disk-list"></div></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u{1F310} \u7F51\u7EDC</span><span id="dmNet" class="monitor-card-val">--</span></div><canvas id="dmChartNet" class="monitor-chart"></canvas></div><div class="monitor-card"><div class="monitor-card-hd"><span>\u23F1\uFE0F \u8D1F\u8F7D</span><span id="dmLoad" class="monitor-card-val">--</span></div><canvas id="dmChartLoad" class="monitor-chart"></canvas></div>',["dmChartCpu","dmChartMem","dmChartNet","dmChartLoad"].forEach(function(t){var n=document.getElementById(t);if(n){var a=n.parentElement.getBoundingClientRect();n.width=Math.min(a.width-32,600)*2,n.height=320,n.style.width=n.width/2+"px",n.style.height=n.height/2+"px"}}),H(),C&&clearInterval(C),C=setInterval(H,5e3))}async function H(){try{var e=await v.get("/monitor",null,{showError:!1});if(!e.success)return;var t=e.data.live,n=e.data.history,a=t.cpu||0,r=document.getElementById("dmCpu");r&&(r.textContent=a.toFixed(1)+"%",r.style.color=a>80?"var(--danger)":a>50?"var(--warning)":"var(--success)");var s=document.getElementById("tbCpu");s&&(s.textContent=a.toFixed(0)+"%");var o=t.memory,i=document.getElementById("dmMem");i&&(i.textContent=o.pct.toFixed(1)+"%",i.style.color=o.pct>90?"var(--danger)":o.pct>70?"var(--warning)":"var(--success)");var l=document.getElementById("tbMem");l&&(l.textContent=o.pct.toFixed(0)+"%");var d=document.getElementById("tbUptime");d&&t.uptime&&(d.textContent=O(t.uptime),window._liveUptime=t.uptime);var p=n.disk.length>0?n.disk[n.disk.length-1].items:[];if(p.length>0){var u=document.getElementById("dmDisk");u&&(u.textContent=p.map(function(h){return h.pct+"%"}).join(" "));var m=document.getElementById("dmDiskList");m&&(m.innerHTML=p.map(function(h){return'<div class="disk-item"><span class="disk-mount">\u{1F4C2} '+h.mount+'</span><span class="disk-bar-wrap"><span class="disk-bar" style="width:'+Math.min(h.pct,100)+"%;background:"+(h.pct>90?"var(--danger)":h.pct>70?"var(--warning)":"var(--primary)")+'"></span></span><span class="disk-info">'+h.used+"/"+h.size+"</span></div>"}).join(""))}var f=n.network.length>0?n.network[n.network.length-1]:{rxRate:0,txRate:0},g=document.getElementById("dmNet");g&&(g.innerHTML='<div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;margin-bottom:3px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;"></span><span style="color:#374151;">\u4E0B\u884C</span> <span style="color:#6b7280;font-weight:500;">'+X(f.rxRate)+'/s</span></div><div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;"></span><span style="color:#374151;">\u4E0A\u884C</span> <span style="color:#6b7280;font-weight:500;">'+X(f.txRate)+"/s</span></div>");var b=t.load,y=document.getElementById("dmLoad");y&&(y.innerHTML="1m "+b[0].toFixed(2)+" 5m "+b[1].toFixed(2)+" 15m "+b[2].toFixed(2)),window._liveUptime=t.uptime;var E=document.getElementById("uptime");E&&t.uptime&&(E.textContent=ye(t.uptime)),Y("dmChartCpu",n.cpu,"pct","%","CPU"),Y("dmChartMem",n.memory,"pct","%","\u5185\u5B58"),ge("dmChartNet",n.network),fe("dmChartLoad",n.load)}catch{}}function Y(e,t,n,a,r){var s=document.getElementById(e);if(!s||t.length<2){s&&G(s,"\u7B49\u5F85\u6570\u636E...");return}var o=s.getContext("2d"),i=s.width,l=s.height,d={top:52,right:20,bottom:24,left:70},p=i-d.left-d.right,u=l-d.top-d.bottom;o.clearRect(0,0,i,l),o.fillStyle="#ffffff",o.fillRect(0,0,i,l);for(var m=Math.max(Math.max.apply(null,t.map(function(B){return B[n]})),1),f=[1,2,5,10,20,25,50,100,200,500,1e3],g=1,b=0;b<f.length;b++){if(m<=f[b]*5){g=f[b];break}g=m/4}m=Math.ceil(m/g)*g,o.strokeStyle="rgba(0,0,0,0.06)",o.lineWidth=1,o.fillStyle="#9ca3af",o.font="10px -apple-system, sans-serif",o.textAlign="right";for(var y=0;y<=4;y++){var E=m*(1-y/4),h=d.top+u/4*y;o.beginPath(),o.moveTo(d.left,h),o.lineTo(d.left+p,h),o.stroke();var r=E===Math.floor(E)?E.toFixed(0)+a:E.toFixed(1)+a;o.fillText(r,d.left-12,h+7)}var I=function(B){return d.top+u-B/m*u},x=function(B){return d.left+B/(t.length-1)*p},w=o.createLinearGradient(0,d.top,0,d.top+u);w.addColorStop(0,"rgba(184,134,11,0.18)"),w.addColorStop(1,"rgba(184,134,11,0.02)"),o.beginPath(),o.moveTo(x(0),I(t[0][n]));for(var y=1;y<t.length;y++)o.lineTo(x(y),I(t[y][n]));o.lineTo(x(t.length-1),d.top+u),o.lineTo(x(0),d.top+u),o.closePath(),o.fillStyle=w,o.fill(),o.beginPath(),o.moveTo(x(0),I(t[0][n]));for(var y=1;y<t.length;y++)o.lineTo(x(y),I(t[y][n]));o.strokeStyle="#daa520",o.lineWidth=4,o.lineJoin="round",o.stroke();var S=t[t.length-1];o.beginPath(),o.arc(x(t.length-1),I(S[n]),8,0,Math.PI*2),o.fillStyle="#daa520",o.fill(),o.strokeStyle="#e5e7eb",o.lineWidth=3,o.stroke()}function ge(e,t){var n=document.getElementById(e);if(!n||t.length<2){n&&G(n,"\u7B49\u5F85\u6570\u636E...");return}var a=n.getContext("2d"),r=n.width,s=n.height,o={top:52,right:20,bottom:24,left:80},i=r-o.left-o.right,l=s-o.top-o.bottom;a.clearRect(0,0,r,s),a.fillStyle="#ffffff",a.fillRect(0,0,r,s);for(var d=t.map(function(S){return S.rxRate}),p=t.map(function(S){return S.txRate}),u=Math.max(Math.max.apply(null,d),Math.max.apply(null,p),1024),m=[1024,5120,10240,51200,102400,524288,1048576,5242880,10485760],f=0;f<m.length;f++)if(u<=m[f]){u=m[f];break}a.strokeStyle="rgba(0,0,0,0.06)",a.lineWidth=1,a.fillStyle="#9ca3af",a.font="10px -apple-system, sans-serif",a.textAlign="right";for(var g=0;g<=4;g++){var b=u*(1-g/4),y=o.top+l/4*g;a.beginPath(),a.moveTo(o.left,y),a.lineTo(o.left+i,y),a.stroke(),a.fillText(ve(b),o.left-12,y+7)}var E=function(S){return o.top+l-S/u*l},h=function(S){return o.left+S/(t.length-1)*i};Z(a,t,d,h,E,"#22c55e"),Z(a,t,p,h,E,"#f59e0b"),a.textAlign="left",a.font="bold 11px -apple-system, sans-serif";var I=o.left+4,x=o.top-12;a.beginPath(),a.arc(I+4,x-2,6,0,Math.PI*2),a.fillStyle="#22c55e",a.fill(),a.strokeStyle="rgba(0,0,0,0.1)",a.lineWidth=1,a.stroke(),a.fillStyle="#374151",a.fillText("\u4E0B\u884C",I+14,x+4);var w=I+56;a.beginPath(),a.arc(w+4,x-2,6,0,Math.PI*2),a.fillStyle="#f59e0b",a.fill(),a.strokeStyle="rgba(0,0,0,0.1)",a.lineWidth=1,a.stroke(),a.fillStyle="#374151",a.fillText("\u4E0A\u884C",w+14,x+4)}function Z(e,t,n,a,r,s){e.beginPath(),e.moveTo(a(0),r(n[0]));for(var o=1;o<n.length;o++)e.lineTo(a(o),r(n[o]));e.strokeStyle=s,e.lineWidth=4,e.lineJoin="round",e.stroke()}function fe(e,t){var n=document.getElementById(e);if(!n||t.length<2){n&&G(n,"\u7B49\u5F85\u6570\u636E...");return}var a=n.getContext("2d"),r=n.width,s=n.height,o={top:52,right:20,bottom:24,left:70},i=r-o.left-o.right,l=s-o.top-o.bottom;a.clearRect(0,0,r,s),a.fillStyle="#ffffff",a.fillRect(0,0,r,s);var d=[];["load1","load5","load15"].forEach(function(h){t.forEach(function(I){d.push(I[h])})});var p=Math.max(Math.max.apply(null,d),1);p=Math.ceil(p*2)/2,a.strokeStyle="rgba(0,0,0,0.06)",a.lineWidth=1,a.fillStyle="#9ca3af",a.font="10px -apple-system, sans-serif",a.textAlign="right";for(var u=0;u<=4;u++){var m=p*(1-u/4),f=o.top+l/4*u;a.beginPath(),a.moveTo(o.left,f),a.lineTo(o.left+i,f),a.stroke(),a.fillText(m.toFixed(1),o.left-12,f+7)}var g=function(h){return o.top+l-h/p*l},b=function(h){return o.left+h/(t.length-1)*i},y=["#22c55e","#f59e0b","#c41e3a"],E=["load1","load5","load15"];E.forEach(function(h,I){var x=t.map(function(S){return S[h]});a.beginPath(),a.moveTo(b(0),g(x[0]));for(var w=1;w<x.length;w++)a.lineTo(b(w),g(x[w]));a.strokeStyle=y[I],a.lineWidth=4,a.lineJoin="round",a.stroke()})}function G(e,t){var n=e.getContext("2d");n.clearRect(0,0,e.width,e.height),n.fillStyle="#ffffff",n.fillRect(0,0,e.width,e.height),n.fillStyle="#9ca3af",n.font="28px -apple-system, sans-serif",n.textAlign="center",n.fillText(t,e.width/2,e.height/2+10)}function X(e){if(!e||e<0)return"0 B";for(var t=["B","KB","MB","GB"],n=0;e>=1024&&n<3;)e/=1024,n++;return e.toFixed(1)+" "+t[n]}function ve(e){return!e||e<0?"0 B":e>=1048576?(e/1048576).toFixed(1)+" MB":e>=1024?(e/1024).toFixed(0)+" KB":e+" B"}function ye(e){var t=Math.floor(e/86400),n=Math.floor(e%86400/3600),a=Math.floor(e%3600/60),r=[];return t>0&&r.push(t+"\u5929"),n>0&&r.push(n+"\u65F6"),r.push(a+"\u5206"),r.join(" ")}let T="local",D=!1,ne="local",z=null;async function A(){try{const[t,n]=await Promise.all([v.get("/system/config"),v.get("/db/status")]);if(t.success&&t.data){const a=t.data;P("cfgAliKeyId",a.aliKeyId||""),P("cfgAliKeySecret",a.aliKeySecret||""),P("cfgPushplusToken",a.pushplusToken);var e=document.getElementById("cfgPushplusToken");e&&a.pushplusToken==="\u5DF2\u914D\u7F6E"?(e.value="",e.placeholder="\u2705 \u5DF2\u914D\u7F6E\uFF08\u4FEE\u6539\u8BF7\u91CD\u65B0\u8F93\u5165\uFF09",e.style.borderColor="var(--success)"):e&&(e.placeholder="\u8F93\u5165 Token",e.style.borderColor=""),P("cfgAcmeEmail",a.acmeEmail||""),P("cfgAcmeDns",a.acmeDnsProvider||"alidns")}n.success&&n.data&&(T=n.data.mode||"local",D=n.data.connected,ne=n.data.preferred||T,z=n.data.fallback||null),R(),setTimeout(function(){oe("all")},300)}catch(t){L.log("error","\u52A0\u8F7D\u8BBE\u7F6E\u5931\u8D25:",t)}}function R(){const e=document.getElementById("dbStatusText"),t=document.getElementById("dbFallbackNote");if(e){if(ne==="mysql"&&T==="local"){if(e.innerHTML='<span style="color:var(--warning)">\u26A0\uFE0F \u5DF2\u56DE\u9000\u5230 SQLite\uFF08MySQL \u4E0D\u53EF\u8FBE\uFF09</span>',t){var n=z?"\uFF08"+z+"\uFF09":"";t.innerHTML='<div class="alert alert-warning" style="font-size:13px;padding:10px 14px;">\u{1F4A1} \u7CFB\u7EDF\u504F\u597D\u4F7F\u7528 MySQL \u5B58\u50A8\uFF0C\u4F46\u5F53\u524D MySQL \u4E0D\u53EF\u8FBE'+n+'\uFF0C\u5DF2\u81EA\u52A8\u56DE\u9000\u5230\u672C\u5730 SQLite\u3002MySQL \u6062\u590D\u540E<a href="#" onclick="location.reload()">\u91CD\u542F\u670D\u52A1</a>\u5373\u53EF\u81EA\u52A8\u5207\u6362\u3002</div>',t.style.display="block"}var a=document.getElementById("dbMigrateSection"),r=document.getElementById("btnDbSwitch");a&&(a.style.display="none"),r&&(r.style.display="none");return}if(t&&(t.style.display="none"),T==="mysql"&&D){e.innerHTML='<span style="color:var(--success)">\u2705 MySQL \u5DF2\u8FDE\u63A5</span>';const s=document.getElementById("dbMigrateSection"),o=document.getElementById("btnDbSwitch");s&&(s.style.display="none"),o&&(o.style.display="inline-flex")}else if(T==="mysql"&&!D){e.innerHTML='<span style="color:var(--warning)">\u26A0\uFE0F MySQL \u8FDE\u63A5\u65AD\u5F00</span>';const s=document.getElementById("dbMigrateSection"),o=document.getElementById("btnDbSwitch");s&&(s.style.display="none"),o&&(o.style.display="none")}else{e.innerHTML='<span style="color:var(--text-secondary)">\u{1F5C4}\uFE0F SQLite \u672C\u5730\u5B58\u50A8</span>';const s=document.getElementById("dbMigrateSection"),o=document.getElementById("btnDbSwitch");s&&(s.style.display="block"),o&&(o.style.display="none")}}}window.toggleDbConfig=()=>{if(T==="mysql"&&D){c.confirm("\u65AD\u5F00 MySQL","\u786E\u5B9A\u65AD\u5F00\u6570\u636E\u5E93\u8FDE\u63A5\u5E76\u5207\u56DE SQLite \u6A21\u5F0F\u5417\uFF1F<br><small>\u6570\u636E\u4ECD\u5728 MySQL \u4E2D\uFF0C\u4E0D\u4F1A\u4E22\u5931</small>",async()=>{c.notify("\u6B63\u5728\u65AD\u5F00\u8FDE\u63A5...","info");const e=await v.post("/db/disconnect");e.success?(T="local",D=!1,R(),c.notify("\u5DF2\u5207\u56DE SQLite \u672C\u5730\u5B58\u50A8\u6A21\u5F0F","success")):c.notify(e.message||"\u64CD\u4F5C\u5931\u8D25","error")});return}showDbConfigModal()};window.showDbConfigModal=()=>{c.openModal("\u{1F517} \u8FC1\u79FB\u81F3 MySQL",`
+    `;
+      const footer = `<button class="btn btn-sm btn-secondary" onclick="Utils.copyLog()">\u{1F4CB} \u4E00\u952E\u590D\u5236</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">\u5173\u95ED</button>`;
+      Utils.openModal("\u{1F4CB} " + (title || "\u65E5\u5FD7"), body, footer);
+      try {
+        const api = window.Api;
+        const res = await (api ? api.get(apiPath) : fetch(apiPath).then((r) => r.json()));
+        const contentEl = document.getElementById("utilsLogContent");
+        const loaderEl = document.getElementById("utilsLogLoader");
+        if (contentEl && loaderEl) {
+          loaderEl.style.display = "none";
+          contentEl.style.display = "block";
+          if (res.success && res.data) {
+            contentEl.textContent = res.data.logs || "(\u7A7A)";
+            window._hspUtilsLog = res.data.logs || "";
+          } else {
+            contentEl.innerHTML = '<span style="color:var(--danger)">' + (res.message || "\u52A0\u8F7D\u5931\u8D25") + "</span>";
+            window._hspUtilsLog = "";
+          }
+        }
+      } catch (err) {
+        const loaderEl = document.getElementById("utilsLogLoader");
+        if (loaderEl) loaderEl.textContent = "\u274C \u52A0\u8F7D\u5931\u8D25: " + err.message;
+        window._hspUtilsLog = "";
+      }
+    },
+    copyLog() {
+      const text = window._hspUtilsLog || "";
+      if (!text) {
+        this.notify("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u65E5\u5FD7", "warn");
+        return;
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236", "success")).catch(() => this.notify("\u590D\u5236\u5931\u8D25", "error"));
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        this.notify("\u2705 \u65E5\u5FD7\u5DF2\u590D\u5236", "success");
+      }
+    }
+  };
+  window.closeModal = Utils.closeModal;
+  window.openModal = Utils.openModal;
+  document.addEventListener("click", (e) => {
+    if (e.target.id === "modalOverlay" || e.target.id === "modalClose") {
+      Utils.closeModal();
+    }
+  });
+  window.formatDate = function(dateStr) {
+    if (!dateStr) return "--";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
+  };
+  function escapeHtml(s) {
+    return window.escapeHtml(s);
+  }
+  window.escapeHtml = function(s) {
+    if (!s || typeof s !== "string") return "";
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  };
+  var Api = {
+    baseUrl: "/api",
+    _diagLog: [],
+    // 诊断日志 [{page, time, msg, level}]
+    _currentPage: "dashboard",
+    _diag(msg, level) {
+      level = level || "info";
+      const entry = { page: this._currentPage, time: (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" }), msg, level };
+      this._diagLog.push(entry);
+      if (this._diagLog.length > 200) this._diagLog = this._diagLog.slice(-200);
+      try {
+        var d = document.getElementById("page-diag-content");
+        if (d) d.innerHTML += '<br><span style="color:#38bdf8">\u{1F310} ' + msg + "</span>";
+      } catch (e) {
+      }
+    },
+    getDiagLog(filterPage) {
+      if (filterPage) return this._diagLog.filter((e) => e.page === filterPage);
+      return this._diagLog;
+    },
+    clearDiagLog() {
+      this._diagLog = [];
+    },
+    _getToken() {
+      return localStorage.getItem("hsp_token");
+    },
+    // opts.showError: true (default, modal) | false (page handles it) | 'notify' (toast only)
+    async request(method, path, data, signal, opts) {
+      opts = opts || {};
+      const showError = opts.showError !== false;
+      const headers = { "Content-Type": "application/json" };
+      const token = this._getToken();
+      if (token) headers["x-auth-token"] = token;
+      const fetchOpts = {
+        method,
+        headers,
+        credentials: "same-origin"
+      };
+      if (signal) fetchOpts.signal = signal;
+      if (data && (method === "POST" || method === "PUT" || method === "PATCH")) {
+        fetchOpts.body = JSON.stringify(data);
+      }
+      const url = this.baseUrl + path;
+      this._diag(method + " " + url + " | token=" + (token ? "\u2705" : "\u274C"));
+      try {
+        const res = await fetch(url, fetchOpts);
+        const ct = res.headers.get("content-type") || "?";
+        const ok = res.ok && ct.includes("json");
+        this._diag(method + " " + url + " \u2192 HTTP " + res.status + " ct=" + ct, ok ? "success" : "warn");
+        if (res.status === 401) {
+          localStorage.removeItem("hsp_token");
+          this._diag("\u{1F534} 401 \u672A\u767B\u5F55\uFF0C\u8DF3\u8F6C\u767B\u5F55\u9875", "error");
+          window.location.href = "/login.html";
+          return { success: false, message: "\u672A\u767B\u5F55" };
+        }
+        const text = await res.text();
+        try {
+          const result = JSON.parse(text);
+          if (!result.success && showError && typeof Utils !== "undefined") {
+            if (showError === "notify") {
+              Utils.notify(result.message || "\u8BF7\u6C42\u5931\u8D25", "error");
+            } else {
+              Utils.showError("\u8BF7\u6C42\u5931\u8D25", result.message || "\u672A\u77E5\u9519\u8BEF", method + " " + url);
+            }
+          }
+          return result;
+        } catch (e) {
+          this._diag("\u{1F7E0} JSON\u89E3\u6790\u5931\u8D25! \u54CD\u5E94\u4E0D\u662FJSON: " + text.substring(0, 100), "error");
+          if (showError && typeof Utils !== "undefined") {
+            Utils.showError("\u6570\u636E\u89E3\u6790\u5931\u8D25", "\u670D\u52A1\u5668\u8FD4\u56DE\u4E86\u975E JSON \u54CD\u5E94", "URL: " + url + "\nContent: " + text.substring(0, 500));
+          }
+          return { success: false, message: "Invalid JSON: " + text.substring(0, 80) };
+        }
+      } catch (err) {
+        this._diag("\u{1F534} fetch\u5F02\u5E38: " + (err.name || "?") + " " + (err.message || ""), "error");
+        if (showError && typeof Utils !== "undefined") {
+          Utils.showError("\u7F51\u7EDC\u8BF7\u6C42\u5F02\u5E38", err.message || "\u8BF7\u6C42\u5931\u8D25", method + " " + url);
+        }
+        return { success: false, message: err.message };
+      }
+    },
+    get(path, signal, opts) {
+      return this.request("GET", path, null, signal, opts);
+    },
+    post(path, data, opts) {
+      return this.request("POST", path, data, null, opts);
+    },
+    put(path, data, opts) {
+      return this.request("PUT", path, data, null, opts);
+    },
+    del(path, data, opts) {
+      return this.request("DELETE", path, data || {}, null, opts);
+    }
+  };
+  window.Api = Api;
+  var dbMode = "local";
+  var dbConnected = false;
+  var dbPreferred = "local";
+  var dbFallbackReason = null;
+  async function loadSettings() {
+    try {
+      const [cfgRes, dbRes] = await Promise.all([
+        Api.get("/system/config"),
+        Api.get("/db/status")
+      ]);
+      if (cfgRes.success && cfgRes.data) {
+        const cfg = cfgRes.data;
+        setVal("cfgAliKeyId", cfg.aliKeyId || "");
+        setVal("cfgAliKeySecret", cfg.aliKeySecret || "");
+        setVal("cfgPushplusToken", cfg.pushplusToken);
+        var tokEl = document.getElementById("cfgPushplusToken");
+        if (tokEl && cfg.pushplusToken === "\u5DF2\u914D\u7F6E") {
+          tokEl.value = "";
+          tokEl.placeholder = "\u2705 \u5DF2\u914D\u7F6E\uFF08\u4FEE\u6539\u8BF7\u91CD\u65B0\u8F93\u5165\uFF09";
+          tokEl.style.borderColor = "var(--success)";
+        } else if (tokEl) {
+          tokEl.placeholder = "\u8F93\u5165 Token";
+          tokEl.style.borderColor = "";
+        }
+        setVal("cfgAcmeEmail", cfg.acmeEmail || "");
+        setVal("cfgAcmeDns", cfg.acmeDnsProvider || "alidns");
+      }
+      if (dbRes.success && dbRes.data) {
+        dbMode = dbRes.data.mode || "local";
+        dbConnected = dbRes.data.connected;
+        dbPreferred = dbRes.data.preferred || dbMode;
+        dbFallbackReason = dbRes.data.fallback || null;
+      }
+      renderDbStatus();
+      setTimeout(function() {
+        _loadSettingsOpLog("all");
+      }, 300);
+    } catch (err) {
+      App.log("error", "\u52A0\u8F7D\u8BBE\u7F6E\u5931\u8D25:", err);
+    }
+  }
+  function renderDbStatus() {
+    const el = document.getElementById("dbStatusText");
+    const warnEl = document.getElementById("dbFallbackNote");
+    if (!el) return;
+    if (dbPreferred === "mysql" && dbMode === "local") {
+      el.innerHTML = '<span style="color:var(--warning)">\u26A0\uFE0F \u5DF2\u56DE\u9000\u5230 SQLite\uFF08MySQL \u4E0D\u53EF\u8FBE\uFF09</span>';
+      if (warnEl) {
+        var reason = dbFallbackReason ? "\uFF08" + dbFallbackReason + "\uFF09" : "";
+        warnEl.innerHTML = '<div class="alert alert-warning" style="font-size:13px;padding:10px 14px;">\u{1F4A1} \u7CFB\u7EDF\u504F\u597D\u4F7F\u7528 MySQL \u5B58\u50A8\uFF0C\u4F46\u5F53\u524D MySQL \u4E0D\u53EF\u8FBE' + reason + '\uFF0C\u5DF2\u81EA\u52A8\u56DE\u9000\u5230\u672C\u5730 SQLite\u3002MySQL \u6062\u590D\u540E<a href="#" onclick="location.reload()">\u91CD\u542F\u670D\u52A1</a>\u5373\u53EF\u81EA\u52A8\u5207\u6362\u3002</div>';
+        warnEl.style.display = "block";
+      }
+      var migrateSection = document.getElementById("dbMigrateSection");
+      var btnSwitch = document.getElementById("btnDbSwitch");
+      if (migrateSection) migrateSection.style.display = "none";
+      if (btnSwitch) btnSwitch.style.display = "none";
+      return;
+    }
+    if (warnEl) warnEl.style.display = "none";
+    if (dbMode === "mysql" && dbConnected) {
+      el.innerHTML = '<span style="color:var(--success)">\u2705 MySQL \u5DF2\u8FDE\u63A5</span>';
+      const migrateSection2 = document.getElementById("dbMigrateSection");
+      const btnSwitch2 = document.getElementById("btnDbSwitch");
+      if (migrateSection2) migrateSection2.style.display = "none";
+      if (btnSwitch2) btnSwitch2.style.display = "inline-flex";
+    } else if (dbMode === "mysql" && !dbConnected) {
+      el.innerHTML = '<span style="color:var(--warning)">\u26A0\uFE0F MySQL \u8FDE\u63A5\u65AD\u5F00</span>';
+      const migrateSection2 = document.getElementById("dbMigrateSection");
+      const btnSwitch2 = document.getElementById("btnDbSwitch");
+      if (migrateSection2) migrateSection2.style.display = "none";
+      if (btnSwitch2) btnSwitch2.style.display = "none";
+    } else {
+      el.innerHTML = '<span style="color:var(--text-secondary)">\u{1F5C4}\uFE0F SQLite \u672C\u5730\u5B58\u50A8</span>';
+      const migrateSection2 = document.getElementById("dbMigrateSection");
+      const btnSwitch2 = document.getElementById("btnDbSwitch");
+      if (migrateSection2) migrateSection2.style.display = "block";
+      if (btnSwitch2) btnSwitch2.style.display = "none";
+    }
+  }
+  window.toggleDbConfig = () => {
+    if (dbMode === "mysql" && dbConnected) {
+      Utils.confirm("\u65AD\u5F00 MySQL", "\u786E\u5B9A\u65AD\u5F00\u6570\u636E\u5E93\u8FDE\u63A5\u5E76\u5207\u56DE SQLite \u6A21\u5F0F\u5417\uFF1F<br><small>\u6570\u636E\u4ECD\u5728 MySQL \u4E2D\uFF0C\u4E0D\u4F1A\u4E22\u5931</small>", async () => {
+        Utils.notify("\u6B63\u5728\u65AD\u5F00\u8FDE\u63A5...", "info");
+        const res = await Api.post("/db/disconnect");
+        if (res.success) {
+          dbMode = "local";
+          dbConnected = false;
+          renderDbStatus();
+          Utils.notify("\u5DF2\u5207\u56DE SQLite \u672C\u5730\u5B58\u50A8\u6A21\u5F0F", "success");
+        } else {
+          Utils.notify(res.message || "\u64CD\u4F5C\u5931\u8D25", "error");
+        }
+      });
+      return;
+    }
+    showDbConfigModal();
+  };
+  window.showDbConfigModal = () => {
+    const body = `
     <div class="form-group">
       <label>MySQL \u4E3B\u673A</label>
       <input type="text" id="dbMigHost" class="form-input" value="192.168.100.110" placeholder="127.0.0.1">
@@ -53,22 +465,645 @@ Content: `+f.substring(0,500)),{success:!1,message:"Invalid JSON: "+f.substring(
       <input type="text" id="dbMigName" class="form-input" value="server_panel" placeholder="server_panel">
     </div>
     <div id="dbMigResult" style="font-size:12px;margin-top:8px;min-height:20px"></div>
-  `,`
+  `;
+    const footer = `
     <button class="btn btn-secondary" onclick="Utils.closeModal()">\u53D6\u6D88</button>
     <button class="btn btn-info" id="btnDbTest">\u{1F9EA} \u6D4B\u8BD5\u8FDE\u63A5</button>
     <button class="btn btn-success" id="btnDbConnect" onclick="migrateToMySQL()">\u{1F680} \u8FDE\u63A5\u5E76\u8FC1\u79FB</button>
-  `),document.getElementById("btnDbTest").addEventListener("click",async()=>{const n=document.getElementById("dbMigHost").value.trim(),a=document.getElementById("dbMigPort").value.trim()||"3306",r=document.getElementById("dbMigUser").value.trim(),s=document.getElementById("dbMigPass").value,o=document.getElementById("dbMigName").value.trim()||"server_panel",i=document.getElementById("dbMigResult");if(!n||!r){i.textContent="\u274C \u8BF7\u8F93\u5165\u4E3B\u673A\u548C\u7528\u6237\u540D";return}i.textContent="\u{1F504} \u6D4B\u8BD5\u8FDE\u63A5...";const l=await v.post("/db/test",{host:n,port:parseInt(a),user:r,password:s,database:o});i.textContent=l.success?l.dbExists?`\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93"${o}"\u5DF2\u5B58\u5728`:`\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93"${o}"\u5C06\u81EA\u52A8\u521B\u5EFA`:"\u274C "+(l.message||"\u8FDE\u63A5\u5931\u8D25")})};window.migrateToMySQL=async()=>{const e=document.getElementById("dbMigHost").value.trim(),t=document.getElementById("dbMigPort").value.trim()||"3306",n=document.getElementById("dbMigUser").value.trim(),a=document.getElementById("dbMigPass").value,r=document.getElementById("dbMigName").value.trim()||"server_panel",s=document.getElementById("dbMigResult");if(!e||!n){c.notify("\u8BF7\u8F93\u5165\u6570\u636E\u5E93\u8FDE\u63A5\u4FE1\u606F","error");return}s.textContent="\u{1F504} \u6B63\u5728\u8FDE\u63A5 MySQL \u5E76\u521D\u59CB\u5316...";const o=await v.post("/db/connect",{host:e,port:parseInt(t),user:n,password:a,database:r});if(!o.success){s.textContent="\u274C "+(o.message||"\u8FDE\u63A5\u5931\u8D25");return}s.textContent="\u{1F504} \u6B63\u5728\u8FC1\u79FB\u6570\u636E...";const i=await v.post("/db/migrate");i.success?(T="mysql",D=!0,R(),s.textContent="\u2705 \u8FC1\u79FB\u5B8C\u6210\uFF01"+(i.data?.migrated?.join(", ")||""),c.notify("\u2705 MySQL \u8FC1\u79FB\u5B8C\u6210","success"),setTimeout(()=>c.closeModal(),2e3)):s.textContent="\u274C "+(i.message||"\u8FC1\u79FB\u5931\u8D25")};window.testDbConnection=async()=>{const e=document.getElementById("dbHost")?.value.trim()||"",t=document.getElementById("dbPort")?.value.trim()||"3306",n=document.getElementById("dbUser")?.value.trim()||"",a=document.getElementById("dbPass")?.value||"",r=document.getElementById("dbName")?.value.trim()||"server_panel",s=document.getElementById("dbTestResult");if(!e||!n){s&&(s.textContent="\u274C \u8BF7\u8F93\u5165\u4E3B\u673A\u548C\u7528\u6237\u540D",s.className="test-result error");return}s&&(s.textContent="\u{1F504} \u6D4B\u8BD5\u8FDE\u63A5...",s.className="test-result info");const o=await v.post("/db/test",{host:e,port:parseInt(t)||3306,user:n,password:a,database:r});o.success?s&&(s.textContent=o.dbExists?`\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93 "${r}" \u5DF2\u5B58\u5728`:`\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93 "${r}" \u5C06\u5728\u8FDE\u63A5\u65F6\u81EA\u52A8\u521B\u5EFA`,s.className="test-result success"):s&&(s.textContent="\u274C "+(o.message||"\u8FDE\u63A5\u5931\u8D25"),s.className="test-result error")};window.connectDb=async()=>{const e=document.getElementById("dbHost")?.value.trim()||"",t=document.getElementById("dbPort")?.value.trim()||"3306",n=document.getElementById("dbUser")?.value.trim()||"",a=document.getElementById("dbPass")?.value||"",r=document.getElementById("dbName")?.value.trim()||"server_panel",s=document.getElementById("dbTestResult"),o=document.getElementById("btnDbConnect");if(!e||!n){c.notify("\u8BF7\u8F93\u5165\u6570\u636E\u5E93\u8FDE\u63A5\u4FE1\u606F","error");return}o&&(o.disabled=!0,o.innerHTML='<span class="spinner"></span> \u8FDE\u63A5\u4E2D...'),c.notify("\u6B63\u5728\u8FDE\u63A5 MySQL \u5E76\u521D\u59CB\u5316\u8868\u7ED3\u6784...","info");const i=await v.post("/db/connect",{host:e,port:parseInt(t)||3306,user:n,password:a,database:r});if(i.success){T="mysql",D=!0,R(),c.notify("\u2705 MySQL \u8FDE\u63A5\u6210\u529F\uFF01\u73B0\u5728\u53EF\u4EE5\u8FC1\u79FB\u6570\u636E","success"),document.getElementById("cardDbConfig").style.display="none";const l=document.getElementById("btnMigrate");l&&(l.style.display="inline-flex")}else s&&(s.textContent="\u274C "+(i.message||"\u8FDE\u63A5\u5931\u8D25"),s.className="test-result error"),c.notify(i.message||"\u8FDE\u63A5\u5931\u8D25","error");o&&(o.disabled=!1,o.innerHTML="\u{1F517} \u8FDE\u63A5 MySQL")};window.startMigration=async()=>{c.confirm("\u6570\u636E\u8FC1\u79FB","\u786E\u5B9A\u5C06\u672C\u5730 JSON \u6570\u636E\u8FC1\u79FB\u5230 MySQL \u5417\uFF1F<br><small>\u8FC1\u79FB\u4E0D\u4F1A\u5220\u9664\u672C\u5730\u6587\u4EF6\uFF0C\u6570\u636E\u4F1A\u5408\u5E76\u5230 MySQL</small>",async()=>{c.notify("\u6B63\u5728\u8FC1\u79FB\u6570\u636E...","info");const e=await v.post("/db/migrate");if(e.success&&e.data){const t=e.data;let n="\u2705 \u8FC1\u79FB\u5B8C\u6210";t.migrated.length>0&&(n+=`
-\u5DF2\u8FC1\u79FB: `+t.migrated.join(", ")),t.errors.length>0&&(n+=`
-\u5931\u8D25: `+t.errors.join(", ")),t.skipped.length>0&&(n+=`
-\u8DF3\u8FC7: `+t.skipped.join(", ")),c.notify(n,"success")}else c.notify(e.message||"\u8FC1\u79FB\u5931\u8D25","error")})};window.showSettingsOpLog=()=>{var e=document.getElementById("opLogModuleFilter"),t=e?e.value:"all";(!t||t==="all")&&(t="all"),oe(t)};async function oe(e){var t=document.getElementById("opLogContainer");if(t)try{var n="limit=8";e&&e!=="all"&&(n+="&module="+e);var a=await v.get("/log?"+n,null,{showError:!1});if(!a.success||!a.data){t.innerHTML='<span style="color:#64748b;">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span>';return}var r=a.data.list||a.data.records||a.data.entries||[];if(!Array.isArray(r)||r.length===0){t.innerHTML='<span style="color:#64748b;">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span>';return}var s=r.slice(0,8);t.innerHTML=s.map(function(o){var i=o.timeCst||"";if(!i)i=o.time||o.timestamp||o.createdAt||"",i&&i.length>16&&(i=new Date(i).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:!1,timeZone:"Asia/Shanghai"}));else{var l=i.match(/(\d{2}:\d{2}:\d{2})/);l&&(i=l[1].slice(0,5))}var d={ddns:"\u{1F4E1}",ssl:"\u{1F512}",nginx:"\u{1F5A5}\uFE0F",proxy:"\u{1F504}",port:"\u{1F50C}",pm2:"\u26A1",docker:"\u{1F433}",ssh:"\u{1F4BB}",system:"\u2699\uFE0F"},p=d[o.module]||"\u{1F4CC}",u=o.message||o.action||o.desc||"",m=[];o.ip&&o.ip!=="-"&&m.push(U(o.ip)),o.duration&&m.push(o.duration+"ms");var f=m.length?'<span style="color:#9ca3af;font-size:10px">['+m.join(", ")+"]</span> ":"";return'<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px"><span style="color:#6b7280;font-family:Menlo,monospace">'+U(i||"--:--")+"</span><span>"+p+"</span>"+f+'<span style="flex:1">'+U(u)+"</span></div>"}).join("")}catch(o){t.innerHTML='<span style="color:var(--danger)">\u52A0\u8F7D\u5931\u8D25: '+(o.message||"")+"</span>"}}function ee(){var e=document.getElementById("diagLogContainer");if(e){var t=document.getElementById("diagPageFilter")?.value||"all",n=v.getDiagLog(t==="all"?null:t);if(!n||n.length===0){e.innerHTML='<span style="color:var(--text-secondary);">\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7</span>';return}var a={success:"#22c55e",warn:"#f59e0b",error:"#c41e3a",info:"#6b7280"},r={dashboard:"\u{1F4CA}",ddns:"\u{1F4E1}",ssl:"\u{1F512}",nginx:"\u{1F5A5}\uFE0F",proxy:"\u{1F504}",port:"\u{1F50C}",pm2:"\u26A1",docker:"\u{1F433}",ssh:"\u{1F4BB}",settings:"\u2699\uFE0F"};e.innerHTML=n.map(function(s){var o=a[s.level]||"#6b7280",i=r[s.page]||"\u2753";return'<span style="color:'+o+'">'+s.time+" "+i+" "+s.msg+"</span>"}).join("<br>"),e.scrollTop=e.scrollHeight}}function P(e,t){const n=document.getElementById(e);n&&t!==void 0&&(n.value=t)}document.addEventListener("DOMContentLoaded",()=>{const e=document.getElementById("btnSaveSettings"),t=document.getElementById("btnTestPushplus"),n=document.getElementById("btnReinstall"),a=document.getElementById("btnExportData"),r=document.getElementById("btnImportData"),s=document.getElementById("btnRestartService");e&&e.addEventListener("click",async()=>{const i={aliKeyId:document.getElementById("cfgAliKeyId")?.value||"",aliKeySecret:document.getElementById("cfgAliKeySecret")?.value||"",pushplusToken:document.getElementById("cfgPushplusToken")?.value||"",acmeEmail:document.getElementById("cfgAcmeEmail")?.value||"",acmeDns:document.getElementById("cfgAcmeDns")?.value||"alidns"},l=await v.post("/system/config",i);c.notify(l.message||"\u4FDD\u5B58\u5B8C\u6210",l.success?"success":"error")}),t&&t.addEventListener("click",async()=>{c.notify("\u6B63\u5728\u53D1\u9001\u6D4B\u8BD5\u63A8\u9001...","info");const i=await v.post("/notify/test",{token:document.getElementById("cfgPushplusToken")?.value||""});c.notify(i.message||"\u63A8\u9001\u5B8C\u6210",i.success?"success":"error")}),n&&n.addEventListener("click",()=>{c.confirm("\u26A0\uFE0F \u91CD\u88C5\u5411\u5BFC",'<div style="text-align:left"><strong style="color:var(--danger)">\u91CD\u88C5\u5C06\u6E05\u9664\u6240\u6709\u6570\u636E\uFF01</strong><br><br>\u8BF7\u5148\u5BFC\u51FA\u6570\u636E\u5907\u4EFD\uFF0C\u518D\u6267\u884C\u91CD\u88C5\u3002<br><br>\u91CD\u88C5\u540E\u5C06\u8DF3\u8F6C\u5230\u5B89\u88C5\u5411\u5BFC\u9875\u9762\u91CD\u65B0\u914D\u7F6E\u7CFB\u7EDF\u3002</div>',async()=>{c.notify("\u6B63\u5728\u6E05\u9664\u6570\u636E...","info");try{const i=await v.post("/setup/reset");i.success?(c.notify("\u7CFB\u7EDF\u5DF2\u91CD\u7F6E\uFF0C\u5373\u5C06\u8DF3\u8F6C...","success"),setTimeout(()=>{window.location.href="/install.html"},1500)):c.notify(i.message||"\u91CD\u7F6E\u5931\u8D25","error")}catch{window.location.href="/install.html"}},"\u786E\u8BA4\u91CD\u88C5","\u53D6\u6D88")}),a&&a.addEventListener("click",async()=>{c.notify("\u6B63\u5728\u5BFC\u51FA\u6570\u636E...","info");const i=localStorage.getItem("hsp_token"),l=document.createElement("a");l.href="/api/db/export?token="+encodeURIComponent(i),document.body.appendChild(l),l.click(),document.body.removeChild(l)}),r&&r.addEventListener("click",()=>{c.openModal("\u{1F4E5} \u5BFC\u5165\u6570\u636E",`
+  `;
+    Utils.openModal("\u{1F517} \u8FC1\u79FB\u81F3 MySQL", body, footer);
+    document.getElementById("btnDbTest").addEventListener("click", async () => {
+      const host = document.getElementById("dbMigHost").value.trim();
+      const port = document.getElementById("dbMigPort").value.trim() || "3306";
+      const user = document.getElementById("dbMigUser").value.trim();
+      const password = document.getElementById("dbMigPass").value;
+      const database = document.getElementById("dbMigName").value.trim() || "server_panel";
+      const resultEl = document.getElementById("dbMigResult");
+      if (!host || !user) {
+        resultEl.textContent = "\u274C \u8BF7\u8F93\u5165\u4E3B\u673A\u548C\u7528\u6237\u540D";
+        return;
+      }
+      resultEl.textContent = "\u{1F504} \u6D4B\u8BD5\u8FDE\u63A5...";
+      const res = await Api.post("/db/test", { host, port: parseInt(port), user, password, database });
+      resultEl.textContent = res.success ? res.dbExists ? `\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93"${database}"\u5DF2\u5B58\u5728` : `\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93"${database}"\u5C06\u81EA\u52A8\u521B\u5EFA` : "\u274C " + (res.message || "\u8FDE\u63A5\u5931\u8D25");
+    });
+  };
+  window.migrateToMySQL = async () => {
+    const host = document.getElementById("dbMigHost").value.trim();
+    const port = document.getElementById("dbMigPort").value.trim() || "3306";
+    const user = document.getElementById("dbMigUser").value.trim();
+    const password = document.getElementById("dbMigPass").value;
+    const database = document.getElementById("dbMigName").value.trim() || "server_panel";
+    const resultEl = document.getElementById("dbMigResult");
+    if (!host || !user) {
+      Utils.notify("\u8BF7\u8F93\u5165\u6570\u636E\u5E93\u8FDE\u63A5\u4FE1\u606F", "error");
+      return;
+    }
+    resultEl.textContent = "\u{1F504} \u6B63\u5728\u8FDE\u63A5 MySQL \u5E76\u521D\u59CB\u5316...";
+    const res = await Api.post("/db/connect", { host, port: parseInt(port), user, password, database });
+    if (!res.success) {
+      resultEl.textContent = "\u274C " + (res.message || "\u8FDE\u63A5\u5931\u8D25");
+      return;
+    }
+    resultEl.textContent = "\u{1F504} \u6B63\u5728\u8FC1\u79FB\u6570\u636E...";
+    const migRes = await Api.post("/db/migrate");
+    if (migRes.success) {
+      dbMode = "mysql";
+      dbConnected = true;
+      renderDbStatus();
+      resultEl.textContent = "\u2705 \u8FC1\u79FB\u5B8C\u6210\uFF01" + (migRes.data?.migrated?.join(", ") || "");
+      Utils.notify("\u2705 MySQL \u8FC1\u79FB\u5B8C\u6210", "success");
+      setTimeout(() => Utils.closeModal(), 2e3);
+    } else {
+      resultEl.textContent = "\u274C " + (migRes.message || "\u8FC1\u79FB\u5931\u8D25");
+    }
+  };
+  window.testDbConnection = async () => {
+    const host = document.getElementById("dbHost")?.value.trim() || "";
+    const port = document.getElementById("dbPort")?.value.trim() || "3306";
+    const user = document.getElementById("dbUser")?.value.trim() || "";
+    const password = document.getElementById("dbPass")?.value || "";
+    const database = document.getElementById("dbName")?.value.trim() || "server_panel";
+    const resultEl = document.getElementById("dbTestResult");
+    if (!host || !user) {
+      if (resultEl) {
+        resultEl.textContent = "\u274C \u8BF7\u8F93\u5165\u4E3B\u673A\u548C\u7528\u6237\u540D";
+        resultEl.className = "test-result error";
+      }
+      return;
+    }
+    if (resultEl) {
+      resultEl.textContent = "\u{1F504} \u6D4B\u8BD5\u8FDE\u63A5...";
+      resultEl.className = "test-result info";
+    }
+    const res = await Api.post("/db/test", { host, port: parseInt(port) || 3306, user, password, database });
+    if (res.success) {
+      if (resultEl) {
+        resultEl.textContent = res.dbExists ? `\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93 "${database}" \u5DF2\u5B58\u5728` : `\u2705 \u8FDE\u63A5\u6210\u529F\uFF01\u6570\u636E\u5E93 "${database}" \u5C06\u5728\u8FDE\u63A5\u65F6\u81EA\u52A8\u521B\u5EFA`;
+        resultEl.className = "test-result success";
+      }
+    } else {
+      if (resultEl) {
+        resultEl.textContent = "\u274C " + (res.message || "\u8FDE\u63A5\u5931\u8D25");
+        resultEl.className = "test-result error";
+      }
+    }
+  };
+  window.connectDb = async () => {
+    const host = document.getElementById("dbHost")?.value.trim() || "";
+    const port = document.getElementById("dbPort")?.value.trim() || "3306";
+    const user = document.getElementById("dbUser")?.value.trim() || "";
+    const password = document.getElementById("dbPass")?.value || "";
+    const database = document.getElementById("dbName")?.value.trim() || "server_panel";
+    const resultEl = document.getElementById("dbTestResult");
+    const btn = document.getElementById("btnDbConnect");
+    if (!host || !user) {
+      Utils.notify("\u8BF7\u8F93\u5165\u6570\u636E\u5E93\u8FDE\u63A5\u4FE1\u606F", "error");
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> \u8FDE\u63A5\u4E2D...';
+    }
+    Utils.notify("\u6B63\u5728\u8FDE\u63A5 MySQL \u5E76\u521D\u59CB\u5316\u8868\u7ED3\u6784...", "info");
+    const res = await Api.post("/db/connect", { host, port: parseInt(port) || 3306, user, password, database });
+    if (res.success) {
+      dbMode = "mysql";
+      dbConnected = true;
+      renderDbStatus();
+      Utils.notify("\u2705 MySQL \u8FDE\u63A5\u6210\u529F\uFF01\u73B0\u5728\u53EF\u4EE5\u8FC1\u79FB\u6570\u636E", "success");
+      document.getElementById("cardDbConfig").style.display = "none";
+      const migrateBtn = document.getElementById("btnMigrate");
+      if (migrateBtn) migrateBtn.style.display = "inline-flex";
+    } else {
+      if (resultEl) {
+        resultEl.textContent = "\u274C " + (res.message || "\u8FDE\u63A5\u5931\u8D25");
+        resultEl.className = "test-result error";
+      }
+      Utils.notify(res.message || "\u8FDE\u63A5\u5931\u8D25", "error");
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "\u{1F517} \u8FDE\u63A5 MySQL";
+    }
+  };
+  window.startMigration = async () => {
+    Utils.confirm("\u6570\u636E\u8FC1\u79FB", "\u786E\u5B9A\u5C06\u672C\u5730 JSON \u6570\u636E\u8FC1\u79FB\u5230 MySQL \u5417\uFF1F<br><small>\u8FC1\u79FB\u4E0D\u4F1A\u5220\u9664\u672C\u5730\u6587\u4EF6\uFF0C\u6570\u636E\u4F1A\u5408\u5E76\u5230 MySQL</small>", async () => {
+      Utils.notify("\u6B63\u5728\u8FC1\u79FB\u6570\u636E...", "info");
+      const res = await Api.post("/db/migrate");
+      if (res.success && res.data) {
+        const d = res.data;
+        let msg = "\u2705 \u8FC1\u79FB\u5B8C\u6210";
+        if (d.migrated.length > 0) msg += "\n\u5DF2\u8FC1\u79FB: " + d.migrated.join(", ");
+        if (d.errors.length > 0) msg += "\n\u5931\u8D25: " + d.errors.join(", ");
+        if (d.skipped.length > 0) msg += "\n\u8DF3\u8FC7: " + d.skipped.join(", ");
+        Utils.notify(msg, "success");
+      } else {
+        Utils.notify(res.message || "\u8FC1\u79FB\u5931\u8D25", "error");
+      }
+    });
+  };
+  window.showSettingsOpLog = () => {
+    var filterEl = document.getElementById("opLogModuleFilter");
+    var filter = filterEl ? filterEl.value : "all";
+    if (!filter || filter === "all") filter = "all";
+    _loadSettingsOpLog(filter);
+  };
+  async function _loadSettingsOpLog(module) {
+    var logDiv = document.getElementById("opLogContainer");
+    if (!logDiv) return;
+    try {
+      var params = "limit=8";
+      if (module && module !== "all") params += "&module=" + module;
+      var res = await Api.get("/log?" + params, null, { showError: false });
+      if (!res.success || !res.data) {
+        logDiv.innerHTML = '<span style="color:#64748b;">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span>';
+        return;
+      }
+      var entries = res.data.list || res.data.records || res.data.entries || [];
+      if (!Array.isArray(entries) || entries.length === 0) {
+        logDiv.innerHTML = '<span style="color:#64748b;">\u6682\u65E0\u64CD\u4F5C\u8BB0\u5F55</span>';
+        return;
+      }
+      var recent = entries.slice(0, 8);
+      logDiv.innerHTML = recent.map(function(e) {
+        var time = e.timeCst || "";
+        if (!time) {
+          time = e.time || e.timestamp || e.createdAt || "";
+          if (time && time.length > 16) time = new Date(time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
+        } else {
+          var m = time.match(/(\d{2}:\d{2}:\d{2})/);
+          if (m) time = m[1].slice(0, 5);
+        }
+        var modIcon = { ddns: "\u{1F4E1}", ssl: "\u{1F512}", nginx: "\u{1F5A5}\uFE0F", proxy: "\u{1F504}", port: "\u{1F50C}", pm2: "\u26A1", docker: "\u{1F433}", ssh: "\u{1F4BB}", system: "\u2699\uFE0F" };
+        var icon = modIcon[e.module] || "\u{1F4CC}";
+        var text = e.message || e.action || e.desc || "";
+        var meta = [];
+        if (e.ip && e.ip !== "-") meta.push(escapeHtml(e.ip));
+        if (e.duration) meta.push(e.duration + "ms");
+        var metaStr = meta.length ? '<span style="color:#9ca3af;font-size:10px">[' + meta.join(", ") + "]</span> " : "";
+        return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px"><span style="color:#6b7280;font-family:Menlo,monospace">' + escapeHtml(time || "--:--") + "</span><span>" + icon + "</span>" + metaStr + '<span style="flex:1">' + escapeHtml(text) + "</span></div>";
+      }).join("");
+    } catch (e) {
+      logDiv.innerHTML = '<span style="color:var(--danger)">\u52A0\u8F7D\u5931\u8D25: ' + (e.message || "") + "</span>";
+    }
+  }
+  function renderDiagLog() {
+    var container = document.getElementById("diagLogContainer");
+    if (!container) return;
+    var filter = document.getElementById("diagPageFilter")?.value || "all";
+    var logs = Api.getDiagLog(filter === "all" ? null : filter);
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-secondary);">\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7</span>';
+      return;
+    }
+    var levelColors = { success: "#22c55e", warn: "#f59e0b", error: "#c41e3a", info: "#6b7280" };
+    var pageLabels = { dashboard: "\u{1F4CA}", ddns: "\u{1F4E1}", ssl: "\u{1F512}", nginx: "\u{1F5A5}\uFE0F", proxy: "\u{1F504}", port: "\u{1F50C}", pm2: "\u26A1", docker: "\u{1F433}", ssh: "\u{1F4BB}", settings: "\u2699\uFE0F" };
+    container.innerHTML = logs.map(function(e) {
+      var color = levelColors[e.level] || "#6b7280";
+      var label = pageLabels[e.page] || "\u2753";
+      return '<span style="color:' + color + '">' + e.time + " " + label + " " + e.msg + "</span>";
+    }).join("<br>");
+    container.scrollTop = container.scrollHeight;
+  }
+  function setVal(id, value) {
+    const el = document.getElementById(id);
+    if (el && value !== void 0) el.value = value;
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const saveBtn = document.getElementById("btnSaveSettings");
+    const testBtn = document.getElementById("btnTestPushplus");
+    const reinstallBtn = document.getElementById("btnReinstall");
+    const exportBtn = document.getElementById("btnExportData");
+    const importBtn = document.getElementById("btnImportData");
+    const restartBtn = document.getElementById("btnRestartService");
+    if (saveBtn) saveBtn.addEventListener("click", async () => {
+      const data = {
+        aliKeyId: document.getElementById("cfgAliKeyId")?.value || "",
+        aliKeySecret: document.getElementById("cfgAliKeySecret")?.value || "",
+        pushplusToken: document.getElementById("cfgPushplusToken")?.value || "",
+        acmeEmail: document.getElementById("cfgAcmeEmail")?.value || "",
+        acmeDns: document.getElementById("cfgAcmeDns")?.value || "alidns"
+      };
+      const res = await Api.post("/system/config", data);
+      Utils.notify(res.message || "\u4FDD\u5B58\u5B8C\u6210", res.success ? "success" : "error");
+    });
+    if (testBtn) testBtn.addEventListener("click", async () => {
+      Utils.notify("\u6B63\u5728\u53D1\u9001\u6D4B\u8BD5\u63A8\u9001...", "info");
+      const res = await Api.post("/notify/test", {
+        token: document.getElementById("cfgPushplusToken")?.value || ""
+      });
+      Utils.notify(res.message || "\u63A8\u9001\u5B8C\u6210", res.success ? "success" : "error");
+    });
+    if (reinstallBtn) reinstallBtn.addEventListener("click", () => {
+      Utils.confirm(
+        "\u26A0\uFE0F \u91CD\u88C5\u5411\u5BFC",
+        '<div style="text-align:left"><strong style="color:var(--danger)">\u91CD\u88C5\u5C06\u6E05\u9664\u6240\u6709\u6570\u636E\uFF01</strong><br><br>\u8BF7\u5148\u5BFC\u51FA\u6570\u636E\u5907\u4EFD\uFF0C\u518D\u6267\u884C\u91CD\u88C5\u3002<br><br>\u91CD\u88C5\u540E\u5C06\u8DF3\u8F6C\u5230\u5B89\u88C5\u5411\u5BFC\u9875\u9762\u91CD\u65B0\u914D\u7F6E\u7CFB\u7EDF\u3002</div>',
+        async () => {
+          Utils.notify("\u6B63\u5728\u6E05\u9664\u6570\u636E...", "info");
+          try {
+            const res = await Api.post("/setup/reset");
+            if (res.success) {
+              Utils.notify("\u7CFB\u7EDF\u5DF2\u91CD\u7F6E\uFF0C\u5373\u5C06\u8DF3\u8F6C...", "success");
+              setTimeout(() => {
+                window.location.href = "/install.html";
+              }, 1500);
+            } else {
+              Utils.notify(res.message || "\u91CD\u7F6E\u5931\u8D25", "error");
+            }
+          } catch (e) {
+            window.location.href = "/install.html";
+          }
+        },
+        "\u786E\u8BA4\u91CD\u88C5",
+        "\u53D6\u6D88"
+      );
+    });
+    if (exportBtn) exportBtn.addEventListener("click", async () => {
+      Utils.notify("\u6B63\u5728\u5BFC\u51FA\u6570\u636E...", "info");
+      const token = localStorage.getItem("hsp_token");
+      const a = document.createElement("a");
+      a.href = "/api/db/export?token=" + encodeURIComponent(token);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+    if (importBtn) importBtn.addEventListener("click", () => {
+      const body = `
       <div class="form-group">
         <label>\u9009\u62E9\u6570\u636E\u5E93\u6587\u4EF6\uFF08.sql / .db / .json\uFF09</label>
         <input type="file" id="importFileInput" accept=".sql,.db,.json" class="form-input" style="padding:8px">
         <small style="color:var(--text-secondary)">\u652F\u6301 SQLite .db / MySQL .sql / JSON \u5907\u4EFD\u6587\u4EF6</small>
       </div>
       <div id="importResult" style="font-size:12px;margin-top:8px;min-height:20px"></div>
-    `,`
+    `;
+      const footer = `
       <button class="btn btn-secondary" onclick="Utils.closeModal()">\u53D6\u6D88</button>
       <button class="btn btn-success" id="btnImportConfirm">\u{1F4E5} \u5BFC\u5165</button>
-    `),document.getElementById("btnImportConfirm").addEventListener("click",async()=>{const p=document.getElementById("importFileInput")?.files?.[0];if(!p){c.notify("\u8BF7\u9009\u62E9\u6587\u4EF6","error");return}const u=new FormData;u.append("file",p),c.notify("\u6B63\u5728\u5BFC\u5165...","info");try{const m=localStorage.getItem("hsp_token"),g=await(await fetch("/api/db/import",{method:"POST",headers:{"x-auth-token":m},body:u})).json();g.success?(document.getElementById("importResult").innerHTML="\u2705 "+g.message,c.notify("\u2705 \u5BFC\u5165\u6210\u529F","success"),setTimeout(()=>{c.closeModal(),A()},1500)):document.getElementById("importResult").innerHTML="\u274C "+(g.message||"\u5BFC\u5165\u5931\u8D25")}catch(m){document.getElementById("importResult").innerHTML="\u274C "+m.message}})}),s&&s.addEventListener("click",()=>{c.confirm("\u{1F504} \u91CD\u542F\u670D\u52A1",'<div style="text-align:left">\u5373\u5C06\u91CD\u542F\u5BB6\u5EAD\u670D\u52A1\u5668\u7BA1\u7406\u9762\u677F\u3002<br><br><strong>\u91CD\u542F\u671F\u95F4\u7EA63-5\u79D2\u65E0\u6CD5\u8BBF\u95EE</strong>\uFF0C\u5B8C\u6210\u540E\u8BF7\u5237\u65B0\u9875\u9762\u3002</div>',async()=>{try{s.disabled=!0,s.textContent="\u23F3 \u91CD\u542F\u4E2D...",await v.post("/system/restart"),c.notify("\u670D\u52A1\u5DF2\u91CD\u542F\uFF0C3\u79D2\u540E\u81EA\u52A8\u5237\u65B0...","success");let i=0;const l=setInterval(async()=>{i++;try{(await fetch("/api/system/uptime")).ok&&(clearInterval(l),window.location.reload())}catch{i>15&&(clearInterval(l),c.notify("\u670D\u52A1\u672A\u81EA\u52A8\u6062\u590D\uFF0C\u8BF7\u624B\u52A8\u5237\u65B0\u9875\u9762","error"),s.disabled=!1,s.textContent="\u{1F504} \u91CD\u542F\u670D\u52A1")}},1e3)}catch(i){c.notify("\u91CD\u542F\u5931\u8D25: "+i.message,"error"),s.disabled=!1,s.textContent="\u{1F504} \u91CD\u542F\u670D\u52A1"}},"\u786E\u8BA4\u91CD\u542F","\u53D6\u6D88")});const o=async()=>{try{const i=await v.get("/system/uptime");if(i.success&&i.data){const l=Math.floor(i.data.uptime),d=Math.floor(l/86400),p=Math.floor(l%86400/3600),u=Math.floor(l%3600/60),m=l%60,f=[];d>0&&f.push(d+"\u5929"),p>0&&f.push(p+"\u65F6"),f.push(u+"\u5206"+m+"\u79D2");const g=document.getElementById("settingsUptime");g&&(g.textContent=f.join(" "))}}catch{}};o(),setInterval(o,3e4),A&&A()});window.exportOpLog=async e=>{var t=document.getElementById("opLogModuleFilter"),n=t?t.value:"all";(!n||n==="all")&&(n="all");try{c.notify("\u6B63\u5728\u5BFC\u51FA\u65E5\u5FD7...","info");var a=localStorage.getItem("hsp_token"),r=await fetch("/api/log/export?limit=100000&format="+e+(n!=="all"?"&module="+n:""),{headers:{"x-auth-token":a}});if(!r.ok){var s=await r.json().catch(function(){return{message:"\u5BFC\u51FA\u5931\u8D25"}});c.notify("\u5BFC\u51FA\u5931\u8D25: "+(s.message||r.status),"error");return}var o=await r.blob(),i=URL.createObjectURL(o),l=document.createElement("a"),d=new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);l.href=i,l.download="hsp-oplog-"+d+"."+e,document.body.appendChild(l),l.click(),document.body.removeChild(l),URL.revokeObjectURL(i),c.notify("\u2705 \u65E5\u5FD7\u5DF2\u5BFC\u51FA (."+e+")","success")}catch(p){c.notify("\u5BFC\u51FA\u5931\u8D25: "+(p.message||""),"error")}};window.exportDiagLog=()=>{var e=v.getDiagLog(null);if(!e||e.length===0){c.notify("\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7\u53EF\u5BFC\u51FA","error");return}var t=e.map(function(o){return o.time+" | "+(o.page||"?")+" | "+(o.level||"info")+" | "+o.msg}).join(`
-`),n=new Blob([t],{type:"text/plain;charset=utf-8"}),a=URL.createObjectURL(n),r=document.createElement("a"),s=new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);r.href=a,r.download="hsp-diaglog-"+s+".txt",document.body.appendChild(r),r.click(),document.body.removeChild(r),URL.revokeObjectURL(a),c.notify("\u2705 \u8BCA\u65AD\u65E5\u5FD7\u5DF2\u5BFC\u51FA (.txt)","success")};const L=window.App={version:"0.7.1-beta",NOTIFY_DURATION:3e3,_currentPage:"dashboard",_pending:{},isPending(e){return this._pending[e]?!0:(this._pending[e]=!0,setTimeout(()=>delete this._pending[e],5e3),!1)},log(e,...t){L.LOG_LEVELS[L.LOG_LEVEL]>=L.LOG_LEVELS[e]&&console[e==="error"?"error":e==="warn"?"warn":"log"](`[${e.toUpperCase()}]`,...t)},LOG_LEVELS:{debug:0,info:1,warn:2,error:3,none:4},LOG_LEVEL:"info"};window.addEventListener("hashchange",()=>{const e=window.location.hash.replace("#","");if(!e)return;const n={ddns:"ddns",ssl:"ssl",nginx:"nginx",port:"port",pm2:"pm2",cron:"cron",docker:"docker",ssh:"ssh",settings:"settings"}[e];if(!n)return;document.querySelectorAll(".nav-item").forEach(s=>{s.classList.toggle("active",s.dataset.page===n)});const a={};document.querySelectorAll(".page").forEach(s=>{s.id&&s.id.startsWith("page-")&&(a[s.id.replace("page-","")]=s)}),Object.values(a).forEach(s=>s.classList.add("hidden"));const r=a[n];if(r){r.classList.remove("hidden"),typeof v<"u"&&(v._currentPage=n),L._currentPage=n;try{sessionStorage.setItem("hsp_page",n)}catch{}(L.pageLoaders||{})[n]?.()}history.replaceState(null,"",window.location.pathname)});document.addEventListener("DOMContentLoaded",()=>{W(),he(),be(),pe();var e=window.location.hash.replace("#",""),t={ddns:"ddns",ssl:"ssl",nginx:"nginx",port:"port",pm2:"pm2",cron:"cron",docker:"docker",ssh:"ssh",settings:"settings"},n=e?t[e]:null;if(!n)try{n=sessionStorage.getItem("hsp_page")}catch{}if(n&&n!=="dashboard"&&n!=="home"){var a=document.querySelector('.nav-item[data-page="'+n+'"]');if(a){a.click();return}}te(),A()});function he(){const e=document.getElementById("sidebarToggle"),t=document.getElementById("sidebar");e&&t&&(e.addEventListener("click",()=>t.classList.toggle("collapsed")),document.addEventListener("click",n=>{!t.contains(n.target)&&!e.contains(n.target)&&window.innerWidth<=768&&t.classList.add("collapsed")}))}function be(){var e=document.getElementById("topbarUserBtn"),t=document.getElementById("userDropdown");if(!(!e||!t)){e.addEventListener("click",function(a){a.stopPropagation(),t.classList.toggle("hidden")}),document.addEventListener("click",function(){t.classList.add("hidden")});var n=document.getElementById("menuLogout");n&&n.addEventListener("click",function(a){a.preventDefault(),confirm("\u786E\u5B9A\u8981\u9000\u51FA\u767B\u5F55\u5417\uFF1F")&&(localStorage.removeItem("hsp_token"),window.location.href="/login.html")})}}function W(){const e=document.querySelectorAll(".nav-item"),t={};document.querySelectorAll(".page").forEach(n=>{n.id&&n.id.startsWith("page-")&&(t[n.id.replace("page-","")]=n)}),e.forEach(n=>{n.addEventListener("click",a=>{a.preventDefault();var r=Date.now();if(L._lastNavClick&&r-L._lastNavClick<300)return;L._lastNavClick=r;const s=n.dataset.page;var o=typeof v<"u"?v._currentPage:L._currentPage;if(o===s)return;e.forEach(l=>l.classList.remove("active")),n.classList.add("active"),Object.values(t).forEach(l=>l.classList.add("hidden"));const i=t[s];i&&i.classList.remove("hidden"),L._currentPage=s,typeof v<"u"&&(v._currentPage=s);try{sessionStorage.setItem("hsp_page",s)}catch{}(L.pageLoaders||{})[s]?.()})})}L.pageLoaders={dashboard:()=>te(),ddns:()=>_("ddns",window.loadDdns),ssl:()=>_("cert","ssl",window.loadCert),nginx:()=>_("nginx",window.loadNginxPage),port:()=>_("port",window.loadPort),pm2:()=>_("pm2",window.loadPM2),cron:()=>_("cron",window.loadCron),docker:()=>_("docker",window.loadDocker),ssh:()=>_("ssh",window.loadSSH),settings:()=>A()};function _(e,t,n){if(typeof t!="string"&&(n=t,t=e),typeof n=="function")return n();const a="hsp-page-"+e;if(document.getElementById(a))return;const r=document.createElement("script");r.id=a,r.src="/js/pages/"+e+".min.js?v="+(document.querySelector('meta[name="build-id"]')?.content||""),r.onload=()=>{const s=L.pageLoaders?.[t];s&&setTimeout(s,0)},r.onerror=()=>console.warn("[App] \u9875\u9762\u811A\u672C\u52A0\u8F7D\u5931\u8D25:",e),document.head.appendChild(r)}var we=W;W=function(){we(),document.querySelectorAll(".nav-item").forEach(function(e){e.addEventListener("click",function(){var t=e.dataset.page;t!=="dashboard"?typeof C<"u"&&C&&(clearInterval(C),C=null):!C&&typeof H=="function"&&(H(),C=setInterval(H,5e3)),window.__SSH&&window.__SSH._onPageSwitch&&window.__SSH._onPageSwitch(t==="ssh")})})};window.switchLogTab=function(e){var t=document.getElementById("logPanelOplog"),n=document.getElementById("logPanelDiag"),a=document.querySelectorAll(".log-tab");if(a.forEach(function(o){o.classList.remove("active"),o.style.color="var(--text-secondary)",o.style.borderBottomColor="transparent"}),e==="oplog"){t&&(t.style.display=""),n&&(n.style.display="none");var r=document.querySelector('[data-log-tab="oplog"]');r&&(r.classList.add("active"),r.style.color="var(--brand)",r.style.borderBottomColor="var(--brand)")}else{t&&(t.style.display="none"),n&&(n.style.display="");var s=document.querySelector('[data-log-tab="diag"]');s&&(s.classList.add("active"),s.style.color="var(--brand)",s.style.borderBottomColor="var(--brand)"),typeof ee=="function"&&ee()}};})();
+    `;
+      Utils.openModal("\u{1F4E5} \u5BFC\u5165\u6570\u636E", body, footer);
+      document.getElementById("btnImportConfirm").addEventListener("click", async () => {
+        const fileInput = document.getElementById("importFileInput");
+        const file = fileInput?.files?.[0];
+        if (!file) {
+          Utils.notify("\u8BF7\u9009\u62E9\u6587\u4EF6", "error");
+          return;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        Utils.notify("\u6B63\u5728\u5BFC\u5165...", "info");
+        try {
+          const token = localStorage.getItem("hsp_token");
+          const res = await fetch("/api/db/import", {
+            method: "POST",
+            headers: { "x-auth-token": token },
+            body: formData
+          });
+          const json = await res.json();
+          if (json.success) {
+            document.getElementById("importResult").innerHTML = "\u2705 " + json.message;
+            Utils.notify("\u2705 \u5BFC\u5165\u6210\u529F", "success");
+            setTimeout(() => {
+              Utils.closeModal();
+              loadSettings();
+            }, 1500);
+          } else {
+            document.getElementById("importResult").innerHTML = "\u274C " + (json.message || "\u5BFC\u5165\u5931\u8D25");
+          }
+        } catch (e) {
+          document.getElementById("importResult").innerHTML = "\u274C " + e.message;
+        }
+      });
+    });
+    if (restartBtn) restartBtn.addEventListener("click", () => {
+      Utils.confirm(
+        "\u{1F504} \u91CD\u542F\u670D\u52A1",
+        '<div style="text-align:left">\u5373\u5C06\u91CD\u542F\u5BB6\u5EAD\u670D\u52A1\u5668\u7BA1\u7406\u9762\u677F\u3002<br><br><strong>\u91CD\u542F\u671F\u95F4\u7EA63-5\u79D2\u65E0\u6CD5\u8BBF\u95EE</strong>\uFF0C\u5B8C\u6210\u540E\u8BF7\u5237\u65B0\u9875\u9762\u3002</div>',
+        async () => {
+          try {
+            restartBtn.disabled = true;
+            restartBtn.textContent = "\u23F3 \u91CD\u542F\u4E2D...";
+            await Api.post("/system/restart");
+            Utils.notify("\u670D\u52A1\u5DF2\u91CD\u542F\uFF0C3\u79D2\u540E\u81EA\u52A8\u5237\u65B0...", "success");
+            let retries = 0;
+            const checkInterval = setInterval(async () => {
+              retries++;
+              try {
+                const res = await fetch("/api/system/uptime");
+                if (res.ok) {
+                  clearInterval(checkInterval);
+                  window.location.reload();
+                }
+              } catch (e) {
+                if (retries > 15) {
+                  clearInterval(checkInterval);
+                  Utils.notify("\u670D\u52A1\u672A\u81EA\u52A8\u6062\u590D\uFF0C\u8BF7\u624B\u52A8\u5237\u65B0\u9875\u9762", "error");
+                  restartBtn.disabled = false;
+                  restartBtn.textContent = "\u{1F504} \u91CD\u542F\u670D\u52A1";
+                }
+              }
+            }, 1e3);
+          } catch (e) {
+            Utils.notify("\u91CD\u542F\u5931\u8D25: " + e.message, "error");
+            restartBtn.disabled = false;
+            restartBtn.textContent = "\u{1F504} \u91CD\u542F\u670D\u52A1";
+          }
+        },
+        "\u786E\u8BA4\u91CD\u542F",
+        "\u53D6\u6D88"
+      );
+    });
+    const _updateSettingsUptime = async () => {
+      try {
+        const res = await Api.get("/system/uptime");
+        if (res.success && res.data) {
+          const seconds = Math.floor(res.data.uptime);
+          const d = Math.floor(seconds / 86400);
+          const h = Math.floor(seconds % 86400 / 3600);
+          const m = Math.floor(seconds % 3600 / 60);
+          const s = seconds % 60;
+          const parts = [];
+          if (d > 0) parts.push(d + "\u5929");
+          if (h > 0) parts.push(h + "\u65F6");
+          parts.push(m + "\u5206" + s + "\u79D2");
+          const el = document.getElementById("settingsUptime");
+          if (el) el.textContent = parts.join(" ");
+        }
+      } catch (e) {
+      }
+    };
+    _updateSettingsUptime();
+    setInterval(_updateSettingsUptime, 3e4);
+    if (loadSettings) loadSettings();
+  });
+  window.exportOpLog = async (format) => {
+    var filterEl = document.getElementById("opLogModuleFilter");
+    var module = filterEl ? filterEl.value : "all";
+    if (!module || module === "all") module = "all";
+    try {
+      Utils.notify("\u6B63\u5728\u5BFC\u51FA\u65E5\u5FD7...", "info");
+      var token = localStorage.getItem("hsp_token");
+      var res = await fetch("/api/log/export?limit=100000&format=" + format + (module !== "all" ? "&module=" + module : ""), {
+        headers: { "x-auth-token": token }
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function() {
+          return { message: "\u5BFC\u51FA\u5931\u8D25" };
+        });
+        Utils.notify("\u5BFC\u51FA\u5931\u8D25: " + (err.message || res.status), "error");
+        return;
+      }
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var now = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      a.href = url;
+      a.download = "hsp-oplog-" + now + "." + format;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      Utils.notify("\u2705 \u65E5\u5FD7\u5DF2\u5BFC\u51FA (." + format + ")", "success");
+    } catch (e) {
+      Utils.notify("\u5BFC\u51FA\u5931\u8D25: " + (e.message || ""), "error");
+    }
+  };
+  window.exportDiagLog = () => {
+    var logs = Api.getDiagLog(null);
+    if (!logs || logs.length === 0) {
+      Utils.notify("\u6682\u65E0\u8BCA\u65AD\u65E5\u5FD7\u53EF\u5BFC\u51FA", "error");
+      return;
+    }
+    var text = logs.map(function(e) {
+      return e.time + " | " + (e.page || "?") + " | " + (e.level || "info") + " | " + e.msg;
+    }).join("\n");
+    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var now = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    a.href = url;
+    a.download = "hsp-diaglog-" + now + ".txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    Utils.notify("\u2705 \u8BCA\u65AD\u65E5\u5FD7\u5DF2\u5BFC\u51FA (.txt)", "success");
+  };
+  var App = window.App = {
+    version: "0.7.1-beta",
+    NOTIFY_DURATION: 3e3,
+    _currentPage: "dashboard",
+    _pending: {},
+    isPending(key) {
+      if (this._pending[key]) return true;
+      this._pending[key] = true;
+      setTimeout(() => delete this._pending[key], 5e3);
+      return false;
+    },
+    log(level, ...args) {
+      if (App.LOG_LEVELS[App.LOG_LEVEL] >= App.LOG_LEVELS[level]) {
+        console[level === "error" ? "error" : level === "warn" ? "warn" : "log"](`[${level.toUpperCase()}]`, ...args);
+      }
+    },
+    LOG_LEVELS: { debug: 0, info: 1, warn: 2, error: 3, none: 4 },
+    LOG_LEVEL: "info"
+  };
+  window.addEventListener("hashchange", () => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    const navMap = { ddns: "ddns", ssl: "ssl", nginx: "nginx", port: "port", pm2: "pm2", cron: "cron", docker: "docker", ssh: "ssh", settings: "settings" };
+    const pageName = navMap[hash];
+    if (!pageName) return;
+    document.querySelectorAll(".nav-item").forEach((n) => {
+      n.classList.toggle("active", n.dataset.page === pageName);
+    });
+    const pageMap = {};
+    document.querySelectorAll(".page").forEach((p) => {
+      if (p.id && p.id.startsWith("page-")) pageMap[p.id.replace("page-", "")] = p;
+    });
+    Object.values(pageMap).forEach((p) => p.classList.add("hidden"));
+    const target = pageMap[pageName];
+    if (target) {
+      target.classList.remove("hidden");
+      if (typeof Api !== "undefined") Api._currentPage = pageName;
+      App._currentPage = pageName;
+      try {
+        sessionStorage.setItem("hsp_page", pageName);
+      } catch (e) {
+      }
+      (App.pageLoaders || {})[pageName]?.();
+    }
+    history.replaceState(null, "", window.location.pathname);
+  });
+  document.addEventListener("DOMContentLoaded", () => {
+    initNavigation();
+    initSidebarToggle();
+    initUserMenu();
+    _topbarPollStart();
+    var hash = window.location.hash.replace("#", "");
+    var navMap = { ddns: "ddns", ssl: "ssl", nginx: "nginx", port: "port", pm2: "pm2", cron: "cron", docker: "docker", ssh: "ssh", settings: "settings" };
+    var restorePage = hash ? navMap[hash] : null;
+    if (!restorePage) {
+      try {
+        restorePage = sessionStorage.getItem("hsp_page");
+      } catch (e) {
+      }
+    }
+    if (restorePage && restorePage !== "dashboard" && restorePage !== "home") {
+      var targetNav = document.querySelector('.nav-item[data-page="' + restorePage + '"]');
+      if (targetNav) {
+        targetNav.click();
+        return;
+      }
+    }
+    loadDashboard();
+    loadSettings();
+  });
+  function initSidebarToggle() {
+    const btn = document.getElementById("sidebarToggle");
+    const sidebar = document.getElementById("sidebar");
+    if (btn && sidebar) {
+      btn.addEventListener("click", () => sidebar.classList.toggle("collapsed"));
+      document.addEventListener("click", (e) => {
+        if (!sidebar.contains(e.target) && !btn.contains(e.target) && window.innerWidth <= 768) {
+          sidebar.classList.add("collapsed");
+        }
+      });
+    }
+  }
+  function initUserMenu() {
+    var btn = document.getElementById("topbarUserBtn");
+    var dropdown = document.getElementById("userDropdown");
+    if (!btn || !dropdown) return;
+    btn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      dropdown.classList.toggle("hidden");
+    });
+    document.addEventListener("click", function() {
+      dropdown.classList.add("hidden");
+    });
+    var logoutLink = document.getElementById("menuLogout");
+    if (logoutLink) {
+      logoutLink.addEventListener("click", function(e) {
+        e.preventDefault();
+        if (confirm("\u786E\u5B9A\u8981\u9000\u51FA\u767B\u5F55\u5417\uFF1F")) {
+          localStorage.removeItem("hsp_token");
+          window.location.href = "/login.html";
+        }
+      });
+    }
+  }
+  function initNavigation() {
+    const navItems = document.querySelectorAll(".nav-item");
+    const pageMap = {};
+    document.querySelectorAll(".page").forEach((p) => {
+      if (p.id && p.id.startsWith("page-")) pageMap[p.id.replace("page-", "")] = p;
+    });
+    navItems.forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        var now = Date.now();
+        if (App._lastNavClick && now - App._lastNavClick < 300) return;
+        App._lastNavClick = now;
+        const pageName = item.dataset.page;
+        var prevPage = typeof Api !== "undefined" ? Api._currentPage : App._currentPage;
+        if (prevPage === pageName) return;
+        navItems.forEach((n) => n.classList.remove("active"));
+        item.classList.add("active");
+        Object.values(pageMap).forEach((p) => p.classList.add("hidden"));
+        const target = pageMap[pageName];
+        if (target) target.classList.remove("hidden");
+        App._currentPage = pageName;
+        if (typeof Api !== "undefined") Api._currentPage = pageName;
+        try {
+          sessionStorage.setItem("hsp_page", pageName);
+        } catch (e2) {
+        }
+        (App.pageLoaders || {})[pageName]?.();
+      });
+    });
+  }
+  App.pageLoaders = {
+    dashboard: () => loadDashboard(),
+    ddns: () => _ensurePage("ddns", window.loadDdns),
+    ssl: () => _ensurePage("cert", "ssl", window.loadCert),
+    nginx: () => _ensurePage("nginx", window.loadNginxPage),
+    port: () => _ensurePage("port", window.loadPort),
+    pm2: () => _ensurePage("pm2", window.loadPM2),
+    cron: () => _ensurePage("cron", window.loadCron),
+    docker: () => _ensurePage("docker", window.loadDocker),
+    ssh: () => _ensurePage("ssh", window.loadSSH),
+    settings: () => loadSettings()
+  };
+  function _ensurePage(name, mapKey, fn) {
+    if (typeof mapKey !== "string") {
+      fn = mapKey;
+      mapKey = name;
+    }
+    if (typeof fn === "function") return fn();
+    const id = "hsp-page-" + name;
+    if (document.getElementById(id)) return;
+    const s = document.createElement("script");
+    s.id = id;
+    s.src = "/js/pages/" + name + ".min.js?v=" + (document.querySelector('meta[name="build-id"]')?.content || "");
+    s.onload = () => {
+      const loader = App.pageLoaders?.[mapKey];
+      if (loader) setTimeout(loader, 0);
+    };
+    s.onerror = () => console.warn("[App] \u9875\u9762\u811A\u672C\u52A0\u8F7D\u5931\u8D25:", name);
+    document.head.appendChild(s);
+  }
+  var _origInitNav = initNavigation;
+  initNavigation = function() {
+    _origInitNav();
+    document.querySelectorAll(".nav-item").forEach(function(item) {
+      item.addEventListener("click", function() {
+        var page = item.dataset.page;
+        if (page !== "dashboard") {
+          if (typeof _dashMonTimer !== "undefined" && _dashMonTimer) {
+            clearInterval(_dashMonTimer);
+            _dashMonTimer = null;
+          }
+        } else {
+          if (!_dashMonTimer && typeof _dashboardMonitorFetch === "function") {
+            _dashboardMonitorFetch();
+            _dashMonTimer = setInterval(_dashboardMonitorFetch, 5e3);
+          }
+        }
+        if (window.__SSH && window.__SSH._onPageSwitch) {
+          window.__SSH._onPageSwitch(page === "ssh");
+        }
+      });
+    });
+  };
+  window.switchLogTab = function(tab) {
+    var opPanel = document.getElementById("logPanelOplog");
+    var diagPanel = document.getElementById("logPanelDiag");
+    var tabs = document.querySelectorAll(".log-tab");
+    tabs.forEach(function(t) {
+      t.classList.remove("active");
+      t.style.color = "var(--text-secondary)";
+      t.style.borderBottomColor = "transparent";
+    });
+    if (tab === "oplog") {
+      if (opPanel) opPanel.style.display = "";
+      if (diagPanel) diagPanel.style.display = "none";
+      var opTab = document.querySelector('[data-log-tab="oplog"]');
+      if (opTab) {
+        opTab.classList.add("active");
+        opTab.style.color = "var(--brand)";
+        opTab.style.borderBottomColor = "var(--brand)";
+      }
+    } else {
+      if (opPanel) opPanel.style.display = "none";
+      if (diagPanel) diagPanel.style.display = "";
+      var diagTab = document.querySelector('[data-log-tab="diag"]');
+      if (diagTab) {
+        diagTab.classList.add("active");
+        diagTab.style.color = "var(--brand)";
+        diagTab.style.borderBottomColor = "var(--brand)";
+      }
+      if (typeof renderDiagLog === "function") renderDiagLog();
+    }
+  };
+})();

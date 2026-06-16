@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const proxyService = require('../services/proxy-service');
 const nginxService = require('../services/nginx-service');
+const sslService = require('../services/ssl-service');
 
 // 防抖部署：500ms 内的多次操作合并为一次 deploy
 let _deployTimer = null;
@@ -136,6 +137,81 @@ router.post('/config/export', (req, res) => {
     res.json({ success: true, message: `配置已导出到 ${result.path} (${result.rules} 条规则)`, data: result });
   } catch (err) {
     res.status(500).json({success: false, message: '导出失败: ' + err.message });
+  }
+});
+
+// GET /api/proxy/cert-match?domain=example.com - 获取匹配的 SSL 证书
+router.get('/cert-match', async (req, res) => {
+  try {
+    const { domain } = req.query;
+    if (!domain) return res.status(400).json({ success: false, message: '请提供域名' });
+
+    const certData = await sslService.listCertificates().catch(() => ({ certificates: [] }));
+    const allCerts = certData.certificates || [];
+
+    // 域名匹配逻辑：证书的 domain 或 sanDomains 包含目标域名
+    const matchDomain = (certDomain, target) => {
+      if (certDomain === target) return true;
+      // 通配符匹配 *.example.com 匹配 sub.example.com
+      if (certDomain.startsWith('*.')) {
+        const suffix = certDomain.slice(2);
+        if (target.endsWith(suffix)) return true;
+      }
+      return false;
+    };
+
+    const matched = allCerts.filter(cert => {
+      // 主域名匹配
+      if (matchDomain(cert.domain, domain)) return true;
+      // SAN 域名匹配
+      if (cert.sanDomains && Array.isArray(cert.sanDomains)) {
+        return cert.sanDomains.some(san => matchDomain(san, domain));
+      }
+      return false;
+    });
+
+    // 同时查找 acme.sh 证书的实际文件路径
+    const { exec } = require('child_process');
+    const findCerts = async (cert) => {
+      // 从 acme.sh 目录查找证书文件
+      const acmeHome = process.env.LE_WORKING_DIR || require('os').homedir() + '/.acme.sh';
+      const domainDir = cert.domain.replace(/^\*+\./g, '');
+      const dirs = [
+        `${acmeHome}/${domainDir}_ecc`,
+        `${acmeHome}/${domainDir}`,
+        `/home/${require('os').userInfo().username}/.acme.sh/${domainDir}_ecc`,
+        `/home/${require('os').userInfo().username}/.acme.sh/${domainDir}`,
+        `/root/.acme.sh/${domainDir}_ecc`,
+        `/root/.acme.sh/${domainDir}`
+      ];
+      const fs = require('fs');
+      for (const dir of dirs) {
+        const fullchain = `${dir}/fullchain.cer`;
+        const privkey = `${dir}/${domainDir}.key`;
+        if (fs.existsSync(fullchain) && fs.existsSync(privkey)) {
+          return { cert: fullchain, key: privkey };
+        }
+      }
+      return null;
+    };
+
+    const results = await Promise.all(matched.map(async cert => {
+      const paths = await findCerts(cert).catch(() => null);
+      return {
+        domain: cert.domain,
+        sanDomains: cert.sanDomains,
+        issuer: cert.issuer,
+        expiresAt: cert.expiresAt,
+        daysRemaining: cert.daysRemaining,
+        status: cert.status,
+        certPath: paths?.cert || null,
+        keyPath: paths?.key || null
+      };
+    }));
+
+    res.json({ success: true, data: { domain, matched: results, total: allCerts.length } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

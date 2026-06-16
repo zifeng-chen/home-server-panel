@@ -64,52 +64,53 @@ async function loadPM2() {
         </div>
       `;
     } else if (guideEl && installed && daemonRunning) {
-      // PM2 正常运行，显示管理按钮
+      // PM2 正常运行，显示运行状态容器（PM2版本 + 4个统计卡片 + 管理按钮）
+      const o = overviewRes.success ? (overviewRes.data || {}) : {};
+      const online = (listRes.data && listRes.data.summary && listRes.data.summary.online) || 0;
+      const stopped = ((listRes.data && listRes.data.summary && listRes.data.summary.stopped) || 0) + ((listRes.data && listRes.data.summary && listRes.data.summary.errored) || 0);
+      const total = (listRes.data && listRes.data.summary && listRes.data.summary.total) || 0;
+
       guideEl.innerHTML = `
         <div class="card" style="border-left:3px solid var(--success);margin-bottom:16px">
-          <h3 style="margin:0 0 12px 0;color:var(--success)">✅ PM2 ${g.pm2Version} 运行中</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="loadPM2()">🔄 刷新</button>
-            <button class="btn btn-sm btn-warning" onclick="pm2Save()">💾 保存配置</button>
-            <button class="btn btn-sm btn-danger" style="border:1px solid var(--danger);color:var(--danger);" onclick="pm2Uninstall()">🗑 卸载 PM2</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="margin:0;color:var(--success)">✅ PM2 ${o.pm2Version || ''} 运行中</h3>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+            <div class="stat-card" style="border-color:var(--info);padding:14px">
+              <div class="stat-icon">⚙️</div>
+              <div class="stat-info">
+                <span class="stat-label">PM2 版本</span>
+                <span class="stat-value">${o.pm2Version || '--'}</span>
+              </div>
+            </div>
+            <div class="stat-card" style="border-color:var(--success);padding:14px">
+              <div class="stat-icon">🟢</div>
+              <div class="stat-info">
+                <span class="stat-label">在线进程</span>
+                <span class="stat-value">${online}</span>
+              </div>
+            </div>
+            <div class="stat-card" style="border-color:var(--warning);padding:14px">
+              <div class="stat-icon">⚠️</div>
+              <div class="stat-info">
+                <span class="stat-label">异常/停止</span>
+                <span class="stat-value">${stopped}</span>
+              </div>
+            </div>
+            <div class="stat-card" style="border-color:var(--text-secondary);padding:14px">
+              <div class="stat-icon">📦</div>
+              <div class="stat-info">
+                <span class="stat-label">总进程数</span>
+                <span class="stat-value">${total}</span>
+              </div>
+            </div>
           </div>
         </div>
       `;
     }
 
-    // 概览卡片
-    if (overviewRes.success && overviewEl) {
-      const o = overviewRes.data || {};
-      overviewEl.innerHTML = ''
-        + '<div class="stat-card" style="border-color:var(--info)">'
-        + '  <div class="stat-icon">⚙️</div>'
-        + '  <div class="stat-info">'
-        + '    <span class="stat-label">PM2 版本</span>'
-        + '    <span class="stat-value">' + (o.pm2Version || '--') + '</span>'
-        + '  </div>'
-        + '</div>'
-        + '<div class="stat-card" style="border-color:var(--success)">'
-        + '  <div class="stat-icon">🟢</div>'
-        + '  <div class="stat-info">'
-        + '    <span class="stat-label">在线进程</span>'
-        + '    <span class="stat-value">' + ((listRes.data && listRes.data.summary && listRes.data.summary.online) || 0) + '</span>'
-        + '  </div>'
-        + '</div>'
-        + '<div class="stat-card" style="border-color:var(--warning)">'
-        + '  <div class="stat-icon">⚠️</div>'
-        + '  <div class="stat-info">'
-        + '    <span class="stat-label">异常/停止</span>'
-        + '    <span class="stat-value">' + (((listRes.data && listRes.data.summary && listRes.data.summary.stopped) || 0) + ((listRes.data && listRes.data.summary && listRes.data.summary.errored) || 0)) + '</span>'
-        + '  </div>'
-        + '</div>'
-        + '<div class="stat-card" style="border-color:var(--text-secondary)">'
-        + '  <div class="stat-icon">📦</div>'
-        + '  <div class="stat-info">'
-        + '    <span class="stat-label">总进程数</span>'
-        + '    <span class="stat-value">' + ((listRes.data && listRes.data.summary && listRes.data.summary.total) || 0) + '</span>'
-        + '  </div>'
-        + '</div>';
-    }
+    // 概览卡片已合并到 guideEl 运行状态容器中（上方）
+    if (overviewEl) overviewEl.innerHTML = '';
 
     if (!listRes.success) {
       tbody.innerHTML = '<tr><td colspan="8" style="color:var(--danger)">' + (listRes.message || 'PM2 查询失败') + '</td></tr>';
@@ -333,11 +334,7 @@ async function pm2Save() {
     document.addEventListener('DOMContentLoaded', initPm2Buttons);
     return;
   }
-  const btnRefresh = document.getElementById('btnPM2Refresh');
-  if (btnRefresh) btnRefresh.addEventListener('click', loadPM2);
-
-  const btnSave = document.getElementById('btnPM2Save');
-  if (btnSave) btnSave.addEventListener('click', pm2Save);
+  // 刷新和保存按钮已移除，功能保留在 PM2 状态卡片中
 })();
 
 // 导出供 app.js 的 _ensurePage 调用

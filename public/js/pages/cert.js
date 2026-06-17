@@ -104,7 +104,7 @@ window.showIssueCertModal = () => {
       </label>
     </div>
     <div class="info-box" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:12px;font-size:12px;color:var(--text-secondary);margin-top:12px;">
-      ℹ️ 使用阿里云 DNS (alidns) 自动验证，请确保已在「系统设置」中配置阿里云 AccessKey
+      ℹ️ 默认使用阿里云 DNS 自动验证；如需手动 DNS 请在「系统设置 → ACME 证书」中切换为「手动 DNS」
     </div>
   `;
   const footer = `
@@ -114,7 +114,19 @@ window.showIssueCertModal = () => {
   Utils.openModal('申请 SSL 证书', body, footer);
 
   // ZeroSSL 默认高亮
-  document.getElementById('certProviderZerossl').style.borderColor = 'var(--primary)';
+  const zerosslEl = document.getElementById('certProviderZerossl');
+  if (zerosslEl) zerosslEl.style.borderColor = 'var(--primary)';
+
+  // CA 选择器交互
+  document.querySelectorAll('input[name="certProvider"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      document.getElementById('certProviderZerossl').style.borderColor = this.value === 'zerossl' ? 'var(--primary)' : 'var(--border)';
+      document.getElementById('certProviderLetsencrypt').style.borderColor = this.value === 'letsencrypt' ? 'var(--primary)' : 'var(--border)';
+    });
+  });
+
+  // 读取 DNS 模式
+  var dnsMode = (document.getElementById('cfgAcmeDns') || {}).value || 'alidns';
 
   document.getElementById('certIssueConfirm').addEventListener('click', async () => {
     let domain = document.getElementById('certIssueDomain').value.trim();
@@ -141,12 +153,14 @@ window.showIssueCertModal = () => {
 
     Utils.closeModal();
     const displayName = wildcard ? `*.${domain}` : domain;
-    startCertIssueProgress(domain, wildcard, displayName, force, provider);
+    startCertIssueProgress(domain, wildcard, displayName, force, provider, dnsMode);
   });
 };
 
 // SSE 证书申请进度浮窗
-window.startCertIssueProgress = (domain, wildcard, displayName, force, provider) => {
+window.startCertIssueProgress = (domain, wildcard, displayName, force, provider, dnsMode, confirmDns) => {
+  dnsMode = dnsMode || 'alidns';
+  const showContinue = dnsMode === 'manual' && !confirmDns;
   const body = `
     <div id="certIssueProgress">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -158,6 +172,7 @@ window.startCertIssueProgress = (domain, wildcard, displayName, force, provider)
   `;
   const footer = `
     <button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>
+    ${showContinue ? '<button class="btn btn-success" id="certDnsContinue" style="display:none">✅ 已添加 DNS 记录，继续</button>' : ''}
   `;
   Utils.openModal(`📜 申请证书: ${displayName}`, body, footer);
 
@@ -166,7 +181,9 @@ window.startCertIssueProgress = (domain, wildcard, displayName, force, provider)
   if (!statusSpan || !logDiv) return;
 
   const token = localStorage.getItem('hsp_token');
-  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&force=${force ? 'true' : 'false'}&provider=${encodeURIComponent(provider || 'zerossl')}&token=${encodeURIComponent(token)}`);
+  var sseParams = `domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&force=${force ? 'true' : 'false'}&provider=${encodeURIComponent(provider || 'zerossl')}&dnsMode=${encodeURIComponent(dnsMode)}`;
+  if (confirmDns) sseParams += '&confirm=true';
+  const es = new EventSource(`/api/cert/issue/stream?${sseParams}&token=${encodeURIComponent(token)}`);
   let killed = false;
 
   es.addEventListener('message', (e) => {
@@ -202,6 +219,29 @@ window.startCertIssueProgress = (domain, wildcard, displayName, force, provider)
           statusSpan.style.color = 'var(--danger)';
           statusSpan.parentElement.querySelector('.spinner').style.display = 'none';
           es.close();
+          break;
+        case 'manual_challenge':
+          // 手动 DNS：显示 TXT 记录，等待用户添加
+          statusSpan.parentElement.querySelector('.spinner').style.display = 'none';
+          statusSpan.textContent = '🔧 ' + (msg.message || '请添加 DNS TXT 记录');
+          statusSpan.style.color = 'var(--warning)';
+          logDiv.textContent += '📋 请在 DNS 管理后台添加以下 TXT 记录:\n';
+          logDiv.textContent += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
+          logDiv.textContent += '记录类型: TXT\n';
+          logDiv.textContent += '主机记录: ' + msg.domain + '\n';
+          logDiv.textContent += '记录值:   ' + msg.txtValue + '\n';
+          logDiv.textContent += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
+          logDiv.textContent += 'ℹ️ 添加完成后点击下方「继续」按钮\n';
+          logDiv.scrollTop = logDiv.scrollHeight;
+          // 显示继续按钮
+          var continueBtn = document.getElementById('certDnsContinue');
+          if (continueBtn) {
+            continueBtn.style.display = 'inline-flex';
+            continueBtn.addEventListener('click', function() {
+              Utils.closeModal();
+              startCertIssueProgress(domain, wildcard, displayName, force, provider, dnsMode, true);
+            }, { once: true });
+          }
           break;
       }
     } catch (parseErr) {

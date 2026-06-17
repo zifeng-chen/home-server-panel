@@ -252,11 +252,151 @@ class SslService {
     }
   }
 
+  // 解析 acme.sh 手动 DNS 模式输出的 TXT 记录
+  _parseManualDnsOutput(output) {
+    const challenge = { txtDomain: '', txtValue: '' };
+    const lines = output.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const domainMatch = lines[i].match(/Domain:\s*'([^']+)'/);
+      if (domainMatch) challenge.txtDomain = domainMatch[1];
+      const valueMatch = lines[i].match(/TXT value:\s*'([^']+)'/);
+      if (valueMatch) challenge.txtValue = valueMatch[1];
+    }
+    return challenge;
+  }
+
+  // 手动 DNS 模式：获取 TXT challenge（第一阶段）
+  async getManualDnsChallenge(domain, options, onProgress) {
+    const { execFile } = require('child_process');
+    let cleanDomain = domain.replace(/^\*+\./g, '');
+    const domains = [cleanDomain];
+    if (options.wildcard) domains.push(`*.${cleanDomain}`);
+
+    const args = [
+      '--issue', '--dns',
+      ...domains.map(d => ['-d', d]).flat(),
+      '--yes-I-know-dns-manual-mode-enough-go-ahead-please'
+    ];
+
+    if (options.provider === 'letsencrypt') {
+      args.push('--server', 'letsencrypt');
+    } else if (options.provider === 'zerossl') {
+      args.push('--server', 'zerossl');
+    }
+
+    onProgress('step', { text: `🔍 正在获取 DNS TXT 记录: ${cleanDomain}...` });
+    onProgress('output', { text: '$ ' + ACME_BIN + ' ' + args.join(' ') });
+
+    return new Promise((resolve) => {
+      const sanEnv = { ...process.env };
+      delete sanEnv.LOG_LEVEL;
+      delete sanEnv.DEBUG;
+
+      const proc = execFile(ACME_BIN, args, {
+        env: sanEnv,
+        timeout: 60000,
+        maxBuffer: 1024 * 1024
+      });
+
+      let output = '';
+      proc.stdout.on('data', (d) => { const t = d.toString().trim(); if (t) { output += t + '\n'; onProgress('output', { text: t }); } });
+      proc.stderr.on('data', (d) => { const t = d.toString().trim(); if (t) { output += t + '\n'; onProgress('output', { text: t }); } });
+
+      proc.on('close', (code) => {
+        const challenge = this._parseManualDnsOutput(output);
+        if (challenge.txtDomain && challenge.txtValue) {
+          onProgress('manual_challenge', {
+            domain: challenge.txtDomain,
+            txtValue: challenge.txtValue,
+            message: `请在 DNS 中添加以下 TXT 记录后点击继续`
+          });
+          resolve({ success: true, phase: 'waiting_dns', challenge });
+        } else {
+          onProgress('error', { message: `未能解析 TXT 记录（exit code: ${code}）。请检查 acme.sh 是否正确安装。` });
+          resolve({ success: false, message: 'DNS challenge 解析失败' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        onProgress('error', { message: err.message });
+        resolve({ success: false, message: err.message });
+      });
+    });
+  }
+
+  // 手动 DNS 模式：确认 DNS 已添加后完成签发（第二阶段）
+  async completeManualDnsIssue(domain, options, onProgress) {
+    const { execFile } = require('child_process');
+    let cleanDomain = domain.replace(/^\*+\./g, '');
+    const domains = [cleanDomain];
+    if (options.wildcard) domains.push(`*.${cleanDomain}`);
+
+    const args = [
+      '--issue', '--dns',
+      ...domains.map(d => ['-d', d]).flat(),
+      '--yes-I-know-dns-manual-mode-enough-go-ahead-please',
+      '--force'
+    ];
+
+    if (options.provider === 'letsencrypt') {
+      args.push('--server', 'letsencrypt');
+    } else if (options.provider === 'zerossl') {
+      args.push('--server', 'zerossl');
+    }
+
+    onProgress('step', { text: `🔍 正在验证 DNS TXT 记录并完成签发: ${cleanDomain}...` });
+    onProgress('output', { text: '$ ' + ACME_BIN + ' ' + args.join(' ') });
+
+    return new Promise((resolve) => {
+      const sanEnv = { ...process.env };
+      delete sanEnv.LOG_LEVEL;
+      delete sanEnv.DEBUG;
+
+      const proc = execFile(ACME_BIN, args, {
+        env: sanEnv,
+        timeout: 180000,
+        maxBuffer: 1024 * 1024
+      });
+
+      let output = '';
+      proc.stdout.on('data', (d) => { const t = d.toString().trim(); if (t) { output += t + '\n'; onProgress('output', { text: t }); } });
+      proc.stderr.on('data', (d) => { const t = d.toString().trim(); if (t) { output += t + '\n'; onProgress('output', { text: t }); } });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          this._addCertConfig(cleanDomain, { wildcard: options.wildcard });
+          onProgress('step', { text: '✅ 证书签发成功！' });
+          resolve({ success: true, message: '✅ 证书签发成功！' });
+        } else if (code === 2 && output.includes('Domains not changed')) {
+          onProgress('step', { text: '证书已存在且有效' });
+          resolve({ success: true, message: '证书已存在', alreadyExists: true });
+        } else {
+          onProgress('error', { message: `证书签发失败（exit code: ${code}）。请确认 DNS TXT 记录已生效（可能需要等待 1-2 分钟）。` });
+          resolve({ success: false, message: `签发失败 (exit code: ${code})` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        onProgress('error', { message: err.message });
+        resolve({ success: false, message: err.message });
+      });
+    });
+  }
+
   // SSE 实时证书申请（带进度回调）
   async issueCertificateSSE(domain, options, onProgress) {
     if (!fs.existsSync(ACME_BIN)) {
       onProgress('error', { message: 'acme.sh 未安装，请先安装' });
       return { success: false, message: 'acme.sh 未安装' };
+    }
+
+    // 手动 DNS 模式
+    const dnsMode = options.dnsMode || process.env.ACME_DNS_PROVIDER || 'alidns';
+    if (dnsMode === 'manual') {
+      if (options.confirmDns) {
+        return this.completeManualDnsIssue(domain, options, onProgress);
+      }
+      return this.getManualDnsChallenge(domain, options, onProgress);
     }
 
     const accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID;

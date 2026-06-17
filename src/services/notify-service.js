@@ -187,7 +187,7 @@ ${details ? `<p><strong>详情:</strong> ${details}</p>` : ''}
       content: `<h3>反向代理规则${a}</h3>
 <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
 <tr style="background:#f5f5f5"><th>域名</th><th>目标</th></tr>
-<tr><td>${rule.domain || ''}</td><td>${rule.target || ''}</td></tr>
+<tr><td>${rule.sourceHost || ''}</td><td>${rule.targetHost || ''}</td></tr>
 </table>
 <p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
       template: 'html'

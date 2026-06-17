@@ -70,7 +70,7 @@ router.post('/', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已添加（部署已排入队列）', data: { rule } });
-    _tryNotify('create', { domain: rule.domain || body.domain, target: rule.target || body.target });
+    _tryNotify('create', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -83,7 +83,7 @@ router.put('/:id', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已更新（部署已排入队列）', data: { rule } });
-    _tryNotify('update', { domain: rule.domain || '', target: rule.target || '' });
+    _tryNotify('update', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -96,7 +96,7 @@ router.delete('/:id', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已删除（部署已排入队列）' });
-    _tryNotify('delete', { domain: req.params.id, target: '' });
+    _tryNotify('delete', { sourceHost: req.params.id, targetHost: '' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -109,6 +109,7 @@ router.post('/:id/toggle', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + '（部署已排入队列）', data: { rule } });
+    _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }

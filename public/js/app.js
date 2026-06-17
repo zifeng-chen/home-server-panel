@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '0.7.2-beta',
+  version: '0.7.3-beta',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {

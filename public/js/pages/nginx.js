@@ -418,6 +418,8 @@ window.showAddProxyModal = () => {
   const body = buildProxyForm(null);
   Utils.openModal('添加反向代理规则', body, '<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button><button class="btn btn-success" id="proxySaveBtn">💾 保存规则</button>');
   document.getElementById('proxySrcProto').addEventListener('change', toggleSslFields);
+  document.getElementById('proxySsl').addEventListener('change', proxySslChanged);
+  document.getElementById('proxySrcHost').addEventListener('blur', proxySslChanged);
   document.getElementById('proxySaveBtn').addEventListener('click', () => saveProxy());
 };
 
@@ -429,6 +431,8 @@ window.editProxy = (id) => {
     const body = buildProxyForm(rule);
     Utils.openModal('编辑反向代理规则', body, '<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button><button class="btn btn-primary" id="proxySaveBtn">💾 更新规则</button>');
     document.getElementById('proxySrcProto').addEventListener('change', toggleSslFields);
+    document.getElementById('proxySsl').addEventListener('change', proxySslChanged);
+    document.getElementById('proxySrcHost').addEventListener('blur', proxySslChanged);
     document.getElementById('proxySaveBtn').addEventListener('click', () => saveProxy(id));
     // 编辑时如果有 SSL 且已有证书路径，预加载证书列表
     if (rule.ssl) {

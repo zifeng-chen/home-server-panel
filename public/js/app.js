@@ -1,6 +1,6 @@
 // App 全局常量和状态
 const App = window.App = {
-  version: '0.9.3-beta',
+  version: '0.7.2-beta',
   NOTIFY_DURATION: 3000, _currentPage: 'dashboard',
   _pending: {},
   isPending(key) {
@@ -25,7 +25,7 @@ const App = window.App = {
 window.addEventListener('hashchange', () => {
   const hash = window.location.hash.replace('#', '');
   if (!hash) return;
-  const navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', process: 'process', settings: 'settings' };
+  const navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', settings: 'settings' };
   const pageName = navMap[hash];
   if (!pageName) return;
   // 切换侧边栏激活状态
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 刷新时恢复当前页面（非默认仪表盘时）
   var hash = window.location.hash.replace('#', '');
-  var navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', process: 'process', settings: 'settings' };
+  var navMap = { ddns: 'ddns', ssl: 'ssl', nginx: 'nginx', port: 'port', pm2: 'pm2', cron: 'cron', docker: 'docker', ssh: 'ssh', settings: 'settings' };
   var restorePage = hash ? navMap[hash] : null;
   // 从 sessionStorage 恢复（hash 优先）
   if (!restorePage) {
@@ -186,7 +186,6 @@ App.pageLoaders = {
   cron: () => _ensurePage('cron', window.loadCron),
   docker: () => _ensurePage('docker', window.loadDocker),
   ssh: () => _ensurePage('ssh', window.loadSSH),
-  process: () => _ensurePage('process', window.loadProcess),
   settings: () => loadSettings()
 };
 

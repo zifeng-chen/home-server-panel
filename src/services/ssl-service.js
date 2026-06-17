@@ -526,6 +526,10 @@ class SslService {
   // Task 14: 证书到期推送通知 (同域名每天最多推送一次)
   async _maybeNotifyExpiry(domain, days) {
     try {
+      // 检查是否达到通知阈值
+      const threshold = parseInt(process.env.CERT_EXPIRE_WARN_DAYS || '30');
+      if (days > threshold) return;
+
       const lastNotified = sqliteService.getSslNotifiedAt(domain);
       const now = Date.now();
       if (lastNotified && (now - lastNotified) < 86400000) return; // 24小时内不重复

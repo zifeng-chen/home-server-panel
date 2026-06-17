@@ -267,7 +267,7 @@ function _dashboardMonitorStart() {
     if (cv) {
       var rect = cv.parentElement.getBoundingClientRect();
       cv.width = Math.min(rect.width - 32, 600) * 2;
-      cv.height = 160 * 2;
+      cv.height = 320 * 2;
       cv.style.width = (cv.width / 2) + 'px';
       cv.style.height = (cv.height / 2) + 'px';
     }
@@ -339,7 +339,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+  var pad = { top: 40, right: 28, bottom: 28, left: 80 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
@@ -356,7 +356,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
 
   // Y轴网格+标签（基于实际 maxVal）
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '10px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -388,7 +388,7 @@ function _dmDrawNetChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 80 };
+  var pad = { top: 40, right: 28, bottom: 28, left: 90 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
@@ -400,7 +400,7 @@ function _dmDrawNetChart(canvasId, data) {
   for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '10px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -413,7 +413,7 @@ function _dmDrawNetChart(canvasId, data) {
   _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
 
   // 图例圆点 — 左上角
-  ctx.textAlign = 'left'; ctx.font = 'bold 11px -apple-system, sans-serif';
+  ctx.textAlign = 'left'; ctx.font = 'bold 13px -apple-system, sans-serif';
   var lgX = pad.left + 4, lgY = pad.top - 12;
   // 下行 — 绿色
   ctx.beginPath(); ctx.arc(lgX + 4, lgY - 2, 6, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
@@ -436,7 +436,7 @@ function _dmDrawLoadChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 32, right: 20, bottom: 20, left: 70 };
+  var pad = { top: 40, right: 28, bottom: 28, left: 80 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
@@ -446,7 +446,7 @@ function _dmDrawLoadChart(canvasId, data) {
   maxVal = Math.ceil(maxVal * 2) / 2;
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '10px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -469,7 +469,7 @@ function _dmDrawEmpty(canvas, msg) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#9ca3af'; ctx.font = '28px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '32px -apple-system, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 10);
 }
 

@@ -8,7 +8,7 @@
 </head>
 <body>
   <!-- 诊断栏：右上角极小入口，默认隐藏 -->
-  <meta name="build-id" content="mqg8dudy">
+  <meta name="build-id" content="xq7k2mnp">
   <div id="page-diag" style="position:fixed;top:0;right:0;z-index:9999;font:10px/1.4 monospace;">
     <div id="page-diag-bar" title="诊断窗口" onclick="var d=document.getElementById('page-diag-content');var a=d.style.display==='none';d.style.display=a?'block':'none'" style="cursor:pointer;background:rgba(0,0,0,0.04);color:#d1d5db;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:0 0 0 8px;user-select:none;font-size:11px;opacity:0.4;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">🔬</div>
     <div id="page-diag-content" style="display:none;background:#f8f9fa;color:#1a1a1a;padding:6px 12px;border-left:2px solid #e5e7eb;border-bottom:2px solid #e5e7eb;border-radius:0 0 0 8px;max-height:180px;max-width:520px;overflow-y:auto;"></div>
@@ -65,11 +65,7 @@
         </a>
         <a href="#pm2" class="nav-item" data-page="pm2">
           <span class="nav-icon">🔄</span>
-          <span>PM2</span>
-        </a>
-        <a href="#process" class="nav-item" data-page="process">
-          <span class="nav-icon">📊</span>
-          <span>进程总览</span>
+          <span>PM2 进程</span>
         </a>
         <a href="#settings" class="nav-item" data-page="settings">
           <i class="nav-icon">⚙️</i>
@@ -85,7 +81,7 @@
         </a>
       </nav>
       <div class="sidebar-footer">
-        <span id="version">v0.9.3-beta</span>
+        <span id="version">v0.7.2-beta</span>
       </div>
     </aside>
 
@@ -354,55 +350,23 @@
         <section class="page hidden" id="page-pm2">
           <div id="pm2Guide"></div>
           <div class="page-toolbar">
-            <span style="color:var(--text-secondary);font-size:13px;">📋 进程列表</span>
+            <button class="btn btn-primary" id="btnPm2Scan">🔍 刷新全部进程</button>
+            <div id="pm2AggSummary" style="display:flex;gap:12px;margin-left:16px;flex-wrap:wrap;"></div>
           </div>
           <div class="table-wrapper">
             <table class="data-table" id="pm2Table">
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>PID</th>
-                  <th>状态</th>
-                  <th>CPU</th>
-                  <th>内存</th>
-                  <th>运行时间</th>
-                  <th>重启</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="pm2Tbody">
-                <tr class="empty-row"><td colspan="8">点击刷新获取进程列表</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- 进程总览（PM2 + Docker + 系统服务聚合） -->
-        <section class="page hidden" id="page-process">
-          <div class="page-toolbar">
-            <button class="btn btn-primary" id="btnProcessScan">🔍 刷新进程</button>
-            <div id="processSummary" style="display:flex;gap:12px;margin-left:16px;flex-wrap:wrap;"></div>
-            <select id="processTypeFilter" style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#1a1a1a;font-size:12px;">
-              <option value="all">📋 全部类型</option>
-              <option value="pm2">⚙️ PM2</option>
-              <option value="docker">🐳 Docker</option>
-              <option value="system">🖥️ 系统服务</option>
-            </select>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table" id="processTable">
               <thead>
                 <tr>
                   <th>类型</th>
                   <th>名称</th>
                   <th>PID</th>
                   <th>状态</th>
-                  <th>CPU/镜像</th>
-                  <th>内存/端口</th>
+                  <th>CPU / 镜像</th>
+                  <th>内存 / 端口</th>
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody id="processTbody">
+              <tbody id="pm2Tbody">
                 <tr class="empty-row"><td colspan="7">点击刷新获取进程列表</td></tr>
               </tbody>
             </table>
@@ -439,6 +403,10 @@
               <div class="form-group">
                 <label>PushPlus Token</label>
                 <input type="text" id="cfgPushplusToken" class="form-input" placeholder="输入 Token">
+              </div>
+              <div class="form-group">
+                <label>SSL 证书到期前通知天数</label>
+                <input type="number" id="cfgCertExpireDays" class="form-input" placeholder="30" min="1" max="365" value="30">
               </div>
             </div>
             <div class="settings-card">

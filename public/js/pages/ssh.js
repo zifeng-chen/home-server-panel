@@ -225,7 +225,7 @@ function _sshConnect(conn, reconnecting) {
             if (stText) stText.textContent = '已连接';
             st.current = conn;
             st._lastDisconnected = null;  // 连接成功，清空旧的断连记录
-            _sshRenderSidebar();
+            _sshRender(true);  // 重新渲染完整页面，确保断开按钮出现
             if (st.fitAddon) { setTimeout(function() { try { st.fitAddon.fit(); } catch(e) {} }, 100); }
             st.term.focus();
           } else if (msg.type === 'error') {

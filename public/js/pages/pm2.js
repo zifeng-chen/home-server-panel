@@ -1,22 +1,23 @@
-// PM2 进程管理页面
+// PM2 进程管理页面（整合：PM2 + Docker + 系统服务）
 let pm2GuideShown = false;
+window._pm2AllData = null;
 
 async function loadPM2() {
   const tbody = document.getElementById('pm2Tbody');
-  const overviewEl = document.getElementById('pm2Overview');
   const guideEl = document.getElementById('pm2Guide');
+  const summaryEl = document.getElementById('pm2AggSummary');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-box">⏳ 加载中...</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7"><div class="loading-box">⏳ 加载中...</div></td></tr>';
   if (guideEl) guideEl.innerHTML = '';
+  if (summaryEl) summaryEl.innerHTML = '';
 
   try {
-    // 先检查 PM2 状态
-    const [statusRes, listRes, overviewRes, guideRes] = await Promise.all([
+    // 并行获取 PM2 状态 + 进程聚合数据
+    const [statusRes, guideRes, aggRes] = await Promise.all([
       Api.get('/pm2/status'),
-      Api.get('/pm2'),
-      Api.get('/pm2/overview'),
-      Api.get('/pm2/guide')
+      Api.get('/pm2/guide'),
+      Api.get('/process')
     ]);
 
     const g = guideRes?.data || {};
@@ -25,7 +26,7 @@ async function loadPM2() {
     const daemonRunning = g.daemonRunning;
     const running = statusRes?.data?.running;
 
-    // 安装引导（PM2 未安装或守护进程未运行）
+    // PM2 安装引导（PM2 未安装或守护进程未运行）
     if (guideEl && !running) {
       pm2GuideShown = true;
       guideEl.innerHTML = `
@@ -64,106 +65,96 @@ async function loadPM2() {
         </div>
       `;
     } else if (guideEl && installed && daemonRunning) {
-      // PM2 正常运行，显示运行状态容器（PM2版本 + 4个统计卡片 + 管理按钮）
-      const o = overviewRes.success ? (overviewRes.data || {}) : {};
-      const online = (listRes.data && listRes.data.summary && listRes.data.summary.online) || 0;
-      const stopped = ((listRes.data && listRes.data.summary && listRes.data.summary.stopped) || 0) + ((listRes.data && listRes.data.summary && listRes.data.summary.errored) || 0);
-      const total = (listRes.data && listRes.data.summary && listRes.data.summary.total) || 0;
-
+      // PM2 正常运行，显示状态卡片
       guideEl.innerHTML = `
         <div class="card" style="border-left:3px solid var(--success);margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <h3 style="margin:0;color:var(--success)">✅ PM2 ${o.pm2Version || ''} 运行中</h3>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
-            <div class="stat-card" style="border-color:var(--info);padding:14px">
-              <div class="stat-icon">⚙️</div>
-              <div class="stat-info">
-                <span class="stat-label">PM2 版本</span>
-                <span class="stat-value">${o.pm2Version || '--'}</span>
-              </div>
-            </div>
-            <div class="stat-card" style="border-color:var(--success);padding:14px">
-              <div class="stat-icon">🟢</div>
-              <div class="stat-info">
-                <span class="stat-label">在线进程</span>
-                <span class="stat-value">${online}</span>
-              </div>
-            </div>
-            <div class="stat-card" style="border-color:var(--warning);padding:14px">
-              <div class="stat-icon">⚠️</div>
-              <div class="stat-info">
-                <span class="stat-label">异常/停止</span>
-                <span class="stat-value">${stopped}</span>
-              </div>
-            </div>
-            <div class="stat-card" style="border-color:var(--text-secondary);padding:14px">
-              <div class="stat-icon">📦</div>
-              <div class="stat-info">
-                <span class="stat-label">总进程数</span>
-                <span class="stat-value">${total}</span>
-              </div>
-            </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <h3 style="margin:0;color:var(--success)">✅ PM2 ${g.pm2Version || ''} 运行中</h3>
+            <button class="btn btn-sm btn-danger" style="border:1px solid var(--danger);color:var(--danger);" onclick="pm2Uninstall()">🗑 卸载 PM2</button>
           </div>
         </div>
       `;
     }
 
-    // 概览卡片已合并到 guideEl 运行状态容器中（上方）
-    if (overviewEl) overviewEl.innerHTML = '';
+    // 进程聚合数据（PM2 + Docker + 系统服务）
+    if (aggRes.success) {
+      const data = aggRes.data;
+      const s = data.summary || {};
+      const all = [].concat(
+        (data.pm2 || []).map(function(p) { p._type = 'pm2'; return p; }),
+        (data.docker || []).map(function(d) { d._type = 'docker'; return d; }),
+        (data.system || []).map(function(sv) { sv._type = 'system'; return sv; })
+      );
 
-    if (!listRes.success) {
-      tbody.innerHTML = '<tr><td colspan="8" style="color:var(--danger)">' + (listRes.message || 'PM2 查询失败') + '</td></tr>';
-      return;
+      // 统计概览
+      if (summaryEl) {
+        summaryEl.innerHTML = `
+          <span style="font-size:12px;padding:4px 10px;background:#f3f0ff;border-radius:12px;color:#7c3aed">⚙️ PM2 ${s.pm2 ? s.pm2.online + '/' + s.pm2.total : '0'}</span>
+          <span style="font-size:12px;padding:4px 10px;background:#e0f7fa;border-radius:12px;color:#0891b2">🐳 Docker ${s.docker ? s.docker.running + '/' + s.docker.total : '0'}</span>
+          <span style="font-size:12px;padding:4px 10px;background:#fff3e0;border-radius:12px;color:#ea580c">🖥️ 系统 ${s.system ? s.system.active + '/' + s.system.total : '0'}</span>
+        `;
+      }
+
+      if (all.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">📭 暂无运行中的进程</td></tr>';
+        return;
+      }
+
+      var TYPE_BADGES = { pm2: '<span style="background:#f3f0ff;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px">⚙️ PM2</span>', docker: '<span style="background:#e0f7fa;color:#0891b2;padding:2px 8px;border-radius:10px;font-size:11px">🐳 Docker</span>', system: '<span style="background:#fff3e0;color:#ea580c;padding:2px 8px;border-radius:10px;font-size:11px">🖥️ 系统</span>' };
+
+      tbody.innerHTML = all.map(function(p) {
+        var t = p._type;
+        var badge = TYPE_BADGES[t] || '';
+        var name = p.name || '--';
+        var pid = p.pid || '--';
+        var statusStr = p.status || '--';
+        var col1, col2, actions = '';
+
+        if (t === 'pm2') {
+          var sc = statusStr === 'online' ? 'var(--success)' : statusStr === 'stopped' ? 'var(--warning)' : 'var(--danger)';
+          statusStr = '<span class="status-badge" style="background:' + sc + '20;color:' + sc + '">' + statusStr + '</span>';
+          col1 = (p.cpu > 0 ? p.cpu.toFixed(1) + '%' : '--');
+          col2 = (p.memory > 0 ? p.memory.toFixed(1) + ' MB' : '--');
+          actions = (p.status === 'online'
+            ? '<button class="btn btn-sm btn-warning" onclick="pm2Action(\'' + name + '\',\'restart\')">🔄 重启</button> '
+            : '')
+            + (p.status === 'online'
+              ? '<button class="btn btn-sm btn-danger" onclick="pm2Action(\'' + name + '\',\'stop\')">⏹ 停止</button>'
+              : '<button class="btn btn-sm btn-success" onclick="pm2Action(\'' + name + '\',\'start\')">▶ 启动</button>')
+            + ' <button class="btn btn-sm btn-outline" onclick="pm2Action(\'' + name + '\',\'delete\')" style="color:var(--danger);border-color:var(--danger)">🗑</button>';
+        } else if (t === 'docker') {
+          var sc = statusStr.indexOf('Up') === 0 ? 'var(--success)' : 'var(--warning)';
+          statusStr = '<span class="status-badge" style="background:' + sc + '20;color:' + sc + '">' + statusStr + '</span>';
+          col1 = '<small>' + (p.image || '--') + '</small>';
+          col2 = '<small>' + (p.ports || '--') + '</small>';
+          actions = '';
+        } else {
+          // system
+          var sc = statusStr === 'active' ? 'var(--success)' : 'var(--warning)';
+          statusStr = '<span class="status-badge" style="background:' + sc + '20;color:' + sc + '">' + statusStr + '</span>';
+          col1 = (p.cpu > 0 ? p.cpu.toFixed(1) + '%' : '--');
+          col2 = (p.memory > 0 ? p.memory.toFixed(0) + ' MB' : '--');
+          actions = p.name === 'Server Panel' ? '<span style="font-size:11px;color:var(--text-secondary)">本面板</span>' : '';
+        }
+
+        return '<tr>'
+          + '<td>' + badge + '</td>'
+          + '<td><strong>' + name + '</strong>' + (p.uptime && t === 'docker' ? '<br><small style="color:var(--text-secondary)">' + p.uptime + '</small>' : '') + '</td>'
+          + '<td><code>' + pid + '</code></td>'
+          + '<td>' + statusStr + '</td>'
+          + '<td>' + col1 + '</td>'
+          + '<td>' + col2 + '</td>'
+          + '<td class="action-cell">' + actions + '</td>'
+          + '</tr>';
+      }).join('');
+
+      window._pm2AllData = data;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger)">' + (aggRes.message || '获取进程信息失败') + '</td></tr>';
     }
-
-    const processes = (listRes.data && listRes.data.processes) || [];
-    
-    // 如果没有进程但 PM2 在运行
-    if (processes.length === 0 && running) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">📭 暂无 PM2 管理的进程<br><small>在项目目录执行 <code>pm2 start app.js</code> 添加进程</small></td></tr>';
-      return;
-    }
-
-    // PM2 未运行但已安装
-    if (processes.length === 0 && !running && installed) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">⚡ PM2 守护进程未运行<br><small>点击上方「启动守护进程」或执行 <code>pm2 resurrect</code></small></td></tr>';
-      return;
-    }
-
-    if (processes.length === 0) {
-      const installerLink = 'pm2-not-installed';
-      tbody.innerHTML = `<tr id="${installerLink}"><td colspan="8" class="empty-state">📦 PM2 未安装，点击上方安装按钮 ↑</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = processes.map(p => {
-      const statusColor = p.status === 'online' ? 'var(--success)' : p.status === 'stopped' ? 'var(--warning)' : 'var(--danger)';
-      const uptimeStr = p.uptime > 0 ? formatUptime(p.uptime) : '--';
-      const memStr = p.memory > 0 ? p.memory.toFixed(1) + ' MB' : '--';
-      const cpuStr = p.cpu > 0 ? p.cpu.toFixed(1) + '%' : '--';
-      return '<tr>'
-        + '<td><strong>' + p.name + '</strong><br><small style="color:var(--text-secondary)">' + (p.execMode || '') + ' x' + (p.instances || 1) + '</small></td>'
-        + '<td><code>' + (p.pid || '--') + '</code></td>'
-        + '<td><span class="status-badge" style="background:' + statusColor + '20;color:' + statusColor + '">' + p.status + '</span></td>'
-        + '<td>' + cpuStr + '</td>'
-        + '<td>' + memStr + '</td>'
-        + '<td>' + uptimeStr + '</td>'
-        + '<td>' + (p.restarts || 0) + '</td>'
-        + '<td class="action-cell">'
-          + (p.status === 'online'
-              ? '<button class="btn btn-sm btn-warning" onclick="pm2Action(\'' + p.name + '\',\'restart\')">🔄 重启</button> '
-              : '')
-          + (p.status === 'online'
-              ? '<button class="btn btn-sm btn-danger" onclick="pm2Action(\'' + p.name + '\',\'stop\')">⏹ 停止</button>'
-              : '<button class="btn btn-sm btn-success" onclick="pm2Action(\'' + p.name + '\',\'start\')">▶ 启动</button>')
-          + ' <button class="btn btn-sm btn-outline" onclick="pm2Action(\'' + p.name + '\',\'delete\')" style="color:var(--danger);border-color:var(--danger)">🗑 删除</button>'
-        + '</td>'
-        + '</tr>';
-    }).join('');
 
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--danger)">加载失败: ' + err.message + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger)">加载失败: ' + err.message + '</td></tr>';
   }
 }
 
@@ -172,9 +163,8 @@ async function pm2Action(name, action) {
   const label = labels[action] || action;
   if (!confirm('确认' + label + '进程: ' + name + '?')) return;
 
-  // 显示进度指示
   const tbody = document.getElementById('pm2Tbody');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-box">⏳ 正在' + label + ' ' + name + '...</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7"><div class="loading-box">⏳ 正在' + label + ' ' + name + '...</div></td></tr>';
 
   let res;
   try {
@@ -192,11 +182,10 @@ async function pm2Action(name, action) {
     App.notify((res && res.message) || '操作失败', 'error');
   }
   
-  // 延迟刷新获取最新状态
   setTimeout(loadPM2, 1500);
 }
 
-// PM2 安装/卸载/启动守护进程
+// PM2 安装/卸载/启动守护进程（SSE流式进度）
 let _pm2EventSource = null;
 
 function _pm2StopStream() {
@@ -334,7 +323,8 @@ async function pm2Save() {
     document.addEventListener('DOMContentLoaded', initPm2Buttons);
     return;
   }
-  // 刷新和保存按钮已移除，功能保留在 PM2 状态卡片中
+  var btn = document.getElementById('btnPm2Scan');
+  if (btn) btn.addEventListener('click', loadPM2);
 })();
 
 // 导出供 app.js 的 _ensurePage 调用

@@ -19,6 +19,7 @@ async function loadSettings() {
       setVal('cfgTencentSecretId', cfg.tencentSecretId || '');
       setVal('cfgTencentSecretKey', cfg.tencentSecretKey || '');
       setVal('cfgPushplusToken', cfg.pushplusToken);
+      setVal('cfgCertExpireDays', cfg.certExpireDays || '30');
       // 已配置 token 时显示提示 placeholder
       var tokEl = document.getElementById('cfgPushplusToken');
       if (tokEl && cfg.pushplusToken === '已配置') {
@@ -368,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
       tencentSecretKey: document.getElementById('cfgTencentSecretKey')?.value || '',
       pushplusToken: document.getElementById('cfgPushplusToken')?.value || '',
       acmeEmail: document.getElementById('cfgAcmeEmail')?.value || '',
-      acmeDns: document.getElementById('cfgAcmeDns')?.value || 'alidns'
+      acmeDns: document.getElementById('cfgAcmeDns')?.value || 'alidns',
+      certExpireDays: document.getElementById('cfgCertExpireDays')?.value || '30'
     };
     const res = await Api.post('/system/config', data);
     Utils.notify(res.message || '保存完成', res.success ? 'success' : 'error');

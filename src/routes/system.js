@@ -76,6 +76,7 @@ router.get('/config', (req, res) => {
     acmeEmail: process.env.ACME_EMAIL || '',
     acmeDnsProvider: process.env.ACME_DNS_PROVIDER || '',
     pushplusToken: (process.env.PUSHPLUS_TOKEN || '').length > 0 ? '已配置' : '未配置',
+    certExpireDays: parseInt(process.env.CERT_EXPIRE_WARN_DAYS || '30'),
     serverPort: process.env.SERVER_PORT || '3456',
     nginxConfDir: process.env.NGINX_CONF_DIR || '',
     modules: {
@@ -115,7 +116,7 @@ router.post('/config', (req, res) => {
       }
     };
 
-    const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, acmeEmail, acmeDns } = req.body;
+    const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, acmeEmail, acmeDns, certExpireDays } = req.body;
     if (aliKeyId && aliKeyId.indexOf('****') === -1) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
     if (aliKeySecret && aliKeySecret !== '****') updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
     if (tencentSecretId && tencentSecretId.indexOf('****') === -1) updater('TENCENT_SECRET_ID', tencentSecretId);
@@ -123,6 +124,7 @@ router.post('/config', (req, res) => {
     if (pushplusToken) updater('PUSHPLUS_TOKEN', pushplusToken);
     if (acmeEmail) updater('ACME_EMAIL', acmeEmail);
     if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
+    if (certExpireDays) updater('CERT_EXPIRE_WARN_DAYS', certExpireDays);
 
     fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
 
@@ -153,6 +155,10 @@ router.post('/config', (req, res) => {
     }
     if (acmeEmail) process.env.ACME_EMAIL = acmeEmail;
     if (acmeDns) process.env.ACME_DNS_PROVIDER = acmeDns;
+    if (certExpireDays) {
+      updater('CERT_EXPIRE_WARN_DAYS', certExpireDays);
+      process.env.CERT_EXPIRE_WARN_DAYS = certExpireDays;
+    }
 
     res.json({ success: true, message: '配置已保存并立即生效' });
     _tryNotify('config');

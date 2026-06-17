@@ -21,7 +21,24 @@ class PortService {
         }
       }
     } catch (_) { /* Docker 不可达时静默跳过 */ }
+    // 标注服务类型
+    for (const r of results) {
+      r.serviceType = this.classifyServiceType(r);
+    }
     return this._sortPorts(results);
+  }
+
+  // 分类服务类型：docker | system | local
+  classifyServiceType(portEntry) {
+    const proc = (portEntry.process || '').toLowerCase();
+    // Docker 容器
+    if (proc.startsWith('docker:')) return 'docker';
+    // 系统服务（端口 < 1024 或已知系统进程）
+    const sysProcs = ['sshd', 'nginx', 'dnsmasq', 'systemd', 'syslog', 'ntpd', 'cron',
+      'lighttpd', 'uhttpd', 'dropbear', 'netifd', 'odhcpd', 'procd', 'init', 'kern', 'kernel'];
+    if (portEntry.port < 1024 || sysProcs.some(sp => proc.includes(sp))) return 'system';
+    // 其余为本地/用户服务
+    return 'local';
   }
 
   _scanAll() {

@@ -85,8 +85,23 @@ class DdnsService {
     throw new Error('无法获取公网 IPv4，所有服务均不可达');
   }
 
-  // 获取公网 IPv6 地址
-  async getPublicIpv6() {
+  // 获取公网 IPv6 地址（带重试机制，路由器重拨后 IPv6 需几秒就绪）
+  async getPublicIpv6(retries = 2) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const ip = await this._tryGetPublicIpv6();
+        if (ip) return ip;
+      } catch (e) {
+        if (attempt < retries) {
+          console.log(`[DDNS] IPv6 检测失败 (attempt ${attempt + 1}/${retries + 1}): ${e.message}，1.5s 后重试...`);
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+    }
+    throw new Error('无法获取公网 IPv6，所有服务均不可达（已重试）');
+  }
+
+  async _tryGetPublicIpv6() {
     const services = [
       { host: 'api6.ipify.org', path: '/' },
       { host: 'ifconfig.co', path: '/', headers: { 'Accept': 'application/json' }, parser: (d) => JSON.parse(d).ip },
@@ -111,7 +126,7 @@ class DdnsService {
       if (localIpv6) return localIpv6;
     } catch (e) {}
 
-    throw new Error('无法获取公网 IPv6，所有服务均不可达');
+    throw new Error('[内部] 无法获取公网 IPv6，所有服务均不可达');
   }
 
   // 从本机获取公网 IPv6

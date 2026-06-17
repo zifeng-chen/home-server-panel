@@ -3,6 +3,11 @@ const fs = require('fs');
 const router = express.Router();
 const nginxService = require('../services/nginx-service');
 
+// 推送通知（静默，失败不影响业务）
+function _tryNotify(action) {
+  try { require('../services/notify-service').notifyNginxAction(action).catch(() => {}); } catch (_) {}
+}
+
 // GET /api/nginx - 根路由，返回状态
 router.get('/', async (req, res) => {
   try {
@@ -34,6 +39,7 @@ router.post('/start', async (req, res) => {
   try {
     const result = await nginxService.start();
     res.json(result);
+    if (result.success) _tryNotify('start');
   } catch (err) {
     res.status(500).json({success: false, message: '启动失败: ' + err.message });
   }
@@ -44,6 +50,7 @@ router.post('/stop', async (req, res) => {
   try {
     const result = await nginxService.stop();
     res.json(result);
+    if (result.success) _tryNotify('stop');
   } catch (err) {
     res.status(500).json({success: false, message: '停止失败: ' + err.message });
   }
@@ -54,6 +61,7 @@ router.post('/reload', async (req, res) => {
   try {
     const result = await nginxService.reload();
     res.json(result);
+    if (result.success) _tryNotify('reload');
   } catch (err) {
     res.status(500).json({success: false, message: '重载失败: ' + err.message });
   }
@@ -64,6 +72,7 @@ router.post('/restart', async (req, res) => {
   try {
     const result = await nginxService.restart();
     res.json(result);
+    if (result.success) _tryNotify('restart');
   } catch (err) {
     res.status(500).json({success: false, message: '重启失败: ' + err.message });
   }
@@ -129,6 +138,7 @@ router.get('/install/stream', (req, res) => {
   // 检查是否已安装
   if (nginxService.nginxBin) {
     send('done', { message: 'Nginx 已安装', installed: true });
+    _tryNotify('install');
     return res.end();
   }
 
@@ -180,6 +190,7 @@ router.get('/install/stream', (req, res) => {
     if (code === 0) {
       nginxService._detectPaths();
       send('done', { message: '安装成功!', installed: true, code });
+      _tryNotify('install');
     } else {
       send('error', { message: `安装失败 (退出码: ${code})`, code });
     }

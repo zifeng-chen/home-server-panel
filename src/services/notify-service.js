@@ -131,6 +131,82 @@ ${cert.daysRemaining < 0 ? '<p style="color:#F44336">⚠️ 证书已过期，�
     });
   }
 
+  // ── 全局操作通知 ──
+
+  // DDNS 操作通知 (添加/修改/删除/启停)
+  async notifyDdnsAction(action, record) {
+    const actionMap = { create: '➕ 添加', update: '✏️ 修改', delete: '🗑 删除', toggle: '🔀 启停' };
+    const a = actionMap[action] || action;
+    return this.send({
+      title: `📡 DDNS ${a}记录`,
+      content: `<h3>DDNS 记录${a}</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
+<tr style="background:#f5f5f5"><th>域名</th><th>记录</th><th>类型</th><th>值</th></tr>
+<tr><td>${record.domain || ''}</td><td>${record.rr || ''}</td><td>${record.type || ''}</td><td>${record.value || ''}</td></tr>
+</table>
+<p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
+      template: 'html'
+    });
+  }
+
+  // SSL 操作通知 (申请/续期/删除/部署)
+  async notifySslAction(action, domain, details) {
+    const actionMap = { issue: '📜 申请', renew: '🔄 续期', delete: '🗑 删除', deploy: '🚀 部署' };
+    const a = actionMap[action] || action;
+    return this.send({
+      title: `🔒 SSL证书 ${a}`,
+      content: `<h3>SSL 证书操作</h3>
+<p><strong>操作:</strong> ${a}</p>
+<p><strong>域名:</strong> ${domain}</p>
+${details ? `<p><strong>详情:</strong> ${details}</p>` : ''}
+<p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
+      template: 'html'
+    });
+  }
+
+  // Nginx 操作通知
+  async notifyNginxAction(action) {
+    const actionMap = { start: '▶️ 启动', stop: '⏹ 停止', reload: '🔄 重载', restart: '🔃 重启', install: '📦 安装', uninstall: '🗑 卸载' };
+    const a = actionMap[action] || action;
+    return this.send({
+      title: `🌐 Nginx ${a}`,
+      content: `<h3>Nginx 服务操作</h3>
+<p><strong>操作:</strong> ${a}</p>
+<p><strong>主机:</strong> ${require('os').hostname()}</p>
+<p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
+      template: 'html'
+    });
+  }
+
+  // 反向代理操作通知
+  async notifyProxyAction(action, rule) {
+    const actionMap = { create: '➕ 添加', update: '✏️ 修改', delete: '🗑 删除', toggle: '🔀 启停' };
+    const a = actionMap[action] || action;
+    return this.send({
+      title: `🔀 反向代理 ${a}规则`,
+      content: `<h3>反向代理规则${a}</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
+<tr style="background:#f5f5f5"><th>域名</th><th>目标</th></tr>
+<tr><td>${rule.domain || ''}</td><td>${rule.target || ''}</td></tr>
+</table>
+<p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
+      template: 'html'
+    });
+  }
+
+  // 系统设置操作通知
+  async notifySystemAction(action) {
+    const actionMap = { config: '⚙️ 系统设置已保存', restart: '🔃 服务已重启' };
+    const a = actionMap[action] || action;
+    return this.send({
+      title: `🖥️ ${a}`,
+      content: `<h3>${a}</h3>
+<p><strong>主机:</strong> ${require('os').hostname()}</p>
+<p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
+      template: 'html'
+    });
+  }
+
   // 获取通知服务状态
   async getStatus() {
     const configured = !!this.token;

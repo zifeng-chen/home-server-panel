@@ -14,6 +14,11 @@ function _inferProvider(recordId) {
   return 'aliyun';
 }
 
+// 推送通知（静默，失败不影响业务）
+function _tryNotify(action, record) {
+  try { require('../services/notify-service').notifyDdnsAction(action, record).catch(() => {}); } catch (_) {}
+}
+
 // GET /api/ddns - 获取所有 DDNS 记录及公网 IP（合并双云）
 router.get('/', async (req, res) => {
   try {
@@ -134,6 +139,7 @@ router.post('/record/:recordId/toggle', async (req, res) => {
       await svc.setRecordStatus(recordId, newStatus);
     }
     res.json({ success: true, message: newStatus === 'ENABLE' ? '已启用' : '已停用' });
+    _tryNotify('toggle', { domain: record.domain || '', rr: record.rr || '', type: record.recordType || '', value: record.value || '' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -159,6 +165,7 @@ router.put('/record/:recordId', async (req, res) => {
       await svc.editRecord(recordId, { rr, type, value, ttl, line });
     }
     res.json({ success: true, message: 'DNS 记录已更新' });
+    _tryNotify('update', { domain: recordId, rr: rr || '', type: type || '', value: value || '' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -182,6 +189,7 @@ router.delete('/record/:recordId', async (req, res) => {
       const mainDomain = domain.replace(/^[^.]+\./, '');
       svc.removeDomain(mainDomain, record.rr || '@', record.recordType);
       res.json({ success: true, message: '已从面板移除（云 DNS 记录保留）' });
+      _tryNotify('delete', { domain: record.domain || '', rr: record.rr || '', type: record.recordType || '', value: '' });
     } else {
       if (svc === ddnsTencent) {
         const data = await svc.getAllRecords();
@@ -195,6 +203,7 @@ router.delete('/record/:recordId', async (req, res) => {
         await svc.deleteRecord(recordId);
       }
       res.json({ success: true, message: 'DNS 记录已从云服务商删除' });
+      _tryNotify('delete', { domain: recordId, rr: '', type: '', value: '' });
     }
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -261,6 +270,7 @@ router.post('/domains', async (req, res) => {
       data: { domain, dnsRecord },
       warning: dnsWarning || null
     });
+    _tryNotify('create', { domain: name, rr: subdomain || '@', type: recordType || 'A', value: value || (dnsRecord && dnsRecord.Value) || '' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -274,6 +284,7 @@ router.delete('/domains', (req, res) => {
 
     _svc(provider || 'aliyun').removeDomain(name, subdomain || '@', recordType);
     res.json({ success: true, message: '域名已删除' });
+    _tryNotify('delete', { domain: name, rr: subdomain || '@', type: recordType || '', value: '' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

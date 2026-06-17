@@ -4,6 +4,11 @@ const proxyService = require('../services/proxy-service');
 const nginxService = require('../services/nginx-service');
 const sslService = require('../services/ssl-service');
 
+// 推送通知（静默，失败不影响业务）
+function _tryNotify(action, rule) {
+  try { require('../services/notify-service').notifyProxyAction(action, rule).catch(() => {}); } catch (_) {}
+}
+
 // 防抖部署：500ms 内的多次操作合并为一次 deploy
 let _deployTimer = null;
 let _deployPending = false;
@@ -65,6 +70,7 @@ router.post('/', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已添加（部署已排入队列）', data: { rule } });
+    _tryNotify('create', { domain: rule.domain || body.domain, target: rule.target || body.target });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -77,6 +83,7 @@ router.put('/:id', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已更新（部署已排入队列）', data: { rule } });
+    _tryNotify('update', { domain: rule.domain || '', target: rule.target || '' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -89,6 +96,7 @@ router.delete('/:id', async (req, res) => {
     // 部署已排入防抖队列，500ms内批量操作仅重载一次
     _scheduleDeploy();
     res.json({ success: true, message: '代理规则已删除（部署已排入队列）' });
+    _tryNotify('delete', { domain: req.params.id, target: '' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }

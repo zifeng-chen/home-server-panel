@@ -1,3 +1,19 @@
+# v0.9.3-beta (2026-06-17)
+
+### 🆕 新增
+- **全局推送通知** — 扩展 notify-service，DDNS 增删改/SSL 证书/Nginx/系统设置/代理共 6 类事件推送
+- **端口管理服务类型** — 新增 `classifyServiceType()` 区分 docker/local/system，前端增加筛选器
+- **进程管理页** — 新增进程管理页面，聚合 PM2 进程 + Docker 容器 + 系统关键服务，双面板展示
+
+### 🔧 修复
+- **IPv6 解析记录丢失** — `getPublicIpv6()` 增加重试机制（最多 2 次，间隔 1.5s），解决路由器重拨后 IPv6 暂不可达导致 AAAA 记录被跳过的问题
+- **DDNS 页面标题移除** — 移除「阿里云 + 腾讯云」标题，由 provider 列自行标识
+- **部署脚本优化** — 改用 PID 文件精准 kill（`/tmp/hsp.pid`），保底 fallback 用 `grep "node.*server"` 精确匹配；避免误杀 pppd/sshd 导致 ISP 重拨
+- **server.js 启动写入 PID** — `server.listen` 回调写入 `/tmp/hsp.pid`，供部署脚本精确停服
+
+### 🧬 数据库
+- MySQL 缺失列自动迁移：`ddns_records.provider` / `proxy_rules.ssl_cert_path+ssl_key_path` / `operation_logs.time_cst`
+
 # v0.7.1-beta (2026-06-16)
 
 ### 🆕 新增

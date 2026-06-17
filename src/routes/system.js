@@ -2,6 +2,11 @@ const express = require('express');
 const os = require('os');
 const router = express.Router();
 
+// 推送通知（静默，失败不影响业务）
+function _tryNotify(action) {
+  try { require('../services/notify-service').notifySystemAction(action).catch(() => {}); } catch (_) {}
+}
+
 // 简单内存缓存（60 秒 TTL）
 const _cache = new Map();
 function getCached(key, ttlMs, factory) {
@@ -150,6 +155,7 @@ router.post('/config', (req, res) => {
     if (acmeDns) process.env.ACME_DNS_PROVIDER = acmeDns;
 
     res.json({ success: true, message: '配置已保存并立即生效' });
+    _tryNotify('config');
   } catch (err) {
     res.status(500).json({success: false, message: '保存失败: ' + err.message });
   }
@@ -159,6 +165,7 @@ router.post('/config', (req, res) => {
 router.post('/restart', (req, res) => {
   // 先响应客户端
   res.json({ success: true, message: '服务正在重启...' });
+  _tryNotify('restart');
   
   // 1秒后通过 shell 重启
   setTimeout(() => {

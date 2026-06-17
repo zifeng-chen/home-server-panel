@@ -1,17 +1,23 @@
 // 端口管理页面
 let portLoaded = false;
 
+const SERVICE_TYPE_MAP = {
+  docker: { label: 'Docker', icon: '🐳', color: '#0891b2' },
+  system: { label: '系统', icon: '⚙️', color: '#ea580c' },
+  local: { label: '本地', icon: '🖥️', color: '#7c3aed' }
+};
+
 async function loadPort() {
   const tbody = document.getElementById('portTbody');
   const statsEl = document.getElementById('portStats');
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="6">正在扫描端口...</td></tr>';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="7">正在扫描端口...</td></tr>';
 
   try {
     const res = await Api.get('/port/scan');
     if (!res.success) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${res.message || '扫描失败'}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${res.message || '扫描失败'}</td></tr>`;
       return;
     }
 
@@ -19,37 +25,32 @@ async function loadPort() {
     const stats = res.data?.stats || {};
 
     if (statsEl) {
+      const dockerCount = ports.filter(p => p.serviceType === 'docker').length;
+      const sysCount = ports.filter(p => p.serviceType === 'system').length;
       const udpCount = ports.filter(p => p.protocol === 'UDP').length;
       statsEl.innerHTML = `
-        <span style="margin-right:16px;">📡 监听端口: <strong>${stats.total || 0}</strong></span>
-        <span style="margin-right:16px;color:var(--success);">🌐 Web端口: <strong>${stats.webPorts || 0}</strong></span>
+        <span style="margin-right:16px;">📡 总计: <strong>${stats.total || 0}</strong></span>
+        <span style="margin-right:16px;color:var(--success);">🌐 Web: <strong>${stats.webPorts || 0}</strong></span>
         <span style="margin-right:16px;color:var(--info);">📶 UDP: <strong>${udpCount}</strong></span>
-        <span style="color:var(--text-secondary);">🖥️ 进程: <strong>${stats.topProcesses?.[0]?.name || '--'}</strong></span>
+        <span style="margin-right:16px;color:${SERVICE_TYPE_MAP.docker.color};">🐳 Docker: <strong>${dockerCount}</strong></span>
+        <span style="margin-right:16px;color:${SERVICE_TYPE_MAP.system.color};">⚙️ 系统: <strong>${sysCount}</strong></span>
       `;
     }
 
     if (ports.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">未检测到监听端口<br><small>点击「刷新扫描」重新检测</small></td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">未检测到监听端口<br><small>点击「刷新扫描」重新检测</small></td></tr>';
       return;
     }
 
     tbody.innerHTML = ports.map(p => {
-      const isSystem = p.port < 1024;
-      const isWeb = [80, 443, 8080, 8443, 3000, 4000, 5000, 8096, 32400, 9000, 8082].includes(p.port);
-      const isSelf = p.port === 3456;
       const isUdp = p.protocol === 'UDP';
+      const isSelf = p.port === 3456;
       const statusColor = p.status === 'LISTEN' ? 'var(--success)' : (isUdp ? 'var(--info)' : 'var(--text-secondary)');
-      
-      let icon = '📌';
-      if (isWeb) icon = '🌐';
-      else if (isSystem) icon = '⚙️';
-      else if (isSelf) icon = '🏠';
-      else if (isUdp) icon = '📡';
+      const stype = SERVICE_TYPE_MAP[p.serviceType] || SERVICE_TYPE_MAP.local;
 
       return `
         <tr class="${isSelf ? 'highlight-row' : ''}">
           <td>
-            <span style="font-size:18px;margin-right:6px;">${icon}</span>
             <strong>${p.port}</strong>
             <small style="color:var(--text-secondary);">/${p.protocol}</small>
           </td>
@@ -57,17 +58,18 @@ async function loadPort() {
             ${p.description}
             ${p.process && p.process !== p.description ? `<br><small style="color:var(--text-secondary);">${p.process}</small>` : ''}
           </td>
+          <td><span style="color:${stype.color};font-weight:600;">${stype.icon} ${stype.label}</span></td>
           <td><small>${p.host || '0.0.0.0'}</small></td>
           <td><span style="color:${statusColor};" class="status-badge ${isUdp ? 'offline' : 'online'}">${p.status}</span></td>
           ${p.pid ? `<td><code>PID ${p.pid}</code></td>` : '<td>--</td>'}
           <td>
-            ${(isSystem || isSelf || isUdp) ? '<button class="btn btn-sm" onclick="checkSinglePort(${p.port})">🔍 检测</button>' : '<button class="btn btn-sm btn-danger" onclick="killPort(${p.port}, \'${p.process}\')">⏹ 终止</button> <button class="btn btn-sm btn-success" onclick="startPort(${p.port}, \'${p.process}\', \'${p.description}\')">▶ 恢复</button>'}
+            ${(p.serviceType === 'system' || isSelf || isUdp) ? '<button class="btn btn-sm" onclick="checkSinglePort(${p.port})">🔍 检测</button>' : '<button class="btn btn-sm btn-danger" onclick="killPort(${p.port}, \'${p.process}\')">⏹ 终止</button> <button class="btn btn-sm btn-success" onclick="startPort(${p.port}, \'${p.process}\', \'${p.description}\')">▶ 恢复</button>'}
           </td>
         </tr>
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">扫描失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">扫描失败: ${escapeHtml(String(err.message))}</td></tr>`;
   }
 }
 
@@ -138,3 +140,27 @@ window.startPort = async (port, process, desc) => {
 
 // 导出供 app.js 的 _ensurePage 调用
 window.loadPort = loadPort;
+
+// 服务类型筛选
+window.filterPortType = function() {
+  const filter = document.getElementById('portTypeFilter')?.value || 'all';
+  const tbody = document.getElementById('portTbody');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+  rows.forEach(row => {
+    const typeCell = row.children[2];
+    if (!typeCell) return;
+    const text = typeCell.textContent || '';
+    if (filter === 'all') {
+      row.style.display = '';
+    } else if (filter === 'docker' && text.includes('Docker')) {
+      row.style.display = '';
+    } else if (filter === 'system' && text.includes('系统')) {
+      row.style.display = '';
+    } else if (filter === 'local' && text.includes('本地')) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+};

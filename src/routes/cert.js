@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const sslService = require('../services/ssl-service');
 
+// 推送通知（静默，失败不影响业务）
+function _tryNotify(action, domain, details) {
+  try { require('../services/notify-service').notifySslAction(action, domain, details).catch(() => {}); } catch (_) {}
+}
+
 // GET /api/cert/acme - 检查 acme.sh 状态
 router.get('/acme', async (req, res) => {
   try {
@@ -78,6 +83,7 @@ router.post('/issue', async (req, res) => {
 
     const result = await sslService.issueCertificate(domain, { wildcard });
     res.json({ success: true, message: `证书申请成功: ${domain}`, data: result });
+    _tryNotify('issue', domain, wildcard ? '通配符证书' : '');
   } catch (err) {
     res.status(500).json({success: false, message: '证书申请失败: ' + err.message });
   }
@@ -128,6 +134,7 @@ router.post('/renew', async (req, res) => {
     const action = force ? '🔁 强制续期' : '🔄 续期';
     const status = result.skipped ? '跳过（未到期）' : result.alreadyExists ? '已存在' : '成功';
     res.json({ success: true, message: `${action}: ${domain} → ${status}`, data: result });
+    if (!result.skipped) _tryNotify('renew', domain, force ? '强制续期' : '自动续期');
   } catch (err) {
     res.status(500).json({success: false, message: '证书续期失败: ' + err.message });
   }
@@ -138,6 +145,7 @@ router.post('/renew-all', async (req, res) => {
   try {
     const result = await sslService.renewAllCertificates();
     res.json({ success: true, message: '批量续期完成', data: result });
+    _tryNotify('renew', (result.domains || []).join(', ') || '全部', '批量续期');
   } catch (err) {
     res.status(500).json({success: false, message: '批量续期失败: ' + err.message });
   }
@@ -153,6 +161,7 @@ router.post('/deploy', async (req, res) => {
 
     const result = await sslService.deployCertificate(domain, keyFile, fullchainFile);
     res.json({ success: true, message: result.message, data: result });
+    _tryNotify('deploy', domain);
   } catch (err) {
     res.status(500).json({success: false, message: '部署失败: ' + err.message });
   }
@@ -169,6 +178,7 @@ router.delete('/domains/:domain', (req, res) => {
   const deleteFiles = req.query.deleteFiles === 'true';
   sslService.removeConfigDomain(req.params.domain, deleteFiles);
   res.json({ success: true, message: deleteFiles ? '域名及证书文件已删除' : '域名已从配置中移除（证书文件保留）' });
+  _tryNotify('delete', domain, deleteFiles ? '已删除证书文件' : '仅移除配置');
 });
 
 // GET /api/cert/export/:domain - 导出证书文件

@@ -276,6 +276,7 @@ app.use('/api/system', require('./routes/system'));
 app.use('/api/log', require('./routes/log'));
 app.use('/api/cron', require('./routes/cron'));
 app.use('/api/pm2', require('./routes/pm2'));
+app.use('/api/process', require('./routes/process'));
 app.use('/api/docker', require('./routes/docker'));
 app.use('/api/ssh', require('./routes/ssh'));
 app.use('/api/db', require('./routes/db'));
@@ -305,6 +306,8 @@ const wsService = require('./services/ws-service');
 wsService.init(server);
 
 server.listen(PORT, () => {
+  // 写入 PID 文件，供部署脚本精准 kill，避免误杀 pppd 等关键进程
+  try { require('fs').writeFileSync('/tmp/hsp.pid', String(process.pid)); } catch {}
   console.log(`🏠 家庭服务器管理面板已启动: http://0.0.0.0:${PORT}`);
   console.log(`📅 启动时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
   console.log(`👤 默认账号: admin / admin123`);

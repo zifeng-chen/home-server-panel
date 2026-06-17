@@ -88,13 +88,127 @@ router.post('/test', async (req, res) => {
   }
 });
 
-// GET /api/nginx/sites - 站点列表
+// GET /api/nginx/sites - 站点列表（含类型标记：manual/auto）
 router.get('/sites', async (req, res) => {
   try {
-    const sites = await nginxService.getSites();
-    res.json({ success: true, data: sites });
+    var result = await nginxService.getSites();
+    var sites = result.sites || [];
+    // 检测站点类型：如果 server_name 匹配某条反向代理规则的 sourceHost，则为 auto
+    var proxySvc = require('../services/proxy-service');
+    var proxyRules = [];
+    try { proxyRules = proxySvc.listRules() || []; } catch (_) {}
+    var proxyDomains = new Set(proxyRules.filter(function(r) { return r.enabled !== false; }).map(function(r) { return r.sourceHost || ''; }));
+    sites = sites.map(function(s) {
+      var isAuto = proxyDomains.has(s.serverName || '');
+      // 同时检查文件名是否匹配已知代理规则名
+      if (!isAuto && s.name) {
+        isAuto = proxyRules.some(function(r) {
+          var safeName = (r.sourceHost || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+          return s.name === safeName + '-proxy' || s.name === safeName;
+        });
+      }
+      return Object.assign({}, s, { siteType: isAuto ? 'auto' : 'manual', proxyRuleId: isAuto ? (proxyRules.find(function(r) { return (r.sourceHost || '') === s.serverName; }) || {}).id || null : null });
+    });
+    res.json({ success: true, data: { sites: sites } });
   } catch (err) {
     res.status(500).json({success: false, message: err.message, data: { sites: [] } });
+  }
+});
+
+// DELETE /api/nginx/sites/:name - 删除站点（自动同步删除关联代理规则）
+router.delete('/sites/:name', async (req, res) => {
+  try {
+    var name = req.params.name;
+    if (!name) return res.status(400).json({ success: false, message: '缺少站点名称' });
+
+    // 查询站点获取 filePath
+    var result = await nginxService.getSites();
+    var sites = result.sites || [];
+    var site = sites.find(function(s) { return s.name === name; });
+    if (!site) return res.status(404).json({ success: false, message: '站点不存在' });
+
+    // 如果是 auto 类型，同步删除关联代理规则
+    var proxyRuleId = null;
+    try {
+      var proxySvc = require('../services/proxy-service');
+      var proxyRules = proxySvc.listRules() || [];
+      var matchedRule = proxyRules.find(function(r) {
+        var safeName = (r.sourceHost || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+        return (r.sourceHost === site.serverName) || (name === safeName + '-proxy') || (name === safeName);
+      });
+      if (matchedRule) {
+        proxyRuleId = matchedRule.id;
+        proxySvc.deleteRule(proxyRuleId);
+      }
+    } catch (_) {}
+
+    var delResult = await nginxService.deleteSite(site.filePath);
+    res.json({ success: true, message: '✅ 站点已删除' + (proxyRuleId ? '，已同步删除关联代理规则' : ''), data: { name: name, path: delResult.path, proxyRuleId: proxyRuleId } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '删除失败: ' + err.message });
+  }
+});
+
+// GET /api/nginx/site-config - 读取站点配置文件内容
+router.get('/site-config', async (req, res) => {
+  try {
+    const fp = req.query.path;
+    if (!fp) return res.status(400).json({ success: false, message: '缺少配置文件路径' });
+    // 安全：限制路径范围
+    const path = require('path');
+    const normalized = path.resolve(path.normalize(fp));
+    const allowDirs = [
+      '/etc/nginx', '/usr/local/etc/nginx', '/opt/etc/nginx',
+      '/usr/local/nginx/conf', '/etc/nginx/conf.d', '/etc/nginx/sites-available',
+      '/etc/nginx/sites-enabled'
+    ];
+    const allowed = allowDirs.some(function(dir) {
+      return normalized === path.resolve(dir) || normalized.startsWith(path.resolve(dir) + path.sep);
+    });
+    if (!allowed) {
+      return res.status(400).json({ success: false, message: '禁止的路径范围' });
+    }
+    const content = fs.readFileSync(normalized, 'utf8');
+    res.json({ success: true, data: { path: fp, content: content } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '读取配置文件失败: ' + err.message });
+  }
+});
+
+// POST /api/nginx/site-config - 保存站点配置文件
+router.post('/site-config', async (req, res) => {
+  try {
+    const { path: fp, content } = req.body;
+    if (!fp || content === undefined) return res.status(400).json({ success: false, message: '缺少文件路径或内容' });
+    // 安全：限制路径范围（同上）
+    const path = require('path');
+    const normalized = path.resolve(path.normalize(fp));
+    const allowDirs = [
+      '/etc/nginx', '/usr/local/etc/nginx', '/opt/etc/nginx',
+      '/usr/local/nginx/conf', '/etc/nginx/conf.d', '/etc/nginx/sites-available',
+      '/etc/nginx/sites-enabled'
+    ];
+    const allowed = allowDirs.some(function(dir) {
+      return normalized === path.resolve(dir) || normalized.startsWith(path.resolve(dir) + path.sep);
+    });
+    if (!allowed) {
+      return res.status(400).json({ success: false, message: '禁止的路径范围' });
+    }
+    if (content.length > 1024 * 1024) {
+      return res.status(400).json({ success: false, message: '配置文件过大（上限1MB）' });
+    }
+    fs.writeFileSync(normalized, content, 'utf8');
+    // 保存后自动测试配置
+    try {
+      const testResult = await nginxService.testConfig();
+      if (!testResult.ok) {
+        return res.json({ success: false, message: '保存成功但配置测试失败: ' + (testResult.error || '未知错误'), data: { saved: true, configError: testResult.error } });
+      }
+    } catch (_) {}
+    res.json({ success: true, message: '✅ 配置文件已保存', data: { path: fp } });
+    _tryNotify('config-update');
+  } catch (err) {
+    res.status(500).json({ success: false, message: '保存失败: ' + err.message });
   }
 });
 

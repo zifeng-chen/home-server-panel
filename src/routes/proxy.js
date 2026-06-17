@@ -148,78 +148,41 @@ router.post('/config/export', (req, res) => {
   }
 });
 
-// GET /api/proxy/cert-match?domain=example.com - 获取匹配的 SSL 证书
+// GET /api/proxy/cert-match?domain=example.com - 获取所有可用 SSL 证书（匹配的排在前面）
 router.get('/cert-match', async (req, res) => {
   try {
     const { domain } = req.query;
-    if (!domain) return res.status(400).json({ success: false, message: '请提供域名' });
 
     const certData = await sslService.listCertificates().catch(() => ({ certificates: [] }));
     const allCerts = certData.certificates || [];
 
-    // 域名匹配逻辑：证书的 domain 或 sanDomains 包含目标域名
-    const matchDomain = (certDomain, target) => {
-      if (certDomain === target) return true;
-      // 通配符匹配 *.example.com 匹配 sub.example.com
-      if (certDomain.startsWith('*.')) {
-        const suffix = certDomain.slice(2);
-        if (target.endsWith(suffix)) return true;
-      }
-      return false;
-    };
-
-    const matched = allCerts.filter(cert => {
-      // 主域名匹配
-      if (matchDomain(cert.domain, domain)) return true;
-      // SAN 域名匹配
-      if (cert.sanDomains && Array.isArray(cert.sanDomains)) {
-        return cert.sanDomains.some(san => matchDomain(san, domain));
-      }
-      return false;
-    });
-
-    // 同时查找 acme.sh 证书的实际文件路径
-    const { exec } = require('child_process');
-    const findCerts = async (cert) => {
-      // 从 acme.sh 目录查找证书文件
-      const acmeHome = process.env.LE_WORKING_DIR || require('os').homedir() + '/.acme.sh';
-      const domainDir = cert.domain.replace(/^\*+\./g, '');
-      const dirs = [
-        `${acmeHome}/${domainDir}_ecc`,
-        `${acmeHome}/${domainDir}`,
-        `/home/${require('os').userInfo().username}/.acme.sh/${domainDir}_ecc`,
-        `/home/${require('os').userInfo().username}/.acme.sh/${domainDir}`,
-        `/root/.acme.sh/${domainDir}_ecc`,
-        `/root/.acme.sh/${domainDir}`
-      ];
-      const fs = require('fs');
-      for (const dir of dirs) {
-        const fullchain = `${dir}/fullchain.cer`;
-        const privkey = `${dir}/${domainDir}.key`;
-        if (fs.existsSync(fullchain) && fs.existsSync(privkey)) {
-          return { cert: fullchain, key: privkey };
+    // 如果提供了 domain，标记匹配的证书（排在前面）
+    let sorted = allCerts;
+    if (domain) {
+      const matchDomain = (certDomain, target) => {
+        if (certDomain === target) return true;
+        if (certDomain.startsWith('*.')) {
+          const suffix = certDomain.slice(2);
+          if (target.endsWith(suffix)) return true;
         }
-      }
-      return null;
-    };
-
-    const results = await Promise.all(matched.map(async cert => {
-      const paths = await findCerts(cert).catch(() => null);
-      return {
-        domain: cert.domain,
-        sanDomains: cert.sanDomains,
-        issuer: cert.issuer,
-        expiresAt: cert.expiresAt,
-        daysRemaining: cert.daysRemaining,
-        status: cert.status,
-        certPath: paths?.cert || null,
-        keyPath: paths?.key || null
+        return false;
       };
-    }));
+      const matched = [], unmatched = [];
+      allCerts.forEach(function(cert) {
+        let isMatch = matchDomain(cert.domain, domain);
+        if (!isMatch && cert.sanDomains && Array.isArray(cert.sanDomains)) {
+          isMatch = cert.sanDomains.some(function(san) { return matchDomain(san, domain); });
+        }
+        (isMatch ? matched : unmatched).push(Object.assign({}, cert, { matched: isMatch }));
+      });
+      sorted = matched.concat(unmatched);
+    } else {
+      sorted = allCerts.map(function(c) { return Object.assign({}, c, { matched: false }); });
+    }
 
-    res.json({ success: true, data: { domain, matched: results, total: allCerts.length } });
+    res.json({ success: true, data: { certificates: sorted, total: sorted.length } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message, data: { certificates: [] } });
   }
 });
 

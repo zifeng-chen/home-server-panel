@@ -55,20 +55,25 @@ function renderSites(sites) {
   if (!tbody) return;
 
   if (!sites || sites.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">暂无站点配置<br><small>在 conf.d / sites-available 目录中添加 .conf 文件</small></td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">暂无站点配置<br><small>在 conf.d / sites-available 目录中添加 .conf 文件</small></td></tr>';
     return;
   }
 
-  tbody.innerHTML = sites.map(s => `
-    <tr>
-      <td><strong>${s.name || s.file}</strong></td>
-      <td><code>${s.listen || '80'}</code></td>
-      <td>${s.serverName || '_'}</td>
+  tbody.innerHTML = sites.map(s => {
+    var isAuto = s.siteType === 'auto';
+    var typeBadge = isAuto ? '<span class="status-badge" style="background:#e0e7ff;color:#4f46e5;font-size:11px;margin-left:4px;">🔄 代理</span>' : '<span class="status-badge" style="background:#fef3c7;color:#92400e;font-size:11px;margin-left:4px;">📝 手动</span>';
+    return `
+    <tr style="${isAuto ? 'border-left:3px solid #4f46e5' : ''}">
+      <td><strong>${escapeHtml(s.name || s.file)}</strong>${typeBadge}</td>
+      <td><code>${escapeHtml(s.listen || '80')}</code></td>
+      <td>${escapeHtml(s.serverName || '_')}</td>
       <td>${s.ssl ? '<span class="status-badge online">HTTPS</span>' : '<span class="status-badge">HTTP</span>'}</td>
-      <td>${s.proxyPass ? `<code>→ ${s.proxyPass}</code>` : s.root ? `<code>${s.root}</code>` : '--'}</td>
-      <td><button class="btn btn-sm" onclick="viewSiteConfig('${encodeURIComponent(s.filePath)}')">查看</button></td>
+      <td>${s.proxyPass ? `<code>→ ${escapeHtml(s.proxyPass)}</code>` : s.root ? `<code>${escapeHtml(s.root)}</code>` : '--'}</td>
+      <td><button class="btn btn-sm" onclick="viewSiteConfig('${encodeURIComponent(s.filePath)}')">编辑</button></td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteNginxSite('${encodeURIComponent(s.name)}', ${isAuto})">🗑</button></td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // Nginx 操作
@@ -86,23 +91,98 @@ async function nginxAction(action) {
   window[`nginx${action.charAt(0).toUpperCase() + action.slice(1)}`] = () => nginxAction(action);
 });
 
-// 查看站点配置
+// 查看站点配置（可编辑）
 window.viewSiteConfig = async (filePath) => {
-  const res = await Api.get('/nginx/sites');
-  const sites = res.data?.sites || [];
-  const site = sites.find(s => s.filePath === decodeURIComponent(filePath));
-  if (!site) { Utils.notify('未找到站点配置', 'error'); return; }
-
+  const decodedPath = decodeURIComponent(filePath);
   const body = `
-    <div class="form-group"><label>配置文件</label><code>${site.filePath}</code></div>
-    <div class="form-group"><label>服务名</label><code>${site.serverName || '_'}</code></div>
-    <div class="form-group"><label>监听</label><code>${site.listen || '80'}</code></div>
-    <div class="form-group"><label>SSL</label><span class="status-badge ${site.ssl ? 'online' : ''}">${site.ssl ? '启用' : '未启用'}</span></div>
-    ${site.ssl ? `<div class="form-group"><label>证书</label><code>${site.sslCert || '--'}</code></div><div class="form-group"><label>私钥</label><code>${site.sslKey || '--'}</code></div>` : ''}
-    ${site.proxyPass ? `<div class="form-group"><label>反向代理</label><code>→ ${site.proxyPass}</code></div>` : ''}
-    ${site.root ? `<div class="form-group"><label>根目录</label><code>${site.root}</code></div>` : ''}
+    <div class="form-group"><label>配置文件路径</label><code style="word-break:break-all">${escapeHtml(decodedPath)}</code></div>
+    <div id="configLoadStatus" style="text-align:center;padding:12px;color:var(--text-secondary);">⏳ 加载中...</div>
+    <textarea id="configEditor" style="display:none;width:100%;min-height:60vh;font-family:Menlo,Monaco,monospace;font-size:13px;line-height:1.5;padding:12px;border:1px solid var(--border);border-radius:8px;resize:vertical;background:var(--bg-tertiary);color:var(--text);tab-size:2;white-space:pre;overflow:auto;"></textarea>
   `;
-  Utils.openModal(`站点详情: ${site.name || site.file}`, body, '<button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>');
+  const footer = `
+    <button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>
+    <button class="btn btn-primary" id="configSaveBtn" onclick="saveSiteConfig('${filePath}')">💾 保存</button>
+    <button class="btn btn-warning" id="configTestBtn" onclick="testAndClose('${filePath}')" style="display:none;">🧪 保存并测试</button>
+  `;
+  Utils.openModal('✏️ 编辑配置', body, footer);
+
+  // 加载配置内容
+  try {
+    const res = await Api.get('/nginx/site-config?path=' + encodeURIComponent(decodedPath));
+    const loader = document.getElementById('configLoadStatus');
+    const editor = document.getElementById('configEditor');
+    const testBtn = document.getElementById('configTestBtn');
+    if (loader && editor) {
+      if (res.success && res.data) {
+        editor.value = res.data.content || '';
+        editor.style.display = 'block';
+        loader.style.display = 'none';
+        if (testBtn) testBtn.style.display = 'inline-flex';
+      } else {
+        loader.innerHTML = '<span style="color:var(--danger)">❌ ' + (res.message || '加载失败') + '</span>';
+      }
+    }
+  } catch (err) {
+    const loader = document.getElementById('configLoadStatus');
+    if (loader) loader.innerHTML = '<span style="color:var(--danger)">❌ ' + err.message + '</span>';
+  }
+};
+
+// 保存站点配置
+window.saveSiteConfig = async (filePath) => {
+  const editor = document.getElementById('configEditor');
+  if (!editor) return;
+  const content = editor.value;
+  Utils.notify('正在保存...', 'info');
+  try {
+    const res = await Api.post('/nginx/site-config', { path: decodeURIComponent(filePath), content: content });
+    if (res.success) {
+      Utils.notify(res.message || '保存成功', 'success');
+      // 保存成功后提示重载
+      if (confirm('配置已保存。是否立即重载 Nginx 使其生效？')) {
+        await Api.post('/nginx/reload');
+        Utils.notify('Nginx 已重载', 'success');
+      }
+      loadNginx();
+    } else {
+      Utils.notify(res.message || '保存失败', 'error');
+    }
+  } catch (err) {
+    Utils.notify('保存失败: ' + err.message, 'error');
+  }
+};
+
+// 保存并测试配置
+window.testAndClose = async (filePath) => {
+  const editor = document.getElementById('configEditor');
+  if (!editor) return;
+  await Api.post('/nginx/site-config', { path: decodeURIComponent(filePath), content: editor.value });
+  const res = await Api.post('/nginx/test');
+  if (res.success && res.data?.ok) {
+    Utils.notify('✅ 配置测试通过', 'success');
+    Utils.closeModal();
+    loadNginx();
+  } else {
+    Utils.notify('❌ 配置测试失败: ' + ((res.data && res.data.error) || '未知错误'), 'error');
+  }
+};
+
+// 删除 Nginx 站点
+window.deleteNginxSite = async (encodedName, isAuto) => {
+  var name = decodeURIComponent(encodedName);
+  var msg = isAuto ? '这是反向代理自动生成的站点，删除将同时删除对应的代理规则。\n\n确定要删除吗？' : '确定要删除此站点配置吗？';
+  Utils.confirm('删除站点', msg, async () => {
+    try {
+      var res = await Api.del('/nginx/sites/' + encodeURIComponent(name));
+      if (res.success) {
+        Utils.notify(res.message || '删除成功', 'success');
+        loadNginx();
+        if (isAuto) loadProxy(); // 同步刷新代理列表
+      }
+    } catch (err) {
+      Utils.notify('删除失败: ' + err.message, 'error');
+    }
+  });
 };
 
 // 安装 Nginx (SSE)
@@ -169,7 +249,7 @@ window.startNginxInstall = async (method) => {
 };
 
 // Nginx 日志弹窗
-window.openNginxLog = async (type) => {
+window.openNginxLog = (type) => {
   type = type || 'error';
   const body = `
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
@@ -183,15 +263,17 @@ window.openNginxLog = async (type) => {
   const footer = `<button class="btn btn-sm btn-secondary" onclick="copyNginxLog()">📋 一键复制</button><button class="btn btn-sm btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
   Utils.openModal('📋 Nginx 日志', body, footer);
 
-  try {
-    const res = await Api.get(`/nginx/logs?type=${type}&lines=200`);
-    const logEl = document.getElementById('logContent'), loaderEl = document.getElementById('logLoader'), pathEl = document.getElementById('logPath');
-    if (logEl && loaderEl) {
-      loaderEl.style.display = 'none'; logEl.style.display = 'block';
-      if (res.success && res.data) { logEl.textContent = res.data.logs || '(空)'; if (pathEl) pathEl.textContent = '📁 ' + (res.data.path || ''); window._hspNginxLog = res.data.logs || ''; }
-      else { logEl.textContent = res.message || '加载失败'; window._hspNginxLog = ''; }
-    }
-  } catch (err) { const loaderEl = document.getElementById('logLoader'); if (loaderEl) loaderEl.textContent = '❌ 加载失败: ' + err.message; window._hspNginxLog = ''; }
+  (async () => {
+    try {
+      const res = await Api.get(`/nginx/logs?type=${type}&lines=200`);
+      const logEl = document.getElementById('logContent'), loaderEl = document.getElementById('logLoader'), pathEl = document.getElementById('logPath');
+      if (logEl && loaderEl) {
+        loaderEl.style.display = 'none'; logEl.style.display = 'block';
+        if (res.success && res.data) { logEl.textContent = res.data.logs || '(空)'; if (pathEl) pathEl.textContent = '📁 ' + (res.data.path || ''); window._hspNginxLog = res.data.logs || ''; }
+        else { logEl.textContent = res.message || '加载失败'; window._hspNginxLog = ''; }
+      }
+    } catch (err) { const loaderEl = document.getElementById('logLoader'); if (loaderEl) loaderEl.textContent = '❌ 加载失败: ' + err.message; window._hspNginxLog = ''; }
+  })();
 };
 
 window.copyNginxLog = () => {
@@ -283,7 +365,7 @@ function buildProxyForm(rule) {
   `;
 }
 
-// SSL 复选框变更时加载匹配证书
+// SSL 复选框变更时加载可用证书
 async function proxySslChanged() {
   const sslChecked = document.getElementById('proxySsl')?.checked;
   const area = document.getElementById('proxySslCertArea');
@@ -295,38 +377,40 @@ async function proxySslChanged() {
   }
 
   const domain = document.getElementById('proxySrcHost')?.value.trim();
-  area.innerHTML = '<div class="form-group"><label>🔐 选择 SSL 证书</label><select id="proxySslCertSelect" class="form-input"><option value="">⏳ 正在查询匹配证书...</option></select></div>';
+  area.innerHTML = '<div class="form-group"><label>🔐 选择 SSL 证书</label><select id="proxySslCertSelect" class="form-input"><option value="">⏳ 正在查询可用证书...</option></select></div>';
 
   try {
     const params = domain ? `?domain=${encodeURIComponent(domain)}` : '';
     const res = await Api.get(`/proxy/cert-match${params}`);
-    const certs = res.data?.matched || [];
-    const totalCerts = res.data?.total || 0;
+    const certs = res.data?.certificates || [];
 
     if (certs.length === 0) {
-      area.innerHTML = `<div class="form-group" style="grid-column:1/-1">
+      area.innerHTML = `<div class="form-group">
         <label>🔐 SSL 证书</label>
         <div style="padding:12px;background:var(--warning)15;border-radius:8px;color:var(--warning-dark,#856404);font-size:13px;">
-          ⚠️ 没有证书匹配域名 <strong>${domain || '(请输入来源域名)'}</strong><br>
-          <small>共 ${totalCerts} 张证书，无匹配。请先申请该域名的 SSL 证书。</small>
+          ⚠️ 系统内暂无证书，请先到「SSL 证书」页面申请。
         </div>
       </div>`;
       return;
     }
 
     area.innerHTML = `
-      <div class="form-group" style="grid-column:1/-1;">
-        <label>🔐 选择 SSL 证书</label>
+      <div class="form-group">
+        <label>🔐 选择 SSL 证书 <small style="color:var(--text-secondary);">(${certs.length} 张可用)</small></label>
         <select id="proxySslCertSelect" class="form-input">
-          ${certs.map((c, i) => `
-            <option value="${i}" data-cert="${c.certPath || ''}" data-key="${c.keyPath || ''}">
-              ${c.domain} — ${c.issuer || 'Unknown'} (${c.daysRemaining != null ? c.daysRemaining + '天' : '未知'})
-            </option>`).join('')}
+          <option value="">-- 请选择证书 --</option>
+          ${certs.map((c, i) => {
+            var prefix = c.matched ? '✅ ' : '• ';
+            var suffix = c.matched ? ' [匹配]' : '';
+            return `<option value="${i}"${c.matched ? ' style="font-weight:600;color:var(--success)"' : ''}>
+              ${prefix}${c.domain} — ${c.issuer || 'Unknown'} (${c.daysRemaining != null ? c.daysRemaining + '天' : '?'})${suffix}
+            </option>`;
+          }).join('')}
         </select>
-        ${certs.length > 1 ? `<small style="color:var(--text-secondary);margin-top:4px;">${certs.length} 张证书匹配 ${domain}</small>` : ''}
+        ${domain ? `<small style="color:var(--text-secondary);margin-top:4px;">✅ 标记的证书匹配域名 ${domain}</small>` : '<small style="color:var(--text-secondary);margin-top:4px;">输入来源域名后会自动标记匹配的证书</small>'}
       </div>`;
   } catch (err) {
-    area.innerHTML = `<div class="form-group" style="grid-column:1/-1"><label>🔐 SSL 证书</label><div style="color:var(--danger)">加载失败: ${err.message}</div></div>`;
+    area.innerHTML = `<div class="form-group"><label>🔐 SSL 证书</label><div style="color:var(--danger)">加载失败: ${err.message}</div></div>`;
   }
 }
 

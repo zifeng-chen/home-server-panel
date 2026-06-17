@@ -222,16 +222,13 @@
         <!-- Nginx & 反向代理（左右分栏）-->
         <section class="page hidden" id="page-nginx">
           <div class="page-toolbar">
-            <span style="font-weight:700;font-size:16px;">Nginx & 反向代理</span>
-            <button class="btn btn-sm btn-secondary" onclick="openNginxLog()" style="margin-left:auto">📋 Nginx 日志</button>
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <button class="btn btn-sm btn-secondary" onclick="openNginxLog()">📋 查看日志</button>
+            </div>
           </div>
           <div class="split-layout" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
             <!-- 左栏: Nginx 管理 -->
             <div class="card" style="position:relative">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <h3 style="margin:0;font-size:15px">🌐 Nginx 管理</h3>
-                <button class="btn btn-sm btn-secondary" onclick="openProxyLog()">📋 代理日志</button>
-              </div>
               <div id="nginxStatusBar" style="margin-bottom:12px;padding:10px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;">检测中...</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
                 <button class="btn btn-success btn-sm" id="btnNginxStart" style="display:none;">▶ 启动</button>
@@ -251,11 +248,12 @@
                       <th>Server Name</th>
                       <th>SSL</th>
                       <th>代理/根目录</th>
-                      <th style="width:60px">操作</th>
+                      <th style="width:60px">编辑</th>
+                      <th style="width:40px">删</th>
                     </tr>
                   </thead>
                   <tbody id="nginxTbody">
-                    <tr class="empty-row"><td colspan="6">暂未检测到站点配置</td></tr>
+                    <tr class="empty-row"><td colspan="7">暂未检测到站点配置</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -377,7 +375,7 @@
         <section class="page hidden" id="page-settings">
           <div class="settings-grid">
             <div class="settings-card">
-              <h3>阿里云 DNS</h3>
+              <h3>阿里云 DNS <a href="https://ram.console.aliyun.com/manage/ak" target="_blank" style="font-size:11px;font-weight:normal;color:var(--primary);margin-left:8px;">🔗 获取 AccessKey →</a></h3>
               <div class="form-group">
                 <label>AccessKey ID</label>
                 <input type="text" id="cfgAliKeyId" class="form-input" placeholder="LTAI4...">
@@ -388,7 +386,7 @@
               </div>
             </div>
             <div class="settings-card">
-              <h3>腾讯云 DNSPod</h3>
+              <h3>腾讯云 DNSPod <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" style="font-size:11px;font-weight:normal;color:var(--primary);margin-left:8px;">🔗 获取 SecretKey →</a></h3>
               <div class="form-group">
                 <label>SecretId</label>
                 <input type="text" id="cfgTencentSecretId" class="form-input" placeholder="AKID...">
@@ -399,7 +397,7 @@
               </div>
             </div>
             <div class="settings-card">
-              <h3>PushPlus 通知</h3>
+              <h3>PushPlus 通知 <a href="https://www.pushplus.plus/push1.html" target="_blank" style="font-size:11px;font-weight:normal;color:var(--primary);margin-left:8px;">🔗 获取 Token →</a></h3>
               <div class="form-group">
                 <label>PushPlus Token</label>
                 <input type="text" id="cfgPushplusToken" class="form-input" placeholder="输入 Token">
@@ -410,7 +408,7 @@
               </div>
             </div>
             <div class="settings-card">
-              <h3>Let's Encrypt</h3>
+              <h3>ACME 证书</h3>
               <div class="form-group">
                 <label>联系邮箱</label>
                 <input type="email" id="cfgAcmeEmail" class="form-input" placeholder="admin@domain.com">

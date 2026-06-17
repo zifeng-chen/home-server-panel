@@ -94,6 +94,7 @@ router.get('/issue/stream', async (req, res) => {
   const domain = req.query.domain;
   const wildcard = req.query.wildcard === 'true';
   const force = req.query.force === 'true';
+  const provider = req.query.provider || 'zerossl';
 
   if (!domain) {
     return res.status(400).json({ success: false, message: '域名不能为空' });
@@ -112,7 +113,7 @@ router.get('/issue/stream', async (req, res) => {
 
   try {
     send('start', { message: `开始为 ${domain} ${force ? '强制 ' : ''}申请证书...` });
-    const result = await sslService.issueCertificateSSE(domain, { wildcard, force }, (type, data) => send(type, data));
+    const result = await sslService.issueCertificateSSE(domain, { wildcard, force, provider }, (type, data) => send(type, data));
     if (result.success) {
       send('done', { message: result.message || '证书申请完成', alreadyExists: result.alreadyExists || false });
     } else {
@@ -237,9 +238,93 @@ router.get('/export/:domain', (req, res) => {
       return;
     }
 
+    // Nginx 方案：打包证书+私钥+Nginx配置片段
+    if (format === 'nginx') {
+      const { execSync } = require('child_process');
+      const tmpDir = `/tmp/nginx-cert-${domain}-${Date.now()}`;
+      fs.mkdirSync(tmpDir, { recursive: true });
+      // 收集文件
+      const collect = (key) => { for (const f of fileMap[key] || []) { const fp = path.join(certDir, f); if (fs.existsSync(fp)) return { name: f, path: fp }; } return null; };
+      const fc = collect('fullchain') || collect('cert');
+      const keyFile = collect('key');
+      if (!fc || !keyFile) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        return res.status(404).json({ success: false, message: '缺少必要的证书文件（fullchain.cer / .key）' });
+      }
+      fs.copyFileSync(fc.path, path.join(tmpDir, fc.name));
+      fs.copyFileSync(keyFile.path, path.join(tmpDir, keyFile.name));
+      // 生成 Nginx 配置片段
+      const nginxConf = `# ===== Nginx SSL 配置 —— ${domain} =====
+# 将以下内容放入 server { } 块中
+
+ssl_certificate     /etc/nginx/ssl/${fc.name};
+ssl_certificate_key /etc/nginx/ssl/${keyFile.name};
+
+# 推荐的安全配置
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+ssl_prefer_server_ciphers off;
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
+`;
+      fs.writeFileSync(path.join(tmpDir, 'nginx-ssl.conf'), nginxConf, 'utf8');
+      // 打包
+      const tmpFile = `/tmp/cert-export-${domain}-nginx-${Date.now()}.tar.gz`;
+      execSync(`cd "${tmpDir}" && tar -czf "${tmpFile}" *`, { timeout: 10000 });
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', `attachment; filename="${domain}-nginx-ssl.tar.gz"`);
+      const stream = fs.createReadStream(tmpFile);
+      stream.pipe(res);
+      stream.on('end', () => fs.unlink(tmpFile, () => {}));
+      return;
+    }
+
+    // Apache 方案：打包证书+私钥+Apache配置片段
+    if (format === 'apache') {
+      const { execSync } = require('child_process');
+      const tmpDir = `/tmp/apache-cert-${domain}-${Date.now()}`;
+      fs.mkdirSync(tmpDir, { recursive: true });
+      const collect = (key) => { for (const f of fileMap[key] || []) { const fp = path.join(certDir, f); if (fs.existsSync(fp)) return { name: f, path: fp }; } return null; };
+      const certFile = collect('cert');
+      const keyFile = collect('key');
+      const chainFile = collect('fullchain') || collect('ca');
+      if (!certFile || !keyFile) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        return res.status(404).json({ success: false, message: '缺少必要的证书文件（.cer / .key）' });
+      }
+      fs.copyFileSync(certFile.path, path.join(tmpDir, certFile.name));
+      fs.copyFileSync(keyFile.path, path.join(tmpDir, keyFile.name));
+      if (chainFile) fs.copyFileSync(chainFile.path, path.join(tmpDir, chainFile.name));
+      const chainName = chainFile ? chainFile.name : 'fullchain.cer';
+      // 生成 Apache 配置片段
+      const apacheConf = `# ===== Apache SSL 配置 —— ${domain} =====
+# 将以下内容放入 <VirtualHost *:443> 块中
+
+SSLEngine on
+SSLCertificateFile      /etc/ssl/certs/${certFile.name}
+SSLCertificateKeyFile   /etc/ssl/private/${keyFile.name}
+SSLCertificateChainFile /etc/ssl/certs/${chainName}
+
+# Apache 2.4.8+ 可用 SSLCACertificateFile 替代 SSLCertificateChainFile
+# SSLCACertificateFile /etc/ssl/certs/${chainName}
+`;
+      fs.writeFileSync(path.join(tmpDir, 'apache-ssl.conf'), apacheConf, 'utf8');
+      // 打包
+      const tmpFile = `/tmp/cert-export-${domain}-apache-${Date.now()}.tar.gz`;
+      execSync(`cd "${tmpDir}" && tar -czf "${tmpFile}" *`, { timeout: 10000 });
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      res.setHeader('Content-Type', 'application/gzip');
+      res.setHeader('Content-Disposition', `attachment; filename="${domain}-apache-ssl.tar.gz"`);
+      const stream = fs.createReadStream(tmpFile);
+      stream.pipe(res);
+      stream.on('end', () => fs.unlink(tmpFile, () => {}));
+      return;
+    }
+
     const candidates = fileMap[format];
     if (!candidates) {
-      return res.status(400).json({ success: false, message: '无效的文件类型: ' + format + '，支持: cert, key, fullchain, ca, all' });
+      return res.status(400).json({ success: false, message: '无效的文件类型: ' + format + '，支持: cert, key, fullchain, ca, all, nginx, apache' });
     }
 
     let filePath = null;

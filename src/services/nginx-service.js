@@ -664,6 +664,21 @@ class NginxService {
 
     return { success: true, message: 'Nginx 配置已部署并生效', path: configFile };
   }
+  // 删除站点配置文件
+  async deleteSite(filePath) {
+    const path = require('path'), fs = require('fs');
+    const normalized = path.resolve(path.normalize(filePath));
+    const allowDirs = ['/etc/nginx', '/usr/local/etc/nginx', '/opt/etc/nginx', '/usr/local/nginx/conf'];
+    const allowed = allowDirs.some(function(dir) {
+      return normalized === path.resolve(dir) || normalized.startsWith(path.resolve(dir) + path.sep);
+    });
+    if (!allowed) throw new Error('禁止删除该路径下的文件');
+    if (!fs.existsSync(normalized)) throw new Error('文件不存在: ' + filePath);
+    if (!normalized.endsWith('.conf')) throw new Error('只能删除 .conf 配置文件');
+    fs.unlinkSync(normalized);
+    return { path: normalized };
+  }
+
   // 手动部署项目（Nginx server block）
   async manualDeploy(opts) {
     const fs = require("fs"), path = require("path");

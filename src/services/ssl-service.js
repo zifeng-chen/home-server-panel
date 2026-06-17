@@ -220,6 +220,13 @@ class SslService {
       ...domains.map(d => ['-d', d]).flat()
     ];
 
+    // CA 提供商选择：letsencrypt 或 zerossl（默认）
+    if (options.provider === 'letsencrypt') {
+      args.push('--server', 'letsencrypt');
+    } else if (options.provider === 'zerossl') {
+      args.push('--server', 'zerossl');
+    }
+
     // 净化环境变量（避免 LOG_LEVEL 泄漏给 acme.sh 在 BusyBox 上报错）
     const sanEnv = { ...process.env };
     delete sanEnv.LOG_LEVEL;
@@ -273,6 +280,13 @@ class SslService {
       '--dns', 'dns_ali',
       ...domains.map(d => ['-d', d]).flat()
     ];
+
+    // CA 提供商选择
+    if (options.provider === 'letsencrypt') {
+      args.push('--server', 'letsencrypt');
+    } else if (options.provider === 'zerossl') {
+      args.push('--server', 'zerossl');
+    }
 
     const sanEnv = { ...process.env };
     delete sanEnv.LOG_LEVEL;

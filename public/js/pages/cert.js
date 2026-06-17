@@ -80,6 +80,19 @@ window.showIssueCertModal = () => {
       <small style="color:var(--text-secondary)">支持通配符证书：输入 *.example.com 或勾选下方选项</small>
     </div>
     <div class="form-group">
+      <label>CA 服务商</label>
+      <div style="display:flex;gap:10px;">
+        <label style="display:flex;align-items:center;gap:6px;flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="certProviderZerossl">
+          <input type="radio" name="certProvider" value="zerossl" checked onchange="document.getElementById('certProviderZerossl').style.borderColor='var(--primary)';document.getElementById('certProviderLetsencrypt').style.borderColor='var(--border)'">
+          <span><strong>ZeroSSL</strong><br><small style="color:var(--text-secondary)">90天免费证书，默认</small></span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="certProviderLetsencrypt">
+          <input type="radio" name="certProvider" value="letsencrypt" onchange="document.getElementById('certProviderLetsencrypt').style.borderColor='var(--primary)';document.getElementById('certProviderZerossl').style.borderColor='var(--border)'">
+          <span><strong>Let's Encrypt</strong><br><small style="color:var(--text-secondary)">90天免费证书</small></span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
       <label style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="certWildcard"> 申请通配符证书 (*.domain.com)
       </label>
@@ -98,16 +111,19 @@ window.showIssueCertModal = () => {
     <button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>
     <button class="btn btn-success" id="certIssueConfirm">申请证书</button>
   `;
-  Utils.openModal('申请 Let\'s Encrypt 证书', body, footer);
+  Utils.openModal('申请 SSL 证书', body, footer);
+
+  // ZeroSSL 默认高亮
+  document.getElementById('certProviderZerossl').style.borderColor = 'var(--primary)';
 
   document.getElementById('certIssueConfirm').addEventListener('click', async () => {
     let domain = document.getElementById('certIssueDomain').value.trim();
     const wildcard = document.getElementById('certWildcard').checked;
     const force = document.getElementById('certForce').checked;
+    const provider = document.querySelector('input[name="certProvider"]:checked')?.value || 'zerossl';
 
     if (!domain) { Utils.notify('请输入域名', 'error'); return; }
 
-    // 前端规范化：去除 *. 前缀（后端统一加回）
     if (domain.startsWith('*.')) {
       domain = domain.replace(/^\*+\./g, '');
       document.getElementById('certWildcard').checked = true;
@@ -125,12 +141,12 @@ window.showIssueCertModal = () => {
 
     Utils.closeModal();
     const displayName = wildcard ? `*.${domain}` : domain;
-    startCertIssueProgress(domain, wildcard, displayName, force);
+    startCertIssueProgress(domain, wildcard, displayName, force, provider);
   });
 };
 
 // SSE 证书申请进度浮窗
-window.startCertIssueProgress = (domain, wildcard, displayName, force) => {
+window.startCertIssueProgress = (domain, wildcard, displayName, force, provider) => {
   const body = `
     <div id="certIssueProgress">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -150,7 +166,7 @@ window.startCertIssueProgress = (domain, wildcard, displayName, force) => {
   if (!statusSpan || !logDiv) return;
 
   const token = localStorage.getItem('hsp_token');
-  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&force=${force ? 'true' : 'false'}&token=${encodeURIComponent(token)}`);
+  const es = new EventSource(`/api/cert/issue/stream?domain=${encodeURIComponent(domain)}&wildcard=${wildcard}&force=${force ? 'true' : 'false'}&provider=${encodeURIComponent(provider || 'zerossl')}&token=${encodeURIComponent(token)}`);
   let killed = false;
 
   es.addEventListener('message', (e) => {
@@ -317,15 +333,27 @@ window.uninstallAcme = async () => {
 // 导出证书
 window.exportCert = (domain) => {
   const body = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button class="btn btn-primary" onclick="doExportCert('${domain}','fullchain')">📜 完整证书链<br><small>fullchain.cer</small></button>
-      <button class="btn btn-primary" onclick="doExportCert('${domain}','cert')">📄 域名证书<br><small>${domain}.cer</small></button>
-      <button class="btn btn-warning" onclick="doExportCert('${domain}','key')">🔑 私钥<br><small>${domain}.key</small></button>
-      <button class="btn btn-secondary" onclick="doExportCert('${domain}','ca')">🏛 CA证书<br><small>ca.cer</small></button>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">📥 选择导出方案：</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <button class="btn btn-success" style="padding:14px" onclick="doExportCert('${domain}','nginx')">
+        <span style="font-size:18px">🟢</span><br><strong>Nginx 方案</strong><br><small style="color:inherit;opacity:0.8">证书 + 私钥 + nginx.conf 片段</small>
+      </button>
+      <button class="btn btn-primary" style="padding:14px" onclick="doExportCert('${domain}','apache')">
+        <span style="font-size:18px">🪶</span><br><strong>Apache 方案</strong><br><small style="color:inherit;opacity:0.8">证书 + 私钥 + 链 + apache.conf 片段</small>
+      </button>
     </div>
-    <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="doExportCert('${domain}','all')">📦 打包下载全部</button>
+    <details style="margin-bottom:12px;font-size:12px;color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <summary style="cursor:pointer;font-weight:600;">📂 单独下载文件</summary>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <button class="btn btn-sm btn-secondary" onclick="doExportCert('${domain}','fullchain')">📜 fullchain.cer</button>
+        <button class="btn btn-sm btn-secondary" onclick="doExportCert('${domain}','cert')">📄 ${domain}.cer</button>
+        <button class="btn btn-sm btn-warning" onclick="doExportCert('${domain}','key')">🔑 ${domain}.key</button>
+        <button class="btn btn-sm btn-secondary" onclick="doExportCert('${domain}','ca')">🏛 ca.cer</button>
+      </div>
+      <button class="btn btn-sm btn-success" style="width:100%;margin-top:8px;" onclick="doExportCert('${domain}','all')">📦 打包全部文件</button>
+    </details>
   `;
-  const footer = `<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>`;
+  const footer = `<button class="btn btn-secondary" onclick="Utils.closeModal()">关闭</button>`;
   Utils.openModal('📥 导出证书: ' + domain, body, footer);
 };
 

@@ -356,14 +356,14 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
 
   // Y轴网格+标签（基于实际 maxVal）
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
     // 整数值不显示小数
     var label = v === Math.floor(v) ? v.toFixed(0) + unit : v.toFixed(1) + unit;
-    ctx.fillText(label, pad.left - 12, y + 7);
+    ctx.fillText(label, pad.left - 20, y + 12);
   }
 
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
@@ -400,12 +400,12 @@ function _dmDrawNetChart(canvasId, data) {
   for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillText(_dmFmtBytesShort(v), pad.left - 12, y + 7);
+    ctx.fillText(_dmFmtBytesShort(v), pad.left - 20, y + 12);
   }
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
@@ -413,17 +413,17 @@ function _dmDrawNetChart(canvasId, data) {
   _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
 
   // 图例圆点 — 左上角
-  ctx.textAlign = 'left'; ctx.font = 'bold 13px -apple-system, sans-serif';
-  var lgX = pad.left + 4, lgY = pad.top - 12;
+  ctx.textAlign = 'left'; ctx.font = 'bold 26px -apple-system, sans-serif';
+  var lgX = pad.left + 4, lgY = pad.top - 16;
   // 下行 — 绿色
-  ctx.beginPath(); ctx.arc(lgX + 4, lgY - 2, 6, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = '#374151'; ctx.fillText('下行', lgX + 14, lgY + 4);
+  ctx.beginPath(); ctx.arc(lgX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#374151'; ctx.fillText('下行', lgX + 22, lgY + 6);
   // 上行 — 橙色
-  var txX = lgX + 56;
-  ctx.beginPath(); ctx.arc(txX + 4, lgY - 2, 6, 0, Math.PI * 2); ctx.fillStyle = '#f59e0b'; ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = '#374151'; ctx.fillText('上行', txX + 14, lgY + 4);
+  var txX = lgX + 100;
+  ctx.beginPath(); ctx.arc(txX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#f59e0b'; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#374151'; ctx.fillText('上行', txX + 22, lgY + 6);
 }
 
 function _dmDrawLine(ctx, data, arr, scX, scY, color) {
@@ -446,12 +446,12 @@ function _dmDrawLoadChart(canvasId, data) {
   maxVal = Math.ceil(maxVal * 2) / 2;
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillText(v.toFixed(1), pad.left - 12, y + 7);
+    ctx.fillText(v.toFixed(1), pad.left - 20, y + 12);
   }
   var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
   var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
@@ -469,8 +469,8 @@ function _dmDrawEmpty(canvas, msg) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#9ca3af'; ctx.font = '32px -apple-system, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 10);
+  ctx.fillStyle = '#9ca3af'; ctx.font = '64px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 20);
 }
 
 function _dmFmtBytes(bytes) {

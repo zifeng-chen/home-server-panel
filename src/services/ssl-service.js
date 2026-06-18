@@ -603,7 +603,9 @@ class SslService {
             daysRemaining: days,
             status,
             warning,
-            managed: configuredDomains.includes(cert.mainDomain)
+            managed: configuredDomains.includes(cert.mainDomain),
+            certPath: cert.certPath || null,
+            keyPath: cert.keyPath || null
           };
         }),
         acmeInstalled: true

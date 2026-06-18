@@ -121,9 +121,21 @@
                 <div class="skeleton skeleton-text" style="width:70%"></div>
               </div>
             </div>
-            <!-- 右上：服务状态 + 资源使用（合并） -->
-            <div class="dash-panel dash-services">
-              <div class="dash-panel-hd">🟢 服务状态</div>
+            <!-- 右上：操作日志 -->
+            <div class="dash-panel dash-logs">
+              <div class="dash-panel-hd">
+                <span>📋 操作日志</span>
+                <a href="#settings" class="dash-panel-more">更多 →</a>
+              </div>
+              <div class="dash-log-list" id="dashLogList">
+                <div class="skeleton skeleton-text" style="width:70%"></div>
+                <div class="skeleton skeleton-text" style="width:60%"></div>
+                <div class="skeleton skeleton-text" style="width:75%"></div>
+              </div>
+            </div>
+            <!-- 下方全宽：服务概览 + 资源使用 -->
+            <div class="dash-panel dash-services dash-services-full">
+              <div class="dash-panel-hd">🟢 服务概览</div>
               <div id="dbFallbackWarning" style="display:none"></div>
               <div class="service-grid" id="servicesGrid">
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
@@ -135,18 +147,6 @@
               </div>
               <div class="resource-ring-grid" id="dashboardMonitor">
                 <div class="skeleton-card" style="min-height:120px"><div class="skeleton skeleton-icon"></div></div>
-              </div>
-            </div>
-            <!-- 左下：操作日志 -->
-            <div class="dash-panel dash-logs">
-              <div class="dash-panel-hd">
-                <span>📋 操作日志</span>
-                <a href="#settings" class="dash-panel-more">更多 →</a>
-              </div>
-              <div class="dash-log-list" id="dashLogList">
-                <div class="skeleton skeleton-text" style="width:70%"></div>
-                <div class="skeleton skeleton-text" style="width:60%"></div>
-                <div class="skeleton skeleton-text" style="width:75%"></div>
               </div>
             </div>
           </div>

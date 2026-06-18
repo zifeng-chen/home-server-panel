@@ -342,7 +342,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 40, right: 28, bottom: 28, left: 80 };
+  var pad = { top: 40, right: 28, bottom: 28, left: 86 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
@@ -392,47 +392,19 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
 
 function _dmDrawNetChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
-  if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
+  if (!cv) return;
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 40, right: 28, bottom: 28, left: 90 };
-  var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
-  var rxArr = data.map(function(d) { return d.rxRate; });
-  var txArr = data.map(function(d) { return d.txRate; });
-  var maxVal = Math.max(Math.max.apply(null, rxArr), Math.max.apply(null, txArr), 1024);
-  // 向上取整
-  var nice = [1024, 5120, 10240, 51200, 102400, 524288, 1048576, 5242880, 10485760];
-  for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
+  if (data.length < 2) { _dmDrawEmpty(cv, '等待数据...'); return; }
 
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
-  for (var i = 0; i <= 4; i++) {
-    var v = maxVal * (1 - i / 4);
-    var y = pad.top + (ph / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillText(_dmFmtBytesShort(v), pad.left - 20, y + 12);
-  }
-  var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
-  var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
-  _dmDrawLine(ctx, data, rxArr, scX, scY, '#22c55e');
-  _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
+  var last = data[data.length - 1];
+  var rxStr = _dmFmtBytesShort(last.rxRate) + '/s';
+  var txStr = _dmFmtBytesShort(last.txRate) + '/s';
 
-  // 图例圆点 — 左上角
-  ctx.textAlign = 'left'; ctx.font = 'bold 17px -apple-system, sans-serif';
-  var lgX = pad.left + 4, lgY = pad.top - 16;
-  // 下行 — 绿色
-  ctx.beginPath(); ctx.arc(lgX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#374151'; ctx.fillText('下行', lgX + 22, lgY + 6);
-  // 上行 — 橙色
-  var txX = lgX + 100;
-  ctx.beginPath(); ctx.arc(txX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#f59e0b'; ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#374151'; ctx.fillText('上行', txX + 22, lgY + 6);
-
-  // 存储元数据供 tooltip 使用
-  cv._dmMeta = { scX: scX, scY: scY, data: data, type: 'net', pad: pad, maxVal: maxVal };
+  // 居中显示当前速率（chart 线条已去除，顶部卡片已显示数值）
+  ctx.fillStyle = '#6b7280'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('⬇ ' + rxStr + '  ⬆ ' + txStr, W / 2, H / 2);
 }
 
 function _dmDrawLine(ctx, data, arr, scX, scY, color) {
@@ -445,7 +417,7 @@ function _dmDrawLoadChart(canvasId, data) {
   var cv = document.getElementById(canvasId);
   if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 40, right: 28, bottom: 28, left: 80 };
+  var pad = { top: 40, right: 28, bottom: 28, left: 86 };
   var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 

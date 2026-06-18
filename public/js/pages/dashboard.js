@@ -248,7 +248,7 @@ function formatUptime(seconds) {
   return parts.join(' ');
 }
 
-// ========== 资源使用监控（右下区域） ==========
+// ========== 资源使用监控（合并入服务状态右侧） ==========
 var _dashMonTimer = null;
 
 function _dashboardMonitorStart() {
@@ -256,22 +256,10 @@ function _dashboardMonitorStart() {
   if (!container) return;
 
   container.innerHTML =
-    '<div class="monitor-card"><div class="monitor-card-hd"><span>📊 CPU</span><span id="dmCpu" class="monitor-card-val">--%</span></div><canvas id="dmChartCpu" class="monitor-chart"></canvas></div>' +
-    '<div class="monitor-card"><div class="monitor-card-hd"><span>🧠 内存</span><span id="dmMem" class="monitor-card-val">--%</span></div><canvas id="dmChartMem" class="monitor-chart"></canvas></div>' +
-    '<div class="monitor-card"><div class="monitor-card-hd"><span>💿 磁盘</span><span id="dmDisk" class="monitor-card-val">--</span></div><div id="dmDiskList" class="monitor-disk-list"></div></div>' +
-    '<div class="monitor-card"><div class="monitor-card-hd"><span>🌐 网络</span><span id="dmNet" class="monitor-card-val">--</span></div><canvas id="dmChartNet" class="monitor-chart"></canvas></div>' +
-    '<div class="monitor-card"><div class="monitor-card-hd"><span>⏱️ 负载</span><span id="dmLoad" class="monitor-card-val">--</span></div><canvas id="dmChartLoad" class="monitor-chart"></canvas></div>';
-
-  ['dmChartCpu','dmChartMem','dmChartNet','dmChartLoad'].forEach(function(id) {
-    var cv = document.getElementById(id);
-    if (cv) {
-      var rect = cv.parentElement.getBoundingClientRect();
-      cv.width = Math.min(rect.width - 32, 600) * 2;
-      cv.height = 320 * 2;
-      cv.style.width = (cv.width / 2) + 'px';
-      cv.style.height = (cv.height / 2) + 'px';
-    }
-  });
+    '<div class="resource-ring-card"><div class="resource-ring-title">📊 CPU</div><canvas id="dmRingCpu" class="resource-ring-canvas" width="240" height="240"></canvas><div class="resource-ring-val" id="dmRingCpuVal">--</div></div>' +
+    '<div class="resource-ring-card"><div class="resource-ring-title">🧠 内存</div><canvas id="dmRingMem" class="resource-ring-canvas" width="240" height="240"></canvas><div class="resource-ring-val" id="dmRingMemVal">--</div></div>' +
+    '<div class="resource-ring-card"><div class="resource-ring-title">🌐 网络</div><canvas id="dmGaugeNet" class="resource-ring-canvas" width="240" height="180"></canvas><div class="resource-ring-val" id="dmGaugeNetVal">--</div><div class="resource-gauge-sub" id="dmGaugeNetSub"></div></div>' +
+    '<div class="resource-ring-card"><div class="resource-ring-title">⏱️ 负载</div><canvas id="dmGaugeLoad" class="resource-ring-canvas" width="240" height="180"></canvas><div class="resource-ring-val" id="dmGaugeLoadVal">--</div><div class="resource-gauge-sub" id="dmGaugeLoadSub"></div></div>';
 
   _dashboardMonitorFetch();
   if (_dashMonTimer) clearInterval(_dashMonTimer);
@@ -285,288 +273,152 @@ async function _dashboardMonitorFetch() {
     var live = res.data.live, hist = res.data.history;
 
     var cpu = live.cpu || 0;
-    var cEl = document.getElementById('dmCpu');
-    if (cEl) { cEl.textContent = cpu.toFixed(1) + '%'; cEl.style.color = cpu > 80 ? 'var(--danger)' : cpu > 50 ? 'var(--warning)' : 'var(--success)'; }
-    // 同步更新顶栏 CPU
+    var cVal = document.getElementById('dmRingCpuVal');
+    if (cVal) { cVal.textContent = cpu.toFixed(1) + '%'; cVal.style.color = cpu > 80 ? 'var(--danger)' : cpu > 50 ? 'var(--warning)' : 'var(--success)'; }
     var tbCpu = document.getElementById('tbCpu');
     if (tbCpu) tbCpu.textContent = cpu.toFixed(0) + '%';
 
     var mem = live.memory;
-    var mEl = document.getElementById('dmMem');
-    if (mEl) { mEl.textContent = mem.pct.toFixed(1) + '%'; mEl.style.color = mem.pct > 90 ? 'var(--danger)' : mem.pct > 70 ? 'var(--warning)' : 'var(--success)'; }
+    var mVal = document.getElementById('dmRingMemVal');
+    if (mVal) { mVal.textContent = mem.pct.toFixed(1) + '%'; mVal.style.color = mem.pct > 90 ? 'var(--danger)' : mem.pct > 70 ? 'var(--warning)' : 'var(--success)'; }
     var tbMem = document.getElementById('tbMem');
     if (tbMem) tbMem.textContent = mem.pct.toFixed(0) + '%';
 
-    // 同步更新顶栏 UPTIME
     var tbUptime = document.getElementById('tbUptime');
     if (tbUptime && live.uptime) {
       tbUptime.textContent = formatUptime(live.uptime);
       window._liveUptime = live.uptime;
     }
 
-    var diskItems = hist.disk.length > 0 ? hist.disk[hist.disk.length - 1].items : [];
-    if (diskItems.length > 0) {
-      var dkEl = document.getElementById('dmDisk');
-      if (dkEl) dkEl.textContent = diskItems.map(function(d) { return d.pct + '%'; }).join(' ');
-      var dlEl = document.getElementById('dmDiskList');
-      if (dlEl) dlEl.innerHTML = diskItems.map(function(d) {
-        return '<div class="disk-item"><span class="disk-mount">📂 ' + d.mount + '</span><span class="disk-bar-wrap"><span class="disk-bar" style="width:' + Math.min(d.pct, 100) + '%;background:' + (d.pct > 90 ? 'var(--danger)' : d.pct > 70 ? 'var(--warning)' : 'var(--primary)') + '"></span></span><span class="disk-info">' + d.used + '/' + d.size + '</span></div>';
-      }).join('');
-    }
-
+    // CPU 圆环
+    _dmDrawRing('dmRingCpu', cpu, '#3b82f6', '#e2e8f0');
+    // 内存圆环
+    _dmDrawRing('dmRingMem', mem.pct, '#a855f7', '#e2e8f0');
+    // 网络仪表盘
     var net = hist.network.length > 0 ? hist.network[hist.network.length - 1] : { rxRate: 0, txRate: 0 };
-    var nEl = document.getElementById('dmNet');
-    if (nEl) nEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>下行</span> <span style="color:#6b7280;font-weight:500;font-size:12px;margin-right:14px;">' + _dmFmtBytes(net.rxRate) + '/s</span>' +
-      '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>上行</span> <span style="color:#6b7280;font-weight:500;font-size:12px;">' + _dmFmtBytes(net.txRate) + '/s</span>';
+    var rxMB = net.rxRate / 1048576, txMB = net.txRate / 1048576;
+    _dmDrawGauge('dmGaugeNet', Math.min(rxMB, 50), 100, 'Mbps', '#22c55e');
+    document.getElementById('dmGaugeNetVal').innerHTML = '<span style="color:#22c55e;font-size:16px;">⬇ ' + (net.rxRate / 1048576).toFixed(1) + '</span> <span style="color:#f59e0b;font-size:16px;">⬆ ' + (net.txRate / 1048576).toFixed(1) + '</span>';
+    document.getElementById('dmGaugeNetSub').innerHTML = '<span style="color:#22c55e">MB/s</span>';
 
+    // 负载仪表盘
     var ld = live.load;
-    var lEl = document.getElementById('dmLoad');
-    if (lEl) lEl.innerHTML = '1m ' + ld[0].toFixed(2) + ' 5m ' + ld[1].toFixed(2) + ' 15m ' + ld[2].toFixed(2);
+    _dmDrawGauge('dmGaugeLoad', ld[0], Math.max(ld[0] * 2, live.cpus || 4), '', '#ef4444');
+    document.getElementById('dmGaugeLoadVal').textContent = ld[0].toFixed(2);
+    document.getElementById('dmGaugeLoadSub').innerHTML = '5m ' + ld[1].toFixed(2) + ' · 15m ' + ld[2].toFixed(2);
 
-    window._liveUptime = live.uptime;
-    var upEl = document.getElementById('uptime');
-    if (upEl && live.uptime) upEl.textContent = _dmFmtUptime(live.uptime);
-
-    _dmDrawChart('dmChartCpu', hist.cpu, 'pct', '%', 'CPU');
-    _dmDrawChart('dmChartMem', hist.memory, 'pct', '%', '内存');
-    _dmDrawNetChart('dmChartNet', hist.network);
-    _dmDrawLoadChart('dmChartLoad', hist.load);
-
-    // 首次 hover 绑定（只绑一次）
-    if (!window._dmChartsBound) { window._dmChartsBound = true; _dmBindAllCharts(); }
   } catch (_) {}
 }
 
-// ... keep existing chart drawing functions below ...
-function _dmDrawChart(canvasId, data, field, unit, label) {
-  var cv = document.getElementById(canvasId);
-  if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
-  var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 40, right: 28, bottom: 28, left: 86 };
-  var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-
-  var maxVal = Math.max(Math.max.apply(null, data.map(function(d) { return d[field]; })), 1);
-  // 将 maxVal 向上取整到合适刻度
-  var nice = [1,2,5,10,20,25,50,100,200,500,1000];
-  var step = 1;
-  for (var s = 0; s < nice.length; s++) {
-    if (maxVal <= nice[s] * 5) { step = nice[s]; break; }
-    step = maxVal / 4;
-  }
-  maxVal = Math.ceil(maxVal / step) * step;
-
-  // Y轴网格+标签（基于实际 maxVal）
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
-  for (var i = 0; i <= 4; i++) {
-    var v = maxVal * (1 - i / 4);
-    var y = pad.top + (ph / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    // 整数值不显示小数
-    var label = v === Math.floor(v) ? v.toFixed(0) + unit : v.toFixed(1) + unit;
-    ctx.fillText(label, pad.left - 20, y + 12);
-  }
-
-  var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
-  var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
-  var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph);
-  grad.addColorStop(0, 'rgba(184,134,11,0.18)'); grad.addColorStop(1, 'rgba(184,134,11,0.02)');
-  ctx.beginPath();
-  ctx.moveTo(scX(0), scY(data[0][field]));
-  for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
-  ctx.lineTo(scX(data.length - 1), pad.top + ph); ctx.lineTo(scX(0), pad.top + ph);
-  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(scX(0), scY(data[0][field]));
-  for (var i = 1; i < data.length; i++) ctx.lineTo(scX(i), scY(data[i][field]));
-  ctx.strokeStyle = '#daa520'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
-  var last = data[data.length - 1];
-  ctx.beginPath(); ctx.arc(scX(data.length - 1), scY(last[field]), 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#daa520'; ctx.fill();
-  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 3; ctx.stroke();
-
-  // 存储元数据供 tooltip 使用
-  cv._dmMeta = { scX: scX, scY: scY, data: data, field: field, unit: unit, label: label || '', pad: pad };
-}
-
-function _dmDrawNetChart(canvasId, data) {
+// ========== 圆环进度图 (CPU/内存) ==========
+function _dmDrawRing(canvasId, pct, color, bgColor) {
   var cv = document.getElementById(canvasId);
   if (!cv) return;
-  var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.width, H = cv.height;
+  var cx = W / 2, cy = H / 2;
+  // 外径根据 canvas 尺寸适配
+  var r = Math.min(W, H) / 2 - 20;
+  var ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
 
-  if (data.length < 2) { _dmDrawEmpty(cv, '等待数据...'); return; }
+  // 背景圆环
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = bgColor;
+  ctx.lineWidth = 18;
+  ctx.lineCap = 'round';
+  ctx.stroke();
 
-  var last = data[data.length - 1];
-  var rxStr = _dmFmtBytesShort(last.rxRate) + '/s';
-  var txStr = _dmFmtBytesShort(last.txRate) + '/s';
-
-  // 居中显示当前速率（chart 线条已去除，顶部卡片已显示数值）
-  ctx.fillStyle = '#6b7280'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('⬇ ' + rxStr + '  ⬆ ' + txStr, W / 2, H / 2);
-}
-
-function _dmDrawLine(ctx, data, arr, scX, scY, color) {
-  ctx.beginPath(); ctx.moveTo(scX(0), scY(arr[0]));
-  for (var i = 1; i < arr.length; i++) ctx.lineTo(scX(i), scY(arr[i]));
-  ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
-}
-
-function _dmDrawLoadChart(canvasId, data) {
-  var cv = document.getElementById(canvasId);
-  if (!cv || data.length < 2) { if (cv) _dmDrawEmpty(cv, '等待数据...'); return; }
-  var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
-  var pad = { top: 40, right: 28, bottom: 28, left: 86 };
-  var pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-
-  var allVals = [];
-  ['load1','load5','load15'].forEach(function(k) { data.forEach(function(d) { allVals.push(d[k]); }); });
-  var maxVal = Math.max(Math.max.apply(null, allVals), 1);
-  maxVal = Math.ceil(maxVal * 2) / 2;
-
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
-  for (var i = 0; i <= 4; i++) {
-    var v = maxVal * (1 - i / 4);
-    var y = pad.top + (ph / 4) * i;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
-    ctx.fillText(v.toFixed(1), pad.left - 20, y + 12);
+  // 进度弧
+  var angle = Math.min(pct / 100, 1) * Math.PI * 2;
+  if (angle > 0.01) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + angle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
+    ctx.stroke();
   }
-  var scY = function(v) { return pad.top + ph - (v / maxVal) * ph; };
-  var scX = function(i) { return pad.left + (i / (data.length - 1)) * pw; };
-  var colors = ['#22c55e', '#f59e0b', '#c41e3a'];
-  var keys = ['load1', 'load5', 'load15'];
-  keys.forEach(function(key, idx) {
-    var vals = data.map(function(d) { return d[key]; });
-    ctx.beginPath(); ctx.moveTo(scX(0), scY(vals[0]));
-    for (var i = 1; i < vals.length; i++) ctx.lineTo(scX(i), scY(vals[i]));
-    ctx.strokeStyle = colors[idx]; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
-  });
-
-  // 存储元数据供 tooltip 使用
-  cv._dmMeta = { scX: scX, scY: scY, data: data, type: 'load', pad: pad, maxVal: maxVal };
 }
 
-function _dmDrawEmpty(canvas, msg) {
-  var ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#9ca3af'; ctx.font = '40px -apple-system, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 20);
-}
-
-function _dmFmtBytes(bytes) {
-  if (!bytes || bytes < 0) return '0 B';
-  var units = ['B','KB','MB','GB'], i = 0;
-  while (bytes >= 1024 && i < 3) { bytes /= 1024; i++; }
-  return bytes.toFixed(1) + ' ' + units[i];
-}
-
-function _dmFmtBytesShort(bytes) {
-  if (!bytes || bytes < 0) return '0 B';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
-  return bytes + ' B';
-}
-
-function _dmFmtUptime(sec) {
-  var d = Math.floor(sec/86400), h = Math.floor((sec%86400)/3600), m = Math.floor((sec%3600)/60);
-  var p = [];
-  if (d > 0) p.push(d + '天');
-  if (h > 0) p.push(h + '时');
-  p.push(m + '分');
-  return p.join(' ');
-}
-
-// ====== chart tooltip ======
-var _dmTooltip = null;
-
-function _dmInitTooltips() {
-  if (_dmTooltip) return;
-  _dmTooltip = document.createElement('div');
-  _dmTooltip.id = 'dmChartTooltip';
-  _dmTooltip.style.cssText = 'position:fixed;display:none;background:rgba(30,30,30,0.92);color:#fff;font-size:12px;font-family:-apple-system,sans-serif;padding:6px 10px;border-radius:6px;pointer-events:none;z-index:9999;white-space:nowrap;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
-  document.body.appendChild(_dmTooltip);
-}
-
-function _dmBindChartHover(canvasId) {
-  _dmInitTooltips();
+// ========== 仪表盘图 (网络/负载) ==========
+function _dmDrawGauge(canvasId, value, maxVal, unit, color) {
   var cv = document.getElementById(canvasId);
-  if (!cv || cv._dmHoverBound) return;
-  cv._dmHoverBound = true;
+  if (!cv) return;
+  var W = cv.width, H = cv.height;
+  var cx = W / 2, cy = H - 24;
+  var r = Math.min(cx - 16, cy - 16);
+  var ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
 
-  cv.addEventListener('mousemove', function(e) {
-    var meta = cv._dmMeta;
-    if (!meta) { _dmTooltip.style.display = 'none'; return; }
+  var startAngle = Math.PI;           // 左端 (9点)
+  var endAngle = 0;                    // 右端 (3点)
+  var totalAngle = Math.PI;            // 半圆
 
-    var rect = cv.getBoundingClientRect();
-    var mx = (e.clientX - rect.left) * (cv.width / rect.width);
-    var my = (e.clientY - rect.top) * (cv.height / rect.height);
+  // 背景弧
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 16;
+  ctx.lineCap = 'round';
+  ctx.stroke();
 
-    var scX = meta.scX, scY = meta.scY, data = meta.data, pad = meta.pad;
-    if (!data || !data.length) { _dmTooltip.style.display = 'none'; return; }
+  // 刻度线
+  var tickCount = 5;
+  for (var i = 0; i <= tickCount; i++) {
+    var a = startAngle + (totalAngle / tickCount) * i;
+    var innerR = r - 8, outerR = r + 14;
+    var x1 = cx + innerR * Math.cos(a), y1 = cy + innerR * Math.sin(a);
+    var x2 = cx + outerR * Math.cos(a), y2 = cy + outerR * Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2; ctx.stroke();
+  }
 
-    // 找最近的数据点
-    var bestIdx = 0, bestDist = Infinity;
-    for (var i = 0; i < data.length; i++) {
-      var px = scX(i), py;
-      if (meta.type === 'net') {
-        // 取 rx + tx 中距鼠标最近的
-        var ry = scY(data[i].rxRate), ty = scY(data[i].txRate);
-        var dr = Math.abs(my - ry);
-        var dt = Math.abs(my - ty);
-        var distX = Math.abs(mx - px);
-        if (distX < 50 && dr < dt) { py = ry; }
-        else if (distX < 50) { py = ty; }
-        else { continue; }
-      } else if (meta.type === 'load') {
-        // 取 load1/load5/load15 距鼠标最近的
-        var l1y = scY(data[i].load1), l5y = scY(data[i].load5), l15y = scY(data[i].load15);
-        var d1 = Math.abs(my - l1y), d5 = Math.abs(my - l5y), d15 = Math.abs(my - l15y);
-        if (d1 < d5 && d1 < d15) py = l1y;
-        else if (d5 < d15) py = d5;
-        else py = l15y;
-      } else {
-        py = scY(data[i][meta.field]);
-      }
-      if (py !== undefined) {
-        var dist = Math.sqrt((mx - px)*(mx - px) + (my - py)*(my - py));
-        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
-      }
-    }
+  // 进度弧
+  var ratio = Math.min(value / maxVal, 1);
+  if (ratio > 0.005) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, startAngle + totalAngle * ratio);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 16;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
 
-    // 仅在距离 < 30px 时显示
-    if (bestDist > 30) { _dmTooltip.style.display = 'none'; return; }
+  // 指针（从圆心指向当前值位置）
+  var pointerAngle = startAngle + totalAngle * ratio;
+  var pointerLen = r - 14;
+  var px = cx + pointerLen * Math.cos(pointerAngle);
+  var py = cy + pointerLen * Math.sin(pointerAngle);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(px, py);
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.stroke();
 
-    var pt = data[bestIdx];
-    var lines = [];
-    if (meta.type === 'net') {
-      lines.push('下行: ' + _dmFmtBytes(pt.rxRate) + '/s');
-      lines.push('上行: ' + _dmFmtBytes(pt.txRate) + '/s');
-    } else if (meta.type === 'load') {
-      lines.push('1min: ' + pt.load1.toFixed(2));
-      lines.push('5min: ' + pt.load5.toFixed(2));
-      lines.push('15min: ' + pt.load15.toFixed(2));
-    } else {
-      var val = pt[meta.field];
-      lines.push(meta.label + ': ' + val + meta.unit);
-    }
-    _dmTooltip.innerHTML = lines.join('<br>');
-    _dmTooltip.style.display = 'block';
-    _dmTooltip.style.left = (e.clientX + 14) + 'px';
-    _dmTooltip.style.top = (e.clientY - 10) + 'px';
-  });
+  // 中心点
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
 
-  cv.addEventListener('mouseleave', function() {
-    _dmTooltip.style.display = 'none';
-  });
+  // 最小值/最大值标签
+  ctx.fillStyle = '#9ca3af'; ctx.font = '13px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('0', cx - r + 10, cy + 8);
+  ctx.fillText(maxVal + (unit || ''), cx + r - 10, cy + 8);
 }
 
-// 重构所有图表后统一绑定 hover
-function _dmBindAllCharts() {
-  ['dmChartCpu','dmChartMem','dmChartNet','dmChartLoad'].forEach(function(id) {
-    _dmBindChartHover(id);
-  });
+// 当 Canvas 尺寸变化时重新绘制圆环（由 ResizeObserver 调用）
+function _dmRedrawRings() {
+  // 从当前 DOM 值读取重新绘制
+  var cpuVal = document.getElementById('dmRingCpuVal');
+  var cpuText = cpuVal ? parseFloat(cpuVal.textContent) : 0;
+  if (cpuText > 0) _dmDrawRing('dmRingCpu', cpuText, '#3b82f6', '#e2e8f0');
+  var memVal = document.getElementById('dmRingMemVal');
+  var memText = memVal ? parseFloat(memVal.textContent) : 0;
+  if (memText > 0) _dmDrawRing('dmRingMem', memText, '#a855f7', '#e2e8f0');
 }
+

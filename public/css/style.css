@@ -249,11 +249,10 @@ body {
   color: var(--text-primary);
 }
 
-/* ====== 仪表盘 4 区布局 ====== */
+/* ====== 仪表盘 3 区布局 ====== */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
-  grid-template-rows: auto auto;
   gap: 12px;
 }
 @media (max-width: 900px) {
@@ -285,8 +284,7 @@ body {
   flex: 1;
 }
 .dash-overview .dash-panel-body { min-height: 240px; }
-.dash-logs { min-height: 200px; }
-.dash-resources { min-height: 320px; }
+.dash-logs { min-height: 200px; grid-column: 1 / -1; }
 .dash-panel-more {
   font-size: 12px;
   color: var(--brand-primary);
@@ -823,6 +821,54 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 }
 
 /* ====== 系统监控 — auto-fill 自适应任意宽度 ====== */
+/* 资源圆环/仪表盘网格（4卡片 2x2） */
+.resource-ring-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+@media (max-width: 500px) {
+  .resource-ring-grid { grid-template-columns: 1fr; }
+}
+.resource-ring-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: border-color .2s;
+}
+.resource-ring-card:hover { border-color: var(--brand-primary); }
+.resource-ring-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.resource-ring-canvas {
+  border-radius: 50%;
+}
+.resource-ring-val {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  margin-top: 4px;
+}
+/* 仪表盘图加载额外文本 */
+.resource-gauge-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 2px;
+}
+
 .monitor-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));

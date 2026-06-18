@@ -121,7 +121,7 @@
                 <div class="skeleton skeleton-text" style="width:70%"></div>
               </div>
             </div>
-            <!-- 右上：服务状态 -->
+            <!-- 右上：服务状态 + 资源使用（合并） -->
             <div class="dash-panel dash-services">
               <div class="dash-panel-hd">🟢 服务状态</div>
               <div id="dbFallbackWarning" style="display:none"></div>
@@ -132,6 +132,10 @@
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
+              </div>
+              <div class="dash-panel-hd" style="margin-top:12px">📈 资源使用</div>
+              <div class="resource-ring-grid" id="dashboardMonitor">
+                <div class="skeleton-card" style="min-height:120px"><div class="skeleton skeleton-icon"></div></div>
               </div>
             </div>
             <!-- 左下：操作日志 -->
@@ -144,13 +148,6 @@
                 <div class="skeleton skeleton-text" style="width:70%"></div>
                 <div class="skeleton skeleton-text" style="width:60%"></div>
                 <div class="skeleton skeleton-text" style="width:75%"></div>
-              </div>
-            </div>
-            <!-- 右下：资源使用 -->
-            <div class="dash-panel dash-resources">
-              <div class="dash-panel-hd">📈 资源使用</div>
-              <div class="monitor-grid" id="dashboardMonitor">
-                <div class="skeleton-card" style="grid-column:span 2;min-height:100px"><div class="skeleton skeleton-icon"></div></div>
               </div>
             </div>
           </div>

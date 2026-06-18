@@ -126,6 +126,7 @@ class SqliteService {
         record_type TEXT DEFAULT 'A',
         ttl INTEGER DEFAULT 600,
         line TEXT DEFAULT 'default',
+        provider TEXT DEFAULT 'aliyun',
         created_at TEXT,
         last_update TEXT,
         last_ip TEXT

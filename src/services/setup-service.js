@@ -162,6 +162,10 @@ class SetupService {
         domain VARCHAR(255) NOT NULL,
         type ENUM('A','AAAA') DEFAULT 'A',
         value VARCHAR(255),
+        subdomain VARCHAR(255) DEFAULT '@',
+        ttl INT DEFAULT 600,
+        line VARCHAR(100) DEFAULT 'default',
+        last_ip VARCHAR(255),
         \`enabled\` TINYINT(1) DEFAULT 1,
         provider VARCHAR(20) DEFAULT 'aliyun',
         last_updated TIMESTAMP NULL,
@@ -174,6 +178,9 @@ class SetupService {
         target_host VARCHAR(255),
         target VARCHAR(1024),
         port INT,
+        source_protocol VARCHAR(10) DEFAULT 'http',
+        target_protocol VARCHAR(10) DEFAULT 'http',
+        custom_headers TEXT,
         \`ssl\` TINYINT(1) DEFAULT 0,
         \`websocket\` TINYINT(1) DEFAULT 0,
         \`enabled\` TINYINT(1) DEFAULT 1,
@@ -188,6 +195,7 @@ class SetupService {
         domain VARCHAR(255) NOT NULL UNIQUE,
         alias VARCHAR(255),
         wildcard TINYINT(1) DEFAULT 0,
+        notified_at INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       `CREATE TABLE IF NOT EXISTS operation_logs (
@@ -219,6 +227,16 @@ class SetupService {
         ts BIGINT NOT NULL,
         data LONGTEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS cron_jobs (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255),
+        interval_ms INT DEFAULT 3600000,
+        enabled TINYINT(1) DEFAULT 1,
+        \`type\` VARCHAR(50) DEFAULT 'manual',
+        last_run TEXT,
+        last_result TEXT,
+        created_at TEXT
       )`,
       `CREATE TABLE IF NOT EXISTS ssh_config (
         id INT AUTO_INCREMENT PRIMARY KEY,

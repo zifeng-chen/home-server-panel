@@ -1,9 +1,20 @@
 // 构建脚本：拼接+压缩首屏脚本，懒加载页面脚本独立压缩
 import { readFileSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
 import { transform } from 'esbuild';
 
 const PKG = JSON.parse(readFileSync('package.json', 'utf8'));
 const BUILD_ID = process.env.BUILD_ID || Date.now().toString(36);
+
+// ── 前置校验：数据库 Schema 一致性 ──
+try {
+  execSync('node scripts/validate-schema.js --quiet', { stdio: 'pipe' });
+} catch (e) {
+  console.error('\n❌ Schema 校验失败，构建中止。请修复差异后重试。\n');
+  console.error(e.stderr?.toString() || e.stdout?.toString() || e.message);
+  process.exit(1);
+}
+console.log('  ✅ Schema 校验通过\n');
 
 // ── 首屏 bundle：按依赖顺序拼接 → 压缩 ──
 const MAIN_FILES = [

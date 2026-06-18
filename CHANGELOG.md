@@ -1,3 +1,15 @@
+# v0.7.4-beta (2026-06-18)
+
+### 改进
+- **图表字体缩小** — Y轴标签 18px→15px、图例 20px→17px、空状态 48px→40px，整体更紧凑
+- **卡片间距缩减** — 仪表盘 4 区 gap 16→12px、监控卡片 min-height 220→180px、padding/gap 全面收紧
+- **图表悬浮提示** — CPU/内存/网络/负载四张 Canvas 图表支持鼠标悬浮查看具体数值
+
+### 内部
+- **三层 Schema 校验体系** — build.mjs 构建前 + db-service 启动时 + MySQL 回退运行时，三源交叉校验防字段不一致
+- `setup-service.js` / `sqlite-service.js` / `db-service.js` 表定义全面对齐
+- 新增 `scripts/validate-schema.js` 构建期校验脚本
+
 # v0.7.3-beta (2026-06-17)
 
 ### 修复

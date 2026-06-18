@@ -96,7 +96,8 @@ class ProxyService {
     const targetHost = _safeNginxHost(rule.targetHost);
     const listen = rule.sourcePort;
     const targetPort = rule.targetPort;
-    const ssl = rule.ssl;
+    // SSL 仅在同时提供了证书和私钥时才生效
+    const ssl = rule.ssl && rule.sslCert && rule.sslKey;
     if (!serverName || !targetHost) throw new Error('域名/地址无效');
 
     lines.push(`# ${rule.name}`);
@@ -108,8 +109,8 @@ class ProxyService {
     if (ssl) {
       lines.push(`    listen ${listen} ssl;`);
       lines.push(`    listen [::]:${listen} ssl;`);
-      if (rule.sslCert) lines.push(`    ssl_certificate     ${rule.sslCert};`);
-      if (rule.sslKey) lines.push(`    ssl_certificate_key ${rule.sslKey};`);
+      lines.push(`    ssl_certificate     ${rule.sslCert};`);
+      lines.push(`    ssl_certificate_key ${rule.sslKey};`);
     } else {
       lines.push(`    listen ${listen};`);
       lines.push(`    listen [::]:${listen};`);
@@ -151,7 +152,7 @@ class ProxyService {
     lines.push('        proxy_connect_timeout 10s;');
     lines.push('        proxy_buffering off;');
 
-    if (rule.ssl && rule.targetProtocol === 'http') {
+    if (ssl && rule.targetProtocol === 'http') {
       lines.push('        # 后端是 HTTP 时重定向到 HTTPS');
       lines.push('        proxy_redirect http:// $scheme://;');
     }

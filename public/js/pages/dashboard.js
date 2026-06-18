@@ -331,6 +331,9 @@ async function _dashboardMonitorFetch() {
     _dmDrawChart('dmChartMem', hist.memory, 'pct', '%', '内存');
     _dmDrawNetChart('dmChartNet', hist.network);
     _dmDrawLoadChart('dmChartLoad', hist.load);
+
+    // 首次 hover 绑定（只绑一次）
+    if (!window._dmChartsBound) { window._dmChartsBound = true; _dmBindAllCharts(); }
   } catch (_) {}
 }
 
@@ -356,7 +359,7 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
 
   // Y轴网格+标签（基于实际 maxVal）
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -382,6 +385,9 @@ function _dmDrawChart(canvasId, data, field, unit, label) {
   ctx.beginPath(); ctx.arc(scX(data.length - 1), scY(last[field]), 8, 0, Math.PI * 2);
   ctx.fillStyle = '#daa520'; ctx.fill();
   ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 3; ctx.stroke();
+
+  // 存储元数据供 tooltip 使用
+  cv._dmMeta = { scX: scX, scY: scY, data: data, field: field, unit: unit, label: label || '', pad: pad };
 }
 
 function _dmDrawNetChart(canvasId, data) {
@@ -400,7 +406,7 @@ function _dmDrawNetChart(canvasId, data) {
   for (var s = 0; s < nice.length; s++) { if (maxVal <= nice[s]) { maxVal = nice[s]; break; } }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -413,7 +419,7 @@ function _dmDrawNetChart(canvasId, data) {
   _dmDrawLine(ctx, data, txArr, scX, scY, '#f59e0b');
 
   // 图例圆点 — 左上角
-  ctx.textAlign = 'left'; ctx.font = 'bold 26px -apple-system, sans-serif';
+  ctx.textAlign = 'left'; ctx.font = 'bold 17px -apple-system, sans-serif';
   var lgX = pad.left + 4, lgY = pad.top - 16;
   // 下行 — 绿色
   ctx.beginPath(); ctx.arc(lgX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#22c55e'; ctx.fill();
@@ -424,6 +430,9 @@ function _dmDrawNetChart(canvasId, data) {
   ctx.beginPath(); ctx.arc(txX + 6, lgY - 4, 10, 0, Math.PI * 2); ctx.fillStyle = '#f59e0b'; ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = '#374151'; ctx.fillText('上行', txX + 22, lgY + 6);
+
+  // 存储元数据供 tooltip 使用
+  cv._dmMeta = { scX: scX, scY: scY, data: data, type: 'net', pad: pad, maxVal: maxVal };
 }
 
 function _dmDrawLine(ctx, data, arr, scX, scY, color) {
@@ -446,7 +455,7 @@ function _dmDrawLoadChart(canvasId, data) {
   maxVal = Math.ceil(maxVal * 2) / 2;
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#9ca3af'; ctx.font = '24px -apple-system, sans-serif'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '15px -apple-system, sans-serif'; ctx.textAlign = 'right';
   for (var i = 0; i <= 4; i++) {
     var v = maxVal * (1 - i / 4);
     var y = pad.top + (ph / 4) * i;
@@ -463,13 +472,16 @@ function _dmDrawLoadChart(canvasId, data) {
     for (var i = 1; i < vals.length; i++) ctx.lineTo(scX(i), scY(vals[i]));
     ctx.strokeStyle = colors[idx]; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
   });
+
+  // 存储元数据供 tooltip 使用
+  cv._dmMeta = { scX: scX, scY: scY, data: data, type: 'load', pad: pad, maxVal: maxVal };
 }
 
 function _dmDrawEmpty(canvas, msg) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#9ca3af'; ctx.font = '64px -apple-system, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#9ca3af'; ctx.font = '40px -apple-system, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(msg, canvas.width / 2, canvas.height / 2 + 20);
 }
 
@@ -494,4 +506,95 @@ function _dmFmtUptime(sec) {
   if (h > 0) p.push(h + '时');
   p.push(m + '分');
   return p.join(' ');
+}
+
+// ====== chart tooltip ======
+var _dmTooltip = null;
+
+function _dmInitTooltips() {
+  if (_dmTooltip) return;
+  _dmTooltip = document.createElement('div');
+  _dmTooltip.id = 'dmChartTooltip';
+  _dmTooltip.style.cssText = 'position:fixed;display:none;background:rgba(30,30,30,0.92);color:#fff;font-size:12px;font-family:-apple-system,sans-serif;padding:6px 10px;border-radius:6px;pointer-events:none;z-index:9999;white-space:nowrap;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
+  document.body.appendChild(_dmTooltip);
+}
+
+function _dmBindChartHover(canvasId) {
+  _dmInitTooltips();
+  var cv = document.getElementById(canvasId);
+  if (!cv || cv._dmHoverBound) return;
+  cv._dmHoverBound = true;
+
+  cv.addEventListener('mousemove', function(e) {
+    var meta = cv._dmMeta;
+    if (!meta) { _dmTooltip.style.display = 'none'; return; }
+
+    var rect = cv.getBoundingClientRect();
+    var mx = (e.clientX - rect.left) * (cv.width / rect.width);
+    var my = (e.clientY - rect.top) * (cv.height / rect.height);
+
+    var scX = meta.scX, scY = meta.scY, data = meta.data, pad = meta.pad;
+    if (!data || !data.length) { _dmTooltip.style.display = 'none'; return; }
+
+    // 找最近的数据点
+    var bestIdx = 0, bestDist = Infinity;
+    for (var i = 0; i < data.length; i++) {
+      var px = scX(i), py;
+      if (meta.type === 'net') {
+        // 取 rx + tx 中距鼠标最近的
+        var ry = scY(data[i].rxRate), ty = scY(data[i].txRate);
+        var dr = Math.abs(my - ry);
+        var dt = Math.abs(my - ty);
+        var distX = Math.abs(mx - px);
+        if (distX < 50 && dr < dt) { py = ry; }
+        else if (distX < 50) { py = ty; }
+        else { continue; }
+      } else if (meta.type === 'load') {
+        // 取 load1/load5/load15 距鼠标最近的
+        var l1y = scY(data[i].load1), l5y = scY(data[i].load5), l15y = scY(data[i].load15);
+        var d1 = Math.abs(my - l1y), d5 = Math.abs(my - l5y), d15 = Math.abs(my - l15y);
+        if (d1 < d5 && d1 < d15) py = l1y;
+        else if (d5 < d15) py = d5;
+        else py = l15y;
+      } else {
+        py = scY(data[i][meta.field]);
+      }
+      if (py !== undefined) {
+        var dist = Math.sqrt((mx - px)*(mx - px) + (my - py)*(my - py));
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      }
+    }
+
+    // 仅在距离 < 30px 时显示
+    if (bestDist > 30) { _dmTooltip.style.display = 'none'; return; }
+
+    var pt = data[bestIdx];
+    var lines = [];
+    if (meta.type === 'net') {
+      lines.push('下行: ' + _dmFmtBytes(pt.rxRate) + '/s');
+      lines.push('上行: ' + _dmFmtBytes(pt.txRate) + '/s');
+    } else if (meta.type === 'load') {
+      lines.push('1min: ' + pt.load1.toFixed(2));
+      lines.push('5min: ' + pt.load5.toFixed(2));
+      lines.push('15min: ' + pt.load15.toFixed(2));
+    } else {
+      var val = pt[meta.field];
+      lines.push(meta.label + ': ' + val + meta.unit);
+    }
+    _dmTooltip.innerHTML = lines.join('<br>');
+    _dmTooltip.style.display = 'block';
+    _dmTooltip.style.left = (e.clientX + 14) + 'px';
+    _dmTooltip.style.top = (e.clientY - 10) + 'px';
+  });
+
+  cv.addEventListener('mouseleave', function() {
+    _dmTooltip.style.display = 'none';
+  });
+}
+
+// 重构所有图表后统一绑定 hover
+function _dmBindAllCharts() {
+  ['dmChartCpu','dmChartMem','dmChartNet','dmChartLoad'].forEach(function(id) {
+    _dmBindChartHover(id);
+  });
 }

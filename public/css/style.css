@@ -254,7 +254,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   grid-template-rows: auto auto;
-  gap: 16px;
+  gap: 12px;
 }
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
@@ -281,7 +281,7 @@ body {
   flex-shrink: 0;
 }
 .dash-panel-body {
-  padding: 16px 18px;
+  padding: 12px 16px;
   flex: 1;
 }
 .dash-overview .dash-panel-body { min-height: 240px; }
@@ -320,9 +320,9 @@ body {
 /* 服务状态网格 */
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
-  padding: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 12px;
 }
 .service-card {
   display: flex;
@@ -823,18 +823,17 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 /* ====== 系统监控 — auto-fill 自适应任意宽度 ====== */
 .monitor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
 }
 .monitor-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 10px;
-  min-height: 220px;
+  padding: 8px 10px;
+  min-height: 180px;
   transition: border-color .2s;
   box-shadow: var(--shadow-sm);
-  margin: 10px;
 }
 .monitor-card:hover { border-color: var(--brand-primary); }
 .monitor-card-hd {

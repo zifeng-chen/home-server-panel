@@ -55,6 +55,11 @@ class DbService {
 
       await this._initSchema();
       this.mode = 'mysql';
+      // 启动时 Schema 健康检查
+      const schemaOk = await this._validateSchemaHealth();
+      if (!schemaOk) {
+        console.log('[DB] ⚠️  Schema 校验发现差异（详见上方日志），服务继续运行但建议关注');
+      }
       return { success: true, message: 'MySQL 连接成功' };
     } catch (err) {
       this._pool = null;
@@ -75,6 +80,10 @@ class DbService {
         domain VARCHAR(255) NOT NULL,
         type ENUM('A','AAAA') DEFAULT 'A',
         value VARCHAR(255),
+        subdomain VARCHAR(255) DEFAULT '@',
+        ttl INT DEFAULT 600,
+        line VARCHAR(100) DEFAULT 'default',
+        last_ip VARCHAR(255),
         \`enabled\` TINYINT(1) DEFAULT 1,
         provider VARCHAR(20) DEFAULT 'aliyun',
         last_updated TIMESTAMP NULL,
@@ -88,6 +97,9 @@ class DbService {
         target_host VARCHAR(255),
         target VARCHAR(1024),
         port INT,
+        source_protocol VARCHAR(10) DEFAULT 'http',
+        target_protocol VARCHAR(10) DEFAULT 'http',
+        custom_headers TEXT,
         \`ssl\` TINYINT(1) DEFAULT 0,
         \`websocket\` TINYINT(1) DEFAULT 0,
         \`enabled\` TINYINT(1) DEFAULT 1,
@@ -103,6 +115,7 @@ class DbService {
         domain VARCHAR(255) NOT NULL UNIQUE,
         alias VARCHAR(255),
         wildcard TINYINT(1) DEFAULT 0,
+        notified_at INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
@@ -140,6 +153,17 @@ class DbService {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
+      `CREATE TABLE IF NOT EXISTS cron_jobs (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255),
+        interval_ms INT DEFAULT 3600000,
+        enabled TINYINT(1) DEFAULT 1,
+        \`type\` VARCHAR(50) DEFAULT 'manual',
+        last_run TEXT,
+        last_result TEXT,
+        created_at TEXT
+      )`,
+
       `CREATE TABLE IF NOT EXISTS ssh_config (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -163,8 +187,16 @@ class DbService {
   async _runColumnMigrations() {
     const migrations = [
       { table: 'ddns_records', col: 'provider', type: "VARCHAR(20) DEFAULT 'aliyun'" },
+      { table: 'ddns_records', col: 'subdomain', type: "VARCHAR(255) DEFAULT '@'" },
+      { table: 'ddns_records', col: 'ttl', type: 'INT DEFAULT 600' },
+      { table: 'ddns_records', col: 'line', type: "VARCHAR(100) DEFAULT 'default'" },
+      { table: 'ddns_records', col: 'last_ip', type: 'VARCHAR(255)' },
       { table: 'proxy_rules', col: 'ssl_cert_path', type: 'TEXT' },
       { table: 'proxy_rules', col: 'ssl_key_path', type: 'TEXT' },
+      { table: 'proxy_rules', col: 'source_protocol', type: "VARCHAR(10) DEFAULT 'http'" },
+      { table: 'proxy_rules', col: 'target_protocol', type: "VARCHAR(10) DEFAULT 'http'" },
+      { table: 'proxy_rules', col: 'custom_headers', type: 'TEXT' },
+      { table: 'ssl_certs', col: 'notified_at', type: 'INT' },
       { table: 'operation_logs', col: 'time_cst', type: 'VARCHAR(24)' }
     ];
     for (const { table, col, type } of migrations) {
@@ -173,6 +205,44 @@ class DbService {
         console.log(`[MySQL] 列迁移: ${table}.${col} (${type})`);
       } catch (_) { /* column already exists - ok */ }
     }
+  }
+
+  /**
+   * Schema 健康检查：启动时验证 MySQL 表结构完整性
+   * 检查所有必需表是否存在、关键列是否齐全
+   * 发现问题只日志警告，不阻断服务（向后兼容）
+   */
+  async _validateSchemaHealth() {
+    const expectedTables = {
+      settings: ['key', 'value'],
+      ddns_records: ['id', 'domain', 'type', 'value', 'subdomain', 'ttl', 'line', 'last_ip', 'enabled', 'provider'],
+      proxy_rules: ['id', 'source', 'source_host', 'target_host', 'target', 'port', 'source_protocol', 'target_protocol', 'custom_headers', 'ssl', 'websocket', 'enabled', 'remark'],
+      ssl_certs: ['id', 'domain', 'alias', 'wildcard', 'notified_at'],
+      operation_logs: ['id', 'time', 'time_cst', 'module', 'action', 'level', 'message', 'detail', 'user'],
+      sessions: ['token', 'username'],
+      system_config: ['key', 'value'],
+      monitor_history: ['id', 'ts', 'data'],
+      cron_jobs: ['id', 'name', 'interval_ms', 'enabled', 'type', 'last_run', 'last_result'],
+      ssh_config: ['id', 'name', 'host', 'port', 'username', 'password']
+    };
+
+    let allOk = true;
+    for (const [table, expectedCols] of Object.entries(expectedTables)) {
+      try {
+        const [rows] = await this._pool.query(`SHOW COLUMNS FROM \`${table}\``);
+        const actual = new Set(rows.map(r => r.Field));
+        const missing = expectedCols.filter(c => !actual.has(c));
+        if (missing.length > 0) {
+          console.log(`[DB] ⚠️  ${table} 缺列: ${missing.join(', ')}`);
+          allOk = false;
+        }
+      } catch (e) {
+        console.log(`[DB] ⚠️  表 ${table} 不存在或无法访问 (${e.message})`);
+        allOk = false;
+      }
+    }
+    if (allOk) console.log('[DB] ✅ Schema 健康检查通过');
+    return allOk;
   }
 
   async testConnection(config = {}) {
@@ -464,12 +534,14 @@ class DbService {
       const [ddns] = await this._pool.query('SELECT COUNT(*) AS cnt FROM ddns_records');
       const [proxy] = await this._pool.query('SELECT COUNT(*) AS cnt FROM proxy_rules');
       const [ssl] = await this._pool.query('SELECT COUNT(*) AS cnt FROM ssl_certs');
+      const [cron] = await this._pool.query('SELECT COUNT(*) AS cnt FROM cron_jobs');
       return {
         ready: true,
         tables: {
           ddns_records: ddns[0]?.cnt || 0,
           proxy_rules: proxy[0]?.cnt || 0,
-          ssl_certs: ssl[0]?.cnt || 0
+          ssl_certs: ssl[0]?.cnt || 0,
+          cron_jobs: cron[0]?.cnt || 0
         }
       };
     } catch (e) {
@@ -489,8 +561,8 @@ class DbService {
       const ddns = sqliteService.getDdnsDomains();
       for (const d of ddns) {
         await this._pool.query(
-          'INSERT INTO ddns_records (domain, type, value, provider, \`enabled\`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), provider=VALUES(provider), \`enabled\`=VALUES(\`enabled\`)',
-          [d.name, d.recordType || 'A', d.lastIp || '', d.provider || 'aliyun', d.enabled !== false ? 1 : 0]
+          'INSERT INTO ddns_records (domain, type, value, subdomain, ttl, line, last_ip, provider, \`enabled\`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), subdomain=VALUES(subdomain), ttl=VALUES(ttl), line=VALUES(line), last_ip=VALUES(last_ip), provider=VALUES(provider)',
+          [d.name, d.recordType || 'A', d.lastIp || '', d.subdomain || '@', d.ttl || 600, d.line || 'default', d.lastIp || '', d.provider || 'aliyun', 1]
         );
         synced++;
       }
@@ -501,9 +573,9 @@ class DbService {
       const proxy = sqliteService.getProxyRules();
       for (const r of proxy) {
         await this._pool.query(
-          `INSERT INTO proxy_rules (source, source_host, target_host, target, port, \`ssl\`, \`websocket\`, \`enabled\`, remark, ssl_cert_path, ssl_key_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE target_host=VALUES(target_host), target=VALUES(target), port=VALUES(port), \`ssl\`=VALUES(\`ssl\`), \`websocket\`=VALUES(\`websocket\`), \`enabled\`=VALUES(\`enabled\`), remark=VALUES(remark), ssl_cert_path=VALUES(ssl_cert_path), ssl_key_path=VALUES(ssl_key_path)`,
-          [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
+          `INSERT INTO proxy_rules (source, source_host, target_host, target, port, source_protocol, target_protocol, custom_headers, \`ssl\`, \`websocket\`, \`enabled\`, remark, ssl_cert_path, ssl_key_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE target_host=VALUES(target_host), target=VALUES(target), port=VALUES(port), source_protocol=VALUES(source_protocol), target_protocol=VALUES(target_protocol), custom_headers=VALUES(custom_headers), \`ssl\`=VALUES(\`ssl\`), \`websocket\`=VALUES(\`websocket\`), \`enabled\`=VALUES(\`enabled\`), remark=VALUES(remark), ssl_cert_path=VALUES(ssl_cert_path), ssl_key_path=VALUES(ssl_key_path)`,
+          [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`, r.sourcePort, r.sourceProtocol || 'http', r.targetProtocol || 'http', JSON.stringify(r.customHeaders || []), r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
         );
         synced++;
       }
@@ -514,12 +586,24 @@ class DbService {
       const ssl = sqliteService.getSslDomains();
       for (const d of ssl) {
         await this._pool.query(
-          'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard)',
-          [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
+          'INSERT INTO ssl_certs (domain, alias, wildcard, notified_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE alias=VALUES(alias), wildcard=VALUES(wildcard), notified_at=VALUES(notified_at)',
+          [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0, sqliteService.getSslNotifiedAt(d.domain)]
         );
         synced++;
       }
     } catch (e) { console.error('[DB] SSL sync error:', e.message); }
+
+    // Cron
+    try {
+      const cron = sqliteService.getCronJobs();
+      for (const j of cron) {
+        await this._pool.query(
+          'INSERT INTO cron_jobs (id, name, interval_ms, enabled, \`type\`, last_run, last_result, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), interval_ms=VALUES(interval_ms), enabled=VALUES(enabled), \`type\`=VALUES(\`type\`), last_run=VALUES(last_run), last_result=VALUES(last_result)',
+          [j.id, j.name, j.interval, j.enabled ? 1 : 0, j.type || 'manual', j.lastRun, j.lastResult ? JSON.stringify(j.lastResult) : null, j.createdAt]
+        );
+        synced++;
+      }
+    } catch (e) { console.error('[DB] Cron sync error:', e.message); }
 
     console.log('[DB] SQLite → MySQL 同步完成:', synced, '条记录');
     return { synced };
@@ -538,8 +622,8 @@ class DbService {
         const data = sqliteService.getDdnsDomains();
         for (const d of data) {
           await this._pool.query(
-            'INSERT INTO ddns_records (domain, type, value, provider, `enabled`) VALUES (?, ?, ?, ?, ?)',
-            [d.name, d.recordType || 'A', d.lastIp || '', d.provider || 'aliyun', d.enabled !== false ? 1 : 0]
+            'INSERT INTO ddns_records (domain, type, value, subdomain, ttl, line, last_ip, provider, `enabled`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [d.name, d.recordType || 'A', d.lastIp || '', d.subdomain || '@', d.ttl || 600, d.line || 'default', d.lastIp || '', d.provider || 'aliyun', 1]
           );
         }
         synced.synced = data.length;
@@ -548,9 +632,10 @@ class DbService {
         const data = sqliteService.getProxyRules();
         for (const r of data) {
           await this._pool.query(
-            'INSERT INTO proxy_rules (source, source_host, target_host, target, port, `ssl`, `websocket`, `enabled`, remark, ssl_cert_path, ssl_key_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO proxy_rules (source, source_host, target_host, target, port, source_protocol, target_protocol, custom_headers, `ssl`, `websocket`, `enabled`, remark, ssl_cert_path, ssl_key_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [r.sourceHost, r.sourceHost, r.targetHost, `${r.targetProtocol}://${r.targetHost}:${r.targetPort}`,
-             r.sourcePort, r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
+             r.sourcePort, r.sourceProtocol || 'http', r.targetProtocol || 'http', JSON.stringify(r.customHeaders || []),
+             r.ssl ? 1 : 0, r.websocket ? 1 : 0, r.enabled ? 1 : 0, r.description || '', r.sslCert || null, r.sslKey || null]
           );
         }
         synced.synced = data.length;
@@ -559,8 +644,8 @@ class DbService {
         const data = sqliteService.getSslDomains();
         for (const d of data) {
           await this._pool.query(
-            'INSERT INTO ssl_certs (domain, alias, wildcard) VALUES (?, ?, ?)',
-            [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0]
+            'INSERT INTO ssl_certs (domain, alias, wildcard, notified_at) VALUES (?, ?, ?, ?)',
+            [d.domain, d.alias || d.domain, d.wildcard ? 1 : 0, d.notifiedAt || null]
           );
         }
         synced.synced = data.length;

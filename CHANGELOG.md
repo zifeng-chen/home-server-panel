@@ -1,14 +1,22 @@
 # v0.7.4-beta (2026-06-18)
 
+### 修复
+- **SSL 证书不生效** — 根因: 证书选择器的 `<option>` 缺少 `data-cert`/`data-key` 属性，前端读取 `dataset.cert` 永远为 null
+- **反向代理部署延迟** — 取消 500ms 防抖，添加/编辑/删除/启停规则后立即部署 Nginx 配置
+- **操作日志内容越界** — `.dash-log-text` 新增 `word-break: break-all` + `overflow-wrap: break-word`
+
 ### 改进
-- **图表字体缩小** — Y轴标签 18px→15px、图例 20px→17px、空状态 48px→40px，整体更紧凑
-- **卡片间距缩减** — 仪表盘 4 区 gap 16→12px、监控卡片 min-height 220→180px、padding/gap 全面收紧
-- **图表悬浮提示** — CPU/内存/网络/负载四张 Canvas 图表支持鼠标悬浮查看具体数值
+- **图表字体缩小** — Y轴标签 18px→15px、图例 20px→17px、空状态 48px→40px
+- **卡片间距缩减** — `.monitor-grid` gap→0 + padding 10px、仪表盘 gap 16→12px、卡片 min-height 220→180px
+- **图表悬浮提示** — CPU/内存/网络/负载四张 Canvas 鼠标悬浮查看具体数值
+- **PushPlus 通知增强** — 反向代理通知增设协议(http/https)和端口号信息
+
+### 文档
+- README 新增「群晖 Web Station 部署」章节（含详细步骤、环境变量示例、虚拟主机配置）
 
 ### 内部
-- **三层 Schema 校验体系** — build.mjs 构建前 + db-service 启动时 + MySQL 回退运行时，三源交叉校验防字段不一致
-- `setup-service.js` / `sqlite-service.js` / `db-service.js` 表定义全面对齐
-- 新增 `scripts/validate-schema.js` 构建期校验脚本
+- **三层 Schema 校验体系** — build.mjs 构建前 + db-service 启动时 + MySQL 回退运行时
+- `ssl-service.js` 新增 `_getCertFilePath()` 方法，证书列表响应含 `certPath`/`keyPath`
 
 # v0.7.3-beta (2026-06-17)
 

@@ -766,11 +766,26 @@ class SslService {
         ca,
         createdAt: this._parseAcmeDate(createdStr),
         expiresAt,
-        daysRemaining
+        daysRemaining,
+        certPath: this._getCertFilePath(mainDomain, 'fullchain.cer'),
+        keyPath: this._getCertFilePath(mainDomain, mainDomain + '.key')
       });
     }
 
     return certificates;
+  }
+
+  /** 获取证书文件路径 */
+  _getCertFilePath(domain, filename) {
+    const certDirs = [
+      path.join(ACME_HOME, domain + '_ecc'),
+      path.join(ACME_HOME, domain)
+    ];
+    for (const dir of certDirs) {
+      const fp = path.join(dir, filename);
+      if (fs.existsSync(fp)) return fp;
+    }
+    return null;
   }
 
   /** 通过 openssl 读取证书文件真实到期时间 */

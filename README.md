@@ -113,6 +113,67 @@ services:
       - .env
 ```
 
+### 方法五：群晖 (Synology) Web Station 部署
+
+群晖 DSM 的 Web Station 套件可以直接运行 Node.js 项目，无需 Docker 或命令行。
+
+**前置条件:**
+- DSM 7.x+ 并安装 **Web Station** 套件
+- 安装 **Node.js** (在 Web Station → 脚本语言设置中安装 Node.js 20+)
+- （可选）安装 **phpMyAdmin** + **MariaDB** 以使用 MySQL 模式
+
+**步骤:**
+
+1. **上传项目文件**
+
+   ```bash
+   # 在 Mac/PC 上打包
+   cd home-server-panel
+   tar -czf hsp.tar.gz --exclude=node_modules --exclude=.git --exclude=data *
+   
+   # 通过 DSM File Station 上传 hsp.tar.gz 到 /web/home-server-panel/
+   # SSH 登录群晖解压:
+   ssh 你的NAS用户名@NAS_IP
+   cd /volume1/web/home-server-panel/
+   tar xzf hsp.tar.gz
+   npm install --production
+   ```
+
+2. **配置 Web Station**
+
+   - 打开 Web Station → 脚本语言设置 → 新增 → 选择 Node.js 版本
+   - **文档根目录**: `/web/home-server-panel/public`
+   - **应用程序启动文件**: `src/server.js`
+   - **工作目录**: `/web/home-server-panel`
+   - 勾选「启动应用程序」
+
+3. **配置 .env 环境变量**
+
+   ```bash
+   # 在项目根目录创建 .env
+   PORT=3456
+   DB_MODE=local          # 使用 SQLite（无需额外配置）
+   # DB_MODE=mysql        # 如需 MySQL 模式（需 MariaDB）
+   # DB_HOST=127.0.0.1
+   # DB_PORT=3306
+   # DB_USER=root
+   # DB_PASSWORD=your_password
+   # DB_NAME=server_panel
+   ```
+
+4. **创建虚拟主机（可选，用于反向代理功能）**
+
+   在 Web Station → 虚拟主机中创建指向 Node.js 应用的域名，面板的反向代理功能将管理 Nginx 配置：
+
+   - 虚拟主机类型: **基于端口** (3456)
+   - 或基于名称 (如 `panel.yourdomain.com`)
+
+5. **访问面板**
+
+   浏览器打开 `http://NAS_IP:3456`，首次运行自动跳转引导安装页。
+
+> **注意**: 群晖 Web Station 的内置 Nginx 与面板的 Nginx 管理模块兼容，SSL 证书路径需使用绝对路径。如果使用 MySQL 模式，需先在 MariaDB 中创建数据库。
+
 ### 部署到 iStoreOS / OpenWRT
 
 ```bash

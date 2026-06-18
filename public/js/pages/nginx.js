@@ -402,7 +402,7 @@ async function proxySslChanged() {
           ${certs.map((c, i) => {
             var prefix = c.matched ? '✅ ' : '• ';
             var suffix = c.matched ? ' [匹配]' : '';
-            return `<option value="${i}"${c.matched ? ' style="font-weight:600;color:var(--success)"' : ''}>
+            return `<option value="${i}" data-cert="${c.certPath || ''}" data-key="${c.keyPath || ''}"${c.matched ? ' style="font-weight:600;color:var(--success)"' : ''}>
               ${prefix}${c.domain} — ${c.issuer || 'Unknown'} (${c.daysRemaining != null ? c.daysRemaining + '天' : '?'})${suffix}
             </option>`;
           }).join('')}

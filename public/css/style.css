@@ -392,6 +392,8 @@ body {
 .dash-log-text {
   color: var(--text-primary);
   flex: 1;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 /* ====== 统计卡片（保留用于其他页面） ====== */
@@ -824,7 +826,8 @@ select.form-select:focus, select.page-select:focus, #nginxLogType:focus {
 .monitor-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 10px;
+  gap: 0;
+  padding: 10px;
 }
 .monitor-card {
   background: var(--bg-card);

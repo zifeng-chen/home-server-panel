@@ -182,12 +182,14 @@ ${details ? `<p><strong>详情:</strong> ${details}</p>` : ''}
   async notifyProxyAction(action, rule) {
     const actionMap = { create: '➕ 添加', update: '✏️ 修改', delete: '🗑 删除', toggle: '🔀 启停' };
     const a = actionMap[action] || action;
+    const sslLabel = rule.ssl ? '🔒 HTTPS' : '🌐 HTTP';
+    const portInfo = rule.sourcePort && rule.targetPort ? `:${rule.sourcePort} → :${rule.targetPort}` : '';
     return this.send({
       title: `🔀 反向代理 ${a}规则`,
       content: `<h3>反向代理规则${a}</h3>
 <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
-<tr style="background:#f5f5f5"><th>域名</th><th>目标</th></tr>
-<tr><td>${rule.sourceHost || ''}</td><td>${rule.targetHost || ''}</td></tr>
+<tr style="background:#f5f5f5"><th>域名</th><th>目标</th><th>协议</th><th>端口</th></tr>
+<tr><td>${rule.sourceHost || ''}</td><td>${rule.targetHost || ''}</td><td>${sslLabel}</td><td>${portInfo || '—'}</td></tr>
 </table>
 <p style="color:#999">时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`,
       template: 'html'

@@ -67,10 +67,10 @@ router.post('/', async (req, res) => {
       }
     }
     const rule = proxyService.addRule(body);
-    // 部署已排入防抖队列，500ms内批量操作仅重载一次
-    _scheduleDeploy();
-    res.json({ success: true, message: '代理规则已添加（部署已排入队列）', data: { rule } });
-    _tryNotify('create', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
+    // 立即部署 Nginx 配置
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
+    res.json({ success: true, message: deployResult.success ? '代理规则已添加并部署' : '规则已保存，但部署失败: ' + deployResult.message, data: { rule } });
+    _tryNotify('create', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -80,10 +80,10 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const rule = proxyService.updateRule(req.params.id, req.body);
-    // 部署已排入防抖队列，500ms内批量操作仅重载一次
-    _scheduleDeploy();
-    res.json({ success: true, message: '代理规则已更新（部署已排入队列）', data: { rule } });
-    _tryNotify('update', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
+    // 立即部署
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
+    res.json({ success: true, message: deployResult.success ? '代理规则已更新并部署' : '规则已更新，但部署失败: ' + deployResult.message, data: { rule } });
+    _tryNotify('update', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }
@@ -92,10 +92,11 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/proxy/:id - 删除规则
 router.delete('/:id', async (req, res) => {
   try {
+    const rule = proxyService.getRule(req.params.id);
     proxyService.deleteRule(req.params.id);
-    // 部署已排入防抖队列，500ms内批量操作仅重载一次
-    _scheduleDeploy();
-    res.json({ success: true, message: '代理规则已删除（部署已排入队列）' });
+    // 立即部署
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
+    res.json({ success: true, message: deployResult.success ? '代理规则已删除并部署' : '规则已删除，但部署失败: ' + deployResult.message });
     _tryNotify('delete', { sourceHost: req.params.id, targetHost: '' });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
@@ -106,10 +107,10 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/toggle', async (req, res) => {
   try {
     const rule = proxyService.toggleRule(req.params.id);
-    // 部署已排入防抖队列，500ms内批量操作仅重载一次
-    _scheduleDeploy();
-    res.json({ success: true, message: (rule.enabled ? '已启用' : '已停用') + '（部署已排入队列）', data: { rule } });
-    _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost });
+    // 立即部署
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
+    res.json({ success: true, message: deployResult.success ? (rule.enabled ? '已启用并部署' : '已停用并部署') : '状态已切换，但部署失败: ' + deployResult.message, data: { rule } });
+    _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: err.message });
   }

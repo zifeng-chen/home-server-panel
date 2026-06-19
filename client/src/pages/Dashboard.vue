@@ -89,11 +89,21 @@ async function fetchServices() {
   try {
     const res = await api.get('/process') as any
     if (res.success && res.data) {
+      const isOnline = (p: any) => p.status === 'running' || p.status === 'online' || p.status === 'active' || p.active === true
       const svcMap: Record<string, boolean> = {}
       for (const cat of ['pm2', 'docker', 'system'] as const) {
         for (const p of res.data[cat] || []) {
-          if (p.name) svcMap[p.name.toLowerCase()] = p.status === 'running'
+          if (p.name) svcMap[p.name.toLowerCase()] = isOnline(p)
         }
+      }
+      // MySQL: check via db status API
+      try {
+        const dbRes = await api.get('/db/status') as any
+        svcMap['mysql'] = dbRes?.data?.connected === true
+      } catch {}
+      // PM2 daemon: check if pm2 jlist returned any processes
+      if (!svcMap['pm2'] && res.data?.pm2?.length === 0) {
+        try { const pm2Res = await api.get('/process/pm2/status') as any; svcMap['pm2'] = pm2Res?.data?.running === true } catch {}
       }
       services.value.forEach(s => {
         s.online = svcMap[s.name.toLowerCase()] ?? false

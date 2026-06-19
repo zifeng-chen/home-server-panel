@@ -113,7 +113,9 @@ class ProcessService {
       { name: 'OpenClash', bin: 'clash', check: () => this._checkProcess('clash') },
       { name: 'UPnP (miniupnpd)', bin: 'miniupnpd', check: () => this._checkProcess('miniupnpd') },
       { name: 'Samba', bin: 'smbd', check: () => this._checkProcess('smbd') },
-      { name: 'Server Panel', bin: 'node', check: () => this._checkPort(3456) }
+      { name: 'Server Panel', bin: 'node', check: () => this._checkPort(3456) },
+      { name: 'MySQL', bin: 'mysqld', check: () => this._checkProcess('mysqld') || this._checkPort(3306) },
+      { name: 'acme.sh', bin: 'acme.sh', check: () => this._checkProcess('acme.sh') }
     ];
 
     for (const s of svcDefs) {

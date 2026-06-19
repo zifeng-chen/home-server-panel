@@ -1,5 +1,14 @@
 # v0.8.1-beta (2026-06-19)
 
+
+## [v0.8.1-beta] - 2026-06-20
+
+### Fixed
+- 服务状态全部显示「已停止」：Dashboard.vue 状态匹配扩展为 running/online/active；新增 MySQL/acme.sh 检测
+- 部署 tar 包不再包含 .env 文件，防止覆盖 iStoreOS MySQL 配置
+- CSP script-src 添加 unsafe-eval，修复 Vue SPA 空白
+- auth 中间件部署遗漏修复（v0.8.1-beta 首次部署到 iStoreOS）
+
 ### i18n 国际化 (中/英) + 暗色模式切换强化
 - **i18n 框架** — `vue-i18n@9` 集成，`zh-CN.json` / `en-US.json` 双语言包覆盖 12 个页面
 - **语言切换** — 用户下拉菜单新增 🇨🇳 中文 / 🇺🇸 English 选项，切换后自动刷新生效

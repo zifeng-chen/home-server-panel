@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>SSL 证书</h2>
+        <h2>{{ $t('ssl.title') }}</h2>
         <p class="sub">acme.sh 自动申请与管理</p>
       </div>
       <div class="header-actions">

@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>反向代理</h2>
+        <h2>{{ $t('proxy.title') }}</h2>
         <p class="sub">{{ statsText }}</p>
       </div>
       <div class="header-actions">

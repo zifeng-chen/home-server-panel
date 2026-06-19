@@ -2,50 +2,50 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>系统设置</h2>
-        <p class="sub">配置服务参数与云凭证</p>
+        <h2>{{ $t('settings.title') }}</h2>
+        <p class="sub">{{ $t('settings.basic') }}</p>
       </div>
-      <el-button type="danger" @click="confirmRestart" :icon="RefreshRight" plain>重启服务</el-button>
+      <el-button type="danger" @click="confirmRestart" :icon="RefreshRight" plain>{{ $t('settings.restartService') }}</el-button>
     </div>
 
     <div class="card">
-      <h3>云服务凭证</h3>
-      <el-form :model="form" label-width="120px">
-        <el-form-item label="阿里云 AK ID">
-          <el-input v-model="form.aliKeyId" :placeholder="form._hasAliKey ? '留空则不修改' : '保存后生效'" />
-          <el-tag v-if="form._hasAliKey" type="success" size="small" style="margin-left:8px">已配置</el-tag>
+      <h3>Cloud Credentials</h3>
+      <el-form :model="form" label-width="140px">
+        <el-form-item label="Alibaba AK ID">
+          <el-input v-model="form.aliKeyId" :placeholder="form._hasAliKey ? 'leave empty = no change' : 'takes effect on save'" />
+          <el-tag v-if="form._hasAliKey" type="success" size="small" style="margin-left:8px">Configured</el-tag>
         </el-form-item>
-        <el-form-item label="阿里云 AK Secret"><el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="form._hasAliKey ? '留空则不修改' : '保存后生效'" /></el-form-item>
-        <el-form-item label="腾讯云 Secret ID">
-          <el-input v-model="form.tencentSecretId" :placeholder="form._hasTencentKey ? '留空则不修改' : '保存后生效'" />
-          <el-tag v-if="form._hasTencentKey" type="success" size="small" style="margin-left:8px">已配置</el-tag>
+        <el-form-item label="Alibaba AK Secret"><el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="form._hasAliKey ? 'leave empty = no change' : 'takes effect on save'" /></el-form-item>
+        <el-form-item label="Tencent Secret ID">
+          <el-input v-model="form.tencentSecretId" :placeholder="form._hasTencentKey ? 'leave empty = no change' : 'takes effect on save'" />
+          <el-tag v-if="form._hasTencentKey" type="success" size="small" style="margin-left:8px">Configured</el-tag>
         </el-form-item>
-        <el-form-item label="腾讯云 Secret Key"><el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="form._hasTencentKey ? '留空则不修改' : '保存后生效'" /></el-form-item>
+        <el-form-item label="Tencent Secret Key"><el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="form._hasTencentKey ? 'leave empty = no change' : 'takes effect on save'" /></el-form-item>
       </el-form>
     </div>
 
     <div class="card">
-      <h3>通知与证书</h3>
-      <el-form :model="form" label-width="120px">
-        <el-form-item label="PushPlus Token"><el-input v-model="form.pushplusToken" placeholder="微信推送通知" /></el-form-item>
-        <el-form-item label="ACME 邮箱"><el-input v-model="form.acmeEmail" placeholder="admin@example.com" /></el-form-item>
-        <el-form-item label="DNS 服务商"><el-input v-model="form.acmeDns" placeholder="alidns" /></el-form-item>
-        <el-form-item label="证书到期预警"><el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> 天</el-form-item>
+      <h3>{{ $t('settings.notification') }}</h3>
+      <el-form :model="form" label-width="140px">
+        <el-form-item label="PushPlus Token"><el-input v-model="form.pushplusToken" :placeholder="$t('settings.pushplusToken')" /></el-form-item>
+        <el-form-item label="ACME Email"><el-input v-model="form.acmeEmail" placeholder="admin@example.com" /></el-form-item>
+        <el-form-item label="DNS Provider"><el-input v-model="form.acmeDns" placeholder="alidns" /></el-form-item>
+        <el-form-item :label="$t('ssl.expiry')"><el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> {{ $t('ssl.days') }}</el-form-item>
       </el-form>
     </div>
 
     <div class="card">
-      <h3>功能模块</h3>
+      <h3>Modules</h3>
       <el-form label-width="80px">
         <el-form-item v-for="m in modules" :key="m.key" :label="m.name">
-          <el-tag :type="m.enabled ? 'success' : 'info'">{{ m.enabled ? '已启用' : '未启用' }}</el-tag>
+          <el-tag :type="m.enabled ? 'success' : 'info'">{{ m.enabled ? 'Enabled' : 'Disabled' }}</el-tag>
           <span class="hint-mod">{{ m.key }}</span>
         </el-form-item>
       </el-form>
     </div>
 
     <div class="card save-bar">
-      <el-button type="primary" @click="doSave" :loading="saving" :icon="Check">保存设置</el-button>
+      <el-button type="primary" @click="doSave" :loading="saving" :icon="Check">{{ $t('common.save') }}</el-button>
     </div>
   </div>
 </template>
@@ -53,9 +53,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { Check, RefreshRight } from '@element-plus/icons-vue'
 import api from '../api'
 
+const { t } = useI18n()
 const saving = ref(false)
 const form = reactive<any>({
   aliKeyId: '',
@@ -86,11 +88,10 @@ async function load() {
       form.certExpireDays = d.certExpireDays || 30
       form._hasAliKey = !!d.aliKeyId
       form._hasTencentKey = !!d.tencentSecretId
-      // 解析模块
       const mods = d.modules || {}
       modules.value = Object.entries(mods).map(([k, v]) => ({ key: k, name: k.toUpperCase(), enabled: v }))
     }
-  } catch { ElMessage.error('加载配置失败') }
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function doSave() {
@@ -104,17 +105,16 @@ async function doSave() {
     if (form.acmeDns) payload.acmeDns = form.acmeDns
 
     const res = await api.post('/system/config', payload) as any
-    if (res.success) ElMessage.success('配置已保存')
-    else ElMessage.error(res.message || '保存失败')
-  } catch { ElMessage.error('保存失败') }
+    if (res.success) ElMessage.success(t('settings.saveSuccess'))
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { saving.value = false }
 }
 
 async function confirmRestart() {
-  await ElMessageBox.confirm('确定要重启服务吗？终端连接会中断。', '确认重启', { type: 'warning' })
-  ElMessage.info('正在重启服务...')
-  // 调用重启 API
-  try { await api.post('/system/restart') } catch { /* 重启后 API 不可达 */ }
+  await ElMessageBox.confirm(t('settings.restartConfirm'), t('settings.restartService'), { type: 'warning' })
+  ElMessage.info(t('settings.restartSuccess'))
+  try { await api.post('/system/restart') } catch { /* unreachable after restart */ }
 }
 
 onMounted(load)

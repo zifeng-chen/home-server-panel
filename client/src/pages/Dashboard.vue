@@ -3,44 +3,44 @@
     <!-- 系统概览 + 操作日志 (并排) -->
     <div class="row-top">
       <div class="card overview">
-        <h3 class="card-title">系统概览</h3>
+        <h3 class="card-title">{{ $t('dashboard.systemOverview') }}</h3>
         <div class="kv-list" v-if="sys.sysInfo">
-          <div class="kv"><span class="k">主机名</span><span class="v">{{ sys.sysInfo.hostname }}</span></div>
-          <div class="kv"><span class="k">系统</span><span class="v">{{ sys.sysInfo.os }}</span></div>
-          <div class="kv"><span class="k">内核</span><span class="v">{{ sys.sysInfo.kernel }}</span></div>
-          <div class="kv"><span class="k">IP</span><span class="v">{{ publicIp }}</span></div>
-          <div class="kv"><span class="k">运行</span><span class="v">{{ fmtUptime(sys.uptime) }}</span></div>
+          <div class="kv"><span class="k">{{ $t('dashboard.hostname') }}</span><span class="v">{{ sys.sysInfo.hostname }}</span></div>
+          <div class="kv"><span class="k">{{ $t('dashboard.system') }}</span><span class="v">{{ sys.sysInfo.os }}</span></div>
+          <div class="kv"><span class="k">{{ $t('dashboard.kernel') }}</span><span class="v">{{ sys.sysInfo.kernel }}</span></div>
+          <div class="kv"><span class="k">{{ $t('dashboard.ip') }}</span><span class="v">{{ publicIp }}</span></div>
+          <div class="kv"><span class="k">{{ $t('dashboard.uptime') }}</span><span class="v">{{ fmtUptime(sys.uptime) }}</span></div>
         </div>
       </div>
       <div class="card logs">
-        <h3 class="card-title">操作日志</h3>
+        <h3 class="card-title">{{ $t('dashboard.operationLog') }}</h3>
         <div class="log-list" v-if="logs.length">
           <div class="log-item" v-for="(l,i) in logs" :key="i">
             <span class="log-time">{{ l.time }}</span>
             <span class="log-msg">{{ l.message }}</span>
           </div>
         </div>
-        <div v-else class="empty">暂无操作记录</div>
+        <div v-else class="empty">{{ $t('dashboard.noLogs') }}</div>
       </div>
     </div>
 
     <!-- 服务概览 (全宽) -->
     <div class="card services">
-      <h3 class="card-title">服务概览</h3>
+      <h3 class="card-title">{{ $t('dashboard.serviceOverview') }}</h3>
       <div class="service-grid">
         <div class="service-item" v-for="s in services" :key="s.name">
           <div class="s-dot" :style="{ background: s.online ? 'var(--accent-green)' : 'var(--text-tertiary)' }"></div>
           <span class="s-name">{{ s.name }}</span>
-          <el-tag :type="s.online ? 'success' : 'info'" size="small" effect="plain">{{ s.online ? '运行中' : '已停止' }}</el-tag>
+          <el-tag :type="s.online ? 'success' : 'info'" size="small" effect="plain">{{ s.online ? $t('dashboard.running') : $t('dashboard.stopped') }}</el-tag>
         </div>
       </div>
     </div>
 
     <!-- 资源监控 (圆环) -->
     <div class="row-monitor">
-      <div class="card ring-card" v-for="ring in rings" :key="ring.label">
+      <div class="card ring-card" v-for="ring in rings" :key="ring.key">
         <canvas :ref="el => ringRefs[ring.key] = el" width="140" height="140" class="ring-canvas"></canvas>
-        <span class="ring-label">{{ ring.label }}</span>
+        <span class="ring-label">{{ ring.label() }}</span>
       </div>
     </div>
   </div>
@@ -48,10 +48,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSystemStore } from '../stores/system'
 import api from '../api'
 
 const sys = useSystemStore()
+const { t } = useI18n()
 
 // 公网IP
 const publicIp = computed(() => {
@@ -103,10 +105,10 @@ async function fetchServices() {
 // 资源环
 const ringRefs = ref<Record<string, any>>({})
 const rings = [
-  { key: 'cpu',  label: 'CPU',    getVal: () => sys.cpu },
-  { key: 'mem',  label: '内存',   getVal: () => sys.memPct },
-  { key: 'netD', label: '网络 ↓', getVal: () => Math.min(sys.netDown / 1048576 * 100, 100) },
-  { key: 'netU', label: '网络 ↑', getVal: () => Math.min(sys.netUp   / 1048576 * 100, 100) },
+  { key: 'cpu',  label: () => t('dashboard.cpu'),  getVal: () => sys.cpu },
+  { key: 'mem',  label: () => t('dashboard.memory'),  getVal: () => sys.memPct },
+  { key: 'netD', label: () => t('dashboard.networkDown'), getVal: () => Math.min(sys.netDown / 1048576 * 100, 100) },
+  { key: 'netU', label: () => t('dashboard.networkUp'), getVal: () => Math.min(sys.netUp   / 1048576 * 100, 100) },
 ]
 let ringTimer: ReturnType<typeof setInterval> | null = null
 

@@ -4,36 +4,36 @@
       <div class="metric">
         <el-icon :size="14" color="var(--accent)"><Cpu /></el-icon>
         <span class="val">{{ sys.cpu.toFixed(0) }}%</span>
-        <span class="lbl">CPU</span>
+        <span class="lbl">{{ $t('topbar.cpu') }}</span>
       </div>
       <div class="metric">
         <el-icon :size="14" color="var(--accent-green)"><Memo /></el-icon>
         <span class="val">{{ sys.memPct.toFixed(0) }}%</span>
-        <span class="lbl">内存</span>
+        <span class="lbl">{{ $t('topbar.memory') }}</span>
       </div>
       <div class="metric">
         <el-icon :size="14" color="var(--accent-purple)"><Download /></el-icon>
         <span class="val">{{ fmtBytes(sys.netDown) }}/s</span>
-        <span class="lbl">↓</span>
+        <span class="lbl">{{ $t('topbar.networkDown') }}</span>
       </div>
       <div class="metric">
         <el-icon :size="14" color="var(--accent-teal)"><Upload /></el-icon>
         <span class="val">{{ fmtBytes(sys.netUp) }}/s</span>
-        <span class="lbl">↑</span>
+        <span class="lbl">{{ $t('topbar.networkUp') }}</span>
       </div>
       <div class="metric">
         <el-icon :size="14" :color="loadColor"><TrendCharts /></el-icon>
         <span class="val">{{ sys.load[0]?.toFixed(2) }}</span>
-        <span class="lbl">负载</span>
+        <span class="lbl">{{ $t('topbar.load') }}</span>
       </div>
       <div class="metric">
         <el-icon :size="14" color="var(--text-tertiary)"><Timer /></el-icon>
         <span class="val">{{ fmtUptime(sys.uptime) }}</span>
-        <span class="lbl">运行</span>
+        <span class="lbl">{{ $t('topbar.uptime') }}</span>
       </div>
     </div>
     <div class="user-area">
-      <el-button link class="theme-btn" @click="toggleTheme">
+      <el-button link class="theme-btn" @click="toggleTheme" :title="$t('topbar.theme')">
         <el-icon :size="16"><component :is="isDark ? Sunny : Moon" /></el-icon>
       </el-button>
       <el-dropdown trigger="click" @command="handleCmd">
@@ -43,8 +43,14 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="logout">
-              <el-icon><SwitchButton /></el-icon> 退出登录
+            <el-dropdown-item command="lang-zh">
+              🇨🇳 中文
+            </el-dropdown-item>
+            <el-dropdown-item command="lang-en">
+              🇺🇸 English
+            </el-dropdown-item>
+            <el-dropdown-item command="logout" divided>
+              <el-icon><SwitchButton /></el-icon> {{ $t('auth.logout') }}
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -56,6 +62,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSystemStore } from '../stores/system'
 import { useAuthStore } from '../stores/auth'
 import { Cpu, Memo, Download, Upload, TrendCharts, Timer, UserFilled, SwitchButton, Moon, Sunny } from '@element-plus/icons-vue'
@@ -63,6 +70,7 @@ import { Cpu, Memo, Download, Upload, TrendCharts, Timer, UserFilled, SwitchButt
 const sys  = useSystemStore()
 const auth = useAuthStore()
 const router = useRouter()
+const { locale } = useI18n()
 
 const loadColor = computed(() => {
   const v = sys.load[0] || 0
@@ -98,6 +106,14 @@ function handleCmd(cmd: string) {
     auth.logout()
     sys.stopPolling()
     router.push('/login')
+  } else if (cmd === 'lang-zh') {
+    locale.value = 'zh-CN'
+    localStorage.setItem('hsp_lang', 'zh-CN')
+    location.reload()
+  } else if (cmd === 'lang-en') {
+    locale.value = 'en-US'
+    localStorage.setItem('hsp_lang', 'en-US')
+    location.reload()
   }
 }
 </script>

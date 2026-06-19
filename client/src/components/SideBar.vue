@@ -15,25 +15,28 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Odometer, Connection, Key, Coin, Share, Switch,
   Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
-const version = '0.8.0'
+const { t } = useI18n()
+const version = '0.8.1'
 
-const navItems = [
-  { label: '仪表盘',  path: '/',          icon: Odometer },
-  { label: 'DDNS',    path: '/ddns',      icon: Connection },
-  { label: 'SSL',     path: '/ssl',       icon: Key },
-  { label: 'Nginx',   path: '/nginx',     icon: Coin },
-  { label: '代理',    path: '/proxy',     icon: Share },
-  { label: '端口',    path: '/port',      icon: Switch },
-  { label: 'PM2',     path: '/pm2',       icon: Loading },
-  { label: 'Cron',    path: '/cron',      icon: Timer },
-  { label: 'Docker',  path: '/docker',    icon: Box },
-  { label: 'SSH',     path: '/ssh',       icon: Monitor },
-  { label: '设置',    path: '/settings',  icon: Setting },
-]
+const navItems = computed(() => [
+  { label: t('sidebar.dashboard'), path: '/',          icon: Odometer },
+  { label: t('sidebar.ddns'),      path: '/ddns',      icon: Connection },
+  { label: t('sidebar.ssl'),       path: '/ssl',       icon: Key },
+  { label: t('sidebar.nginx'),     path: '/nginx',     icon: Coin },
+  { label: t('sidebar.proxy'),     path: '/proxy',     icon: Share },
+  { label: t('sidebar.port'),      path: '/port',      icon: Switch },
+  { label: t('sidebar.pm2'),       path: '/pm2',       icon: Loading },
+  { label: t('sidebar.cron'),      path: '/cron',      icon: Timer },
+  { label: t('sidebar.docker'),    path: '/docker',    icon: Box },
+  { label: t('sidebar.ssh'),       path: '/ssh',       icon: Monitor },
+  { label: t('sidebar.settings'),  path: '/settings',  icon: Setting },
+])
 </script>
 
 <style scoped>

@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>定时任务</h2>
+        <h2>{{ $t('cron.title') }}</h2>
         <p class="sub">{{ jobs.length }} 个任务</p>
       </div>
       <el-button type="primary" @click="showAdd" :icon="Plus">添加任务</el-button>

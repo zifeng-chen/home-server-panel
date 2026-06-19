@@ -3,17 +3,17 @@
     <div class="login-card">
       <div class="brand">🖥</div>
       <h2>Home Server Panel</h2>
-      <p class="sub">登录以管理您的服务器</p>
+      <p class="sub">{{ $t('auth.login').toLowerCase() + ' to manage your server' }}</p>
       <el-form ref="formRef" :model="form" :rules="rules" @submit.prevent="doLogin" size="large">
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" :prefix-icon="User" />
+          <el-input v-model="form.username" :placeholder="$t('auth.username')" :prefix-icon="User" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" show-password :prefix-icon="Lock" />
+          <el-input v-model="form.password" type="password" :placeholder="$t('auth.password')" show-password :prefix-icon="Lock" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" native-type="submit" :loading="auth.loading" class="btn-login">
-            登 录
+            {{ $t('auth.login') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -25,19 +25,21 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const auth   = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 const error  = ref('')
 const formRef = ref<FormInstance>()
 
 const form = reactive({ username: 'admin', password: 'admin123' })
 const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  username: [{ required: true, message: () => t('auth.username'), trigger: 'blur' }],
+  password: [{ required: true, message: () => t('auth.password'), trigger: 'blur' }],
 }
 
 async function doLogin() {
@@ -48,7 +50,7 @@ async function doLogin() {
   if (success) {
     router.push('/')
   } else {
-    error.value = '用户名或密码错误'
+    error.value = t('auth.loginFailed')
   }
 }
 </script>

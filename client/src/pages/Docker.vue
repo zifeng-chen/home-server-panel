@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>Docker 容器管理</h2>
+        <h2>{{ $t('docker.title') }}</h2>
         <p class="sub">{{ infoText }}</p>
       </div>
       <el-button @click="load" :loading="loading" :icon="Refresh">刷新</el-button>

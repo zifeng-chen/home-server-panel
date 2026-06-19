@@ -3,11 +3,11 @@
     <!-- 头部 -->
     <div class="page-header">
       <div>
-        <h2>DDNS 动态域名</h2>
-        <p class="sub">双云解析（阿里云 + 腾讯云），自动同步公网 IP</p>
+        <h2>{{ $t('ddns.title') }}</h2>
+        <p class="sub">{{ $t('ddns.subtitle') }}</p>
       </div>
       <div class="header-actions">
-        <el-button @click="refreshAll" :loading="refreshing" :icon="Refresh">刷新全部</el-button>
+        <el-button @click="refreshAll" :loading="refreshing" :icon="Refresh">Refresh All</el-button>
       </div>
     </div>
 
@@ -81,7 +81,7 @@ async function load() {
   finally { loading.value = false }
 }
 
-// 刷新全部
+// Refresh All
 async function refreshAll() {
   refreshing.value = true
   try {

@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>PM2 进程管理</h2>
+        <h2>{{ $t('pm2.title') }}</h2>
         <p class="sub">{{ statusText }}</p>
       </div>
       <div class="header-actions">

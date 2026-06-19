@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>SSH 终端</h2>
+        <h2>{{ $t('ssh.title') }}</h2>
         <p class="sub">管理 SSH 连接配置，快速连接远程服务器</p>
       </div>
       <el-button type="primary" @click="showAdd" :icon="Plus">添加连接</el-button>

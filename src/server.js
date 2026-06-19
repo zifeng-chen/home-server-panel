@@ -222,8 +222,14 @@ app.use((req, res, next) => {
 // 将 BUILD_ID 注入 app 以供其他模块使用
 app.locals.buildId = BUILD_ID;
 
-// 静态文件 - 显式设置 MIME 类型（兼容 NAS 环境下 mime-types 数据库缺失）
-app.use(express.static(path.join(__dirname, '..', 'public'), {
+// 静态文件 - 优先使用 Vue 构建产物 (client/dist/)，回退到旧 public/
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+const publicDir = path.join(__dirname, '..', 'public');
+const hasVueBuild = require('fs').existsSync(path.join(clientDist, 'index.html'));
+const staticDir = hasVueBuild ? clientDist : publicDir;
+console.log(`[Server] 静态文件目录: ${staticDir}${hasVueBuild ? ' (Vue build)' : ' (legacy public)'}`);
+
+app.use(express.static(staticDir, {
   setHeaders: (res, filePath) => {
     // JS/CSS 文件携带 BUILD_ID 参数，可安全长缓存（变更会自动生成新 ID）
     if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
@@ -284,10 +290,15 @@ app.use('/api/monitor', require('./routes/monitor'));
 
 // SPA fallback
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path.startsWith('/login') || req.path.startsWith('/css/') || req.path.startsWith('/js/')) {
+  if (req.path.startsWith('/api/') || req.path.includes('.')) {
     return next();
   }
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  const idx = path.join(staticDir, 'index.html');
+  if (require('fs').existsSync(idx)) {
+    res.sendFile(idx);
+  } else {
+    next();
+  }
 });
 
 // 全局错误处理

@@ -3,6 +3,46 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+
+// AES-256-GCM 加密密钥（32 字节，派生自 TOKEN_SECRET）
+const ENC_ALGO = 'aes-256-gcm';
+const _getEncKey = () => {
+  const secret = process.env.TOKEN_SECRET || 'hsp-ssh-enc-key-default';
+  return crypto.createHash('sha256').update(secret).digest(); // 32 bytes
+};
+
+/** 加密 SSH 密码（AES-256-GCM，返回 base64(iv + authTag + ciphertext)） */
+function encryptSSHPassword(plaintext) {
+  if (!plaintext || typeof plaintext !== 'string') return '';
+  const key = _getEncKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ENC_ALGO, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  // 格式：iv(16) + authTag(16) + ciphertext
+  return Buffer.concat([iv, authTag, encrypted]).toString('base64');
+}
+
+/** 解密 SSH 密码，失败时返回空字符串不抛异常 */
+function decryptSSHPassword(ciphertext) {
+  if (!ciphertext || typeof ciphertext !== 'string') return '';
+  try {
+    const buf = Buffer.from(ciphertext, 'base64');
+    if (buf.length < 32) return ''; // 最小 iv(16) + authTag(16)
+    const key = _getEncKey();
+    const iv = buf.subarray(0, 16);
+    const authTag = buf.subarray(16, 32);
+    const encrypted = buf.subarray(32);
+    const decipher = crypto.createDecipheriv(ENC_ALGO, key, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(encrypted) + decipher.final('utf8');
+  } catch (_) {
+    // 兼容旧明文数据：直接返回原始值（非 base64 密文时）
+    if (!/^[A-Za-z0-9+/=]+$/.test(ciphertext)) return ciphertext;
+    return '';
+  }
+}
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'panel.db');
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
@@ -539,7 +579,7 @@ class SqliteService {
   getSshConfigs() {
     return this._all('SELECT * FROM ssh_config ORDER BY id').map(r => ({
       id: r.id, name: r.name, host: r.host, port: r.port,
-      username: r.username, password: r.password,
+      username: r.username, password: decryptSSHPassword(r.password),
       createdAt: r.created_at, updatedAt: r.updated_at
     }));
   }
@@ -548,16 +588,17 @@ class SqliteService {
     const r = this._get('SELECT * FROM ssh_config WHERE id = ?', [id]);
     if (!r) return null;
     return { id: r.id, name: r.name, host: r.host, port: r.port,
-      username: r.username, password: r.password,
+      username: r.username, password: decryptSSHPassword(r.password),
       createdAt: r.created_at, updatedAt: r.updated_at };
   }
 
   addSshConfig(config) {
     const now = new Date().toISOString();
+    const encPw = encryptSSHPassword(config.password || '');
     this._run(
       'INSERT INTO ssh_config (name, host, port, username, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [config.name || 'Default', config.host || '192.168.100.1', config.port || 22,
-       config.username || 'root', config.password || '', now, now]
+       config.username || 'root', encPw, now, now]
     );
     const rows = this._all('SELECT * FROM ssh_config ORDER BY id DESC LIMIT 1');
     return rows.length > 0 ? this.getSshConfig(rows[0].id) : null;
@@ -567,6 +608,9 @@ class SqliteService {
     const row = this._get('SELECT * FROM ssh_config WHERE id = ?', [id]);
     if (!row) throw new Error('SSH 配置不存在');
     const now = new Date().toISOString();
+    const encPw = updates.password !== undefined
+      ? encryptSSHPassword(updates.password)
+      : row.password;
     this._run(
       `UPDATE ssh_config SET name=?, host=?, port=?, username=?, password=?, updated_at=? WHERE id=?`,
       [
@@ -574,7 +618,7 @@ class SqliteService {
         updates.host !== undefined ? updates.host : row.host,
         updates.port !== undefined ? updates.port : row.port,
         updates.username !== undefined ? updates.username : row.username,
-        updates.password !== undefined ? updates.password : row.password,
+        encPw,
         now, id
       ]
     );

@@ -39,9 +39,13 @@ async function loadDashboard() {
     const sys = (info && info.data) || {};
     const mem = sys.memory || { total: 0, free: 0 };
 
-    // ── 1. 顶栏指标 ──
+    // ── 1. 顶栏指标（先用 system/info 填充已知项，监控轮询动态补齐） ──
     window._liveSysInfo = sys;
     _updateTopbarMetrics(sys);
+    // 立即拉取监控数据 + 启动 5 秒轮询（不管首次成败都启动，防止首次失败永久失活）
+    _dashMonFetch();
+    if (_dashMonTimer) clearInterval(_dashMonTimer);
+    _dashMonTimer = setInterval(_dashMonFetch, 5000);
 
     // ── 2. 左上：系统概览 ──
     // 只保留真实公网 IP（排除内网地址）
@@ -124,8 +128,7 @@ async function loadDashboard() {
     // ── 4. 左下：操作日志 ──
     _renderDashLogs(logs);
 
-    // ── 5. 右下：资源使用（由 _dashboardMonitorStart 填充） ──
-    _dashboardMonitorStart();
+
 
     // 侧边栏版本
     var verEl = document.getElementById('version');
@@ -154,7 +157,13 @@ function _updateTopbarMetrics(sys) {
     if (elMem) elMem.textContent = pct.toFixed(0) + '%';
   }
   if (elUp) elUp.textContent = formatUptime(sys.panelUptime || sys.uptime || 0);
-  // CPU will be updated by monitor poll
+  // CPU 暂用 loadavg[0] 近似（监控轮询会精确覆盖）
+  if (elCpu && sys.loadavg) elCpu.textContent = sys.loadavg[0].toFixed(0) + '%';
+  // 负载初始值
+  var elLoad = document.getElementById('tbLoad');
+  if (elLoad && sys.loadavg && sys.loadavg.length >= 3) {
+    elLoad.textContent = sys.loadavg[0].toFixed(2) + ' / ' + sys.loadavg[1].toFixed(2) + ' / ' + sys.loadavg[2].toFixed(2);
+  }
 }
 
 // ── 操作日志渲染 ──
@@ -251,181 +260,46 @@ function formatUptime(seconds) {
   return parts.join(' ');
 }
 
-// ========== 资源使用监控（合并入服务状态右侧） ==========
+// ========== 顶栏监控轮询（网络+负载写入 topbar） ==========
 var _dashMonTimer = null;
 
-function _dashboardMonitorStart() {
-  var container = document.getElementById('dashboardMonitor');
-  if (!container) return;
-
-  container.innerHTML =
-    '<div class="resource-ring-card"><div class="resource-ring-title">📊 CPU</div><canvas id="dmRingCpu" class="resource-ring-canvas" width="240" height="240"></canvas></div>' +
-    '<div class="resource-ring-card"><div class="resource-ring-title">🧠 内存</div><canvas id="dmRingMem" class="resource-ring-canvas" width="240" height="240"></canvas></div>' +
-    '<div class="resource-ring-card"><div class="resource-ring-title">🌐 网络</div><canvas id="dmGaugeNet" class="resource-ring-canvas" width="240" height="200"></canvas><div class="resource-gauge-val" id="dmGaugeNetVal">--</div><div class="resource-gauge-sub" id="dmGaugeNetSub"></div></div>' +
-    '<div class="resource-ring-card"><div class="resource-ring-title">⏱️ 负载</div><canvas id="dmGaugeLoad" class="resource-ring-canvas" width="240" height="200"></canvas><div class="resource-gauge-val" id="dmGaugeLoadVal">--</div><div class="resource-gauge-sub" id="dmGaugeLoadSub"></div></div>';
-
-  _dashboardMonitorFetch();
-  if (_dashMonTimer) clearInterval(_dashMonTimer);
-  _dashMonTimer = setInterval(_dashboardMonitorFetch, 5000);
-}
-
-async function _dashboardMonitorFetch() {
+async function _dashMonFetch() {
   try {
     var res = await Api.get('/monitor', null, { showError: false });
     if (!res.success) return;
     var live = res.data.live, hist = res.data.history;
 
+    // CPU
     var cpu = live.cpu || 0;
     var tbCpu = document.getElementById('tbCpu');
     if (tbCpu) tbCpu.textContent = cpu.toFixed(0) + '%';
 
+    // 内存
     var mem = live.memory;
     var tbMem = document.getElementById('tbMem');
     if (tbMem) tbMem.textContent = mem.pct.toFixed(0) + '%';
 
+    // 运行时长
     var tbUptime = document.getElementById('tbUptime');
     if (tbUptime && live.uptime) {
       tbUptime.textContent = formatUptime(live.uptime);
       window._liveUptime = live.uptime;
     }
 
-    // CPU 圆环（值画在环内）
-    _dmDrawRing('dmRingCpu', cpu, '#3b82f6', '#e2e8f0', cpu.toFixed(1) + '%');
-    // 内存圆环
-    _dmDrawRing('dmRingMem', mem.pct, '#a855f7', '#e2e8f0', mem.pct.toFixed(1) + '%');
-    // 网络仪表盘
+    // 网络（topbar 文字展示，MB/s）
     var net = hist.network.length > 0 ? hist.network[hist.network.length - 1] : { rxRate: 0, txRate: 0 };
-    _dmDrawGauge('dmGaugeNet', net.rxRate / 1048576, 100, '', '#22c55e');
-    document.getElementById('dmGaugeNetVal').innerHTML = '<span style="color:#22c55e">⬇ ' + (net.rxRate / 1048576).toFixed(1) + '</span> <span style="color:#f59e0b">⬆ ' + (net.txRate / 1048576).toFixed(1) + '</span> MB/s';
+    var rxMB = (net.rxRate / 1048576).toFixed(1);
+    var txMB = (net.txRate / 1048576).toFixed(1);
+    var tbNetDown = document.getElementById('tbNetDown');
+    var tbNetUp = document.getElementById('tbNetUp');
+    if (tbNetDown) tbNetDown.textContent = rxMB + ' MB/s';
+    if (tbNetUp) tbNetUp.textContent = txMB + ' MB/s';
 
-    // 负载仪表盘
-    var ld = live.load;
-    _dmDrawGauge('dmGaugeLoad', ld[0], Math.max(ld[0] * 2, live.cpus || 4), '', '#ef4444');
-    document.getElementById('dmGaugeLoadVal').textContent = ld[0].toFixed(2);
-    document.getElementById('dmGaugeLoadSub').innerHTML = '5m ' + ld[1].toFixed(2) + ' · 15m ' + ld[2].toFixed(2);
+    // 负载
+    var ld = live.load || [];
+    var tbLoad = document.getElementById('tbLoad');
+    if (tbLoad && ld.length >= 3) tbLoad.textContent = ld[0].toFixed(2) + ' / ' + ld[1].toFixed(2) + ' / ' + ld[2].toFixed(2);
 
   } catch (_) {}
-}
-
-// ========== 圆环进度图 (CPU/内存)，值画在环内 ==========
-function _dmDrawRing(canvasId, pct, color, bgColor, label) {
-  var cv = document.getElementById(canvasId);
-  if (!cv) return;
-  var W = cv.width, H = cv.height;
-  var cx = W / 2, cy = H / 2;
-  var r = Math.min(W, H) / 2 - 20;
-  var ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, W, H);
-
-  // 背景圆环
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = bgColor;
-  ctx.lineWidth = 18;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // 进度弧
-  var angle = Math.min(pct / 100, 1) * Math.PI * 2;
-  if (angle > 0.01) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + angle);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 18;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  }
-
-  // 环内数值
-  if (label) {
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = 'bold 32px -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, cx, cy);
-    // 保存值供 ResizeObserver 重绘
-    cv._lastPct = pct;
-    cv._lastLabel = label;
-  }
-}
-
-// ========== 仪表盘图 (网络/负载) - 上半圆 ==========
-function _dmDrawGauge(canvasId, value, maxVal, unit, color) {
-  var cv = document.getElementById(canvasId);
-  if (!cv) return;
-  var W = cv.width, H = cv.height;
-  var cx = W / 2;
-  var r = Math.min(cx - 12, H - 36);
-  var cy = H - 10;
-  var ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, W, H);
-
-  // 上半圆从左(π)逆时针到右(0) → 上弧
-  var startAngle = Math.PI;
-  var endAngle = 0;
-  var totalAngle = Math.PI;
-
-  // 背景弧
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, startAngle, endAngle, true);
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 14;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // 刻度线
-  var tickCount = 5;
-  for (var i = 0; i <= tickCount; i++) {
-    var a = startAngle - (totalAngle / tickCount) * i;
-    var innerR = r - 6, outerR = r + 12;
-    var x1 = cx + innerR * Math.cos(a), y1 = cy + innerR * Math.sin(a);
-    var x2 = cx + outerR * Math.cos(a), y2 = cy + outerR * Math.sin(a);
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2; ctx.stroke();
-  }
-
-  // 进度弧
-  var ratio = Math.min(value / maxVal, 1);
-  if (ratio > 0.005) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, startAngle, startAngle - totalAngle * ratio, true);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  }
-
-  // 指针
-  var pointerAngle = startAngle - totalAngle * ratio;
-  var pointerLen = r - 12;
-  var px = cx + pointerLen * Math.cos(pointerAngle);
-  var py = cy + pointerLen * Math.sin(pointerAngle);
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(px, py);
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // 中心点
-  ctx.beginPath();
-  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fill();
-
-  // 最小值/最大值标签（弧两端下方）
-  ctx.fillStyle = '#9ca3af'; ctx.font = '12px -apple-system, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('0', cx - r + 8, cy + 18);
-  ctx.fillText(maxVal + (unit || ''), cx + r - 8, cy + 18);
-}
-
-// 当 Canvas 尺寸变化时重新绘制圆环（由 ResizeObserver 调用）
-function _dmRedrawRings() {
-  // 从当前 DOM 值读取重新绘制（值已在 Canvas 中，通过 data 属性存储）
-  var cCv = document.getElementById('dmRingCpu');
-  if (cCv && cCv._lastLabel) _dmDrawRing('dmRingCpu', cCv._lastPct, '#3b82f6', '#e2e8f0', cCv._lastLabel);
-  var mCv = document.getElementById('dmRingMem');
-  if (mCv && mCv._lastLabel) _dmDrawRing('dmRingMem', mCv._lastPct, '#a855f7', '#e2e8f0', mCv._lastLabel);
 }
 

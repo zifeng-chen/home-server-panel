@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const ddnsAliyun = require('../services/ddns-service');
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 const ddnsTencent = require('../services/ddns-tencent');
 
 // 根据 provider 获取对应服务
@@ -61,7 +63,7 @@ router.get('/ip', async (req, res) => {
     const ip = await ddnsAliyun.getPublicIp();
     res.json({ success: true, data: { ip } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -71,7 +73,7 @@ router.get('/ipv6', async (req, res) => {
     const ip = await ddnsAliyun.getPublicIpv6();
     res.json({ success: true, data: { ip } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -141,7 +143,7 @@ router.post('/record/:recordId/toggle', async (req, res) => {
     res.json({ success: true, message: newStatus === 'ENABLE' ? '已启用' : '已停用' });
     _tryNotify('toggle', { domain: record.domain || '', rr: record.rr || '', type: record.recordType || '', value: record.value || '' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -167,7 +169,7 @@ router.put('/record/:recordId', async (req, res) => {
     res.json({ success: true, message: 'DNS 记录已更新' });
     _tryNotify('update', { domain: recordId, rr: rr || '', type: type || '', value: value || '' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -206,7 +208,7 @@ router.delete('/record/:recordId', async (req, res) => {
       _tryNotify('delete', { domain: recordId, rr: '', type: '', value: '' });
     }
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -272,7 +274,7 @@ router.post('/domains', async (req, res) => {
     });
     _tryNotify('create', { domain: name, rr: subdomain || '@', type: recordType || 'A', value: value || (dnsRecord && dnsRecord.Value) || '' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -286,7 +288,7 @@ router.delete('/domains', (req, res) => {
     res.json({ success: true, message: '域名已删除' });
     _tryNotify('delete', { domain: name, rr: subdomain || '@', type: recordType || '', value: '' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 

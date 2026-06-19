@@ -117,10 +117,11 @@ router.post('/config', (req, res) => {
     };
 
     const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, acmeEmail, acmeDns, certExpireDays } = req.body;
-    if (aliKeyId && aliKeyId.indexOf('****') === -1) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
-    if (aliKeySecret && aliKeySecret !== '****') updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
-    if (tencentSecretId && tencentSecretId.indexOf('****') === -1) updater('TENCENT_SECRET_ID', tencentSecretId);
-    if (tencentSecretKey && tencentSecretKey !== '****') updater('TENCENT_SECRET_KEY', tencentSecretKey);
+    // 前端传空字符串 = 用户未修改，保持不变
+    if (aliKeyId) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
+    if (aliKeySecret) updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
+    if (tencentSecretId) updater('TENCENT_SECRET_ID', tencentSecretId);
+    if (tencentSecretKey) updater('TENCENT_SECRET_KEY', tencentSecretKey);
     if (pushplusToken) updater('PUSHPLUS_TOKEN', pushplusToken);
     if (acmeEmail) updater('ACME_EMAIL', acmeEmail);
     if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
@@ -129,8 +130,8 @@ router.post('/config', (req, res) => {
     fs.writeFileSync(dotenvPath, envContent.trim() + '\n', 'utf-8');
 
     // 🔥 同步到 SQLite settings 表
-    if (aliKeyId && aliKeyId.indexOf('****') === -1) sqliteService.setAliyunCredentials(aliKeyId, aliKeySecret);
-    if (tencentSecretId && tencentSecretId.indexOf('****') === -1) sqliteService.setTencentCredentials(tencentSecretId, tencentSecretKey);
+    if (aliKeyId) sqliteService.setAliyunCredentials(aliKeyId, aliKeySecret);
+    if (tencentSecretId) sqliteService.setTencentCredentials(tencentSecretId, tencentSecretKey);
 
     // 🔥 同步到 MySQL settings 表（用于备份恢复）
     const dbService = require('../services/db-service');

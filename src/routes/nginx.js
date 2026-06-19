@@ -2,6 +2,8 @@ const express = require('express');
 const fs = require('fs');
 const router = express.Router();
 const nginxService = require('../services/nginx-service');
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 
 // 推送通知（静默，失败不影响业务）
 function _tryNotify(action) {
@@ -14,7 +16,7 @@ router.get('/', async (req, res) => {
     const status = await nginxService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -24,7 +26,7 @@ router.get('/status', async (req, res) => {
     const status = await nginxService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -84,7 +86,7 @@ router.post('/test', async (req, res) => {
     const result = await nginxService.testConfig();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -171,7 +173,7 @@ router.get('/site-config', async (req, res) => {
     const content = fs.readFileSync(normalized, 'utf8');
     res.json({ success: true, data: { path: fp, content: content } });
   } catch (err) {
-    res.status(500).json({ success: false, message: '读取配置文件失败: ' + err.message });
+    res.status(500).json({ success: false, message: '读取配置文件失败: ' + _safeErr(err) });
   }
 });
 
@@ -208,7 +210,7 @@ router.post('/site-config', async (req, res) => {
     res.json({ success: true, message: '✅ 配置文件已保存', data: { path: fp } });
     _tryNotify('config-update');
   } catch (err) {
-    res.status(500).json({ success: false, message: '保存失败: ' + err.message });
+    res.status(500).json({ success: false, message: '保存失败: ' + _safeErr(err) });
   }
 });
 
@@ -220,7 +222,7 @@ router.get('/logs', async (req, res) => {
     const logs = await nginxService.getLogs(type, lines);
     res.json({ success: true, data: logs });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -229,6 +231,12 @@ router.get('/install/stream', (req, res) => {
   const platform = nginxService.platform;
   const distro = nginxService.distro;
   let { method } = req.query;
+
+  // 安全白名单：只允许已知安装方法
+  const ALLOWED_METHODS = ['brew', 'apt', 'yum', 'apk', 'opkg'];
+  if (method && !ALLOWED_METHODS.includes(method)) {
+    return res.status(400).json({ success: false, message: '不支持的安装方式' });
+  }
 
   // 平台/发行版默认安装方式
   if (!method) {
@@ -312,7 +320,7 @@ router.get('/install/stream', (req, res) => {
   });
 
   child.on('error', (err) => {
-    send('error', { message: err.message });
+    send('error', { message: _safeErr(err) });
     res.end();
   });
 
@@ -350,7 +358,7 @@ router.post('/install', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -363,7 +371,7 @@ router.post('/manual-deploy', async (req, res) => {
     var result = await nginxService.manualDeploy({ name, domain, target, websocket: !!websocket });
     res.json(result);
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

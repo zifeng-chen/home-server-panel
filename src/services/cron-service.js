@@ -106,9 +106,9 @@ class CronService {
   /** 执行自定义 shell 脚本，最长 60 秒超时 */
   _execScript(script) {
     return new Promise((resolve) => {
-      // 安全检查：禁止危险命令（白名单 + 黑名单双重拦截）
+      // 安全检查：禁止危险命令（黑名单拦截）
       if (script.length > 1000) return resolve("安全拦截：脚本过长");
-      const dangerous = /(?:rm\s+(-rf?|--recursive)\s*\/|mkfs|dd\s+if=.*of=\/dev|>\s*\/dev\/sd|chmod\s+(-R|777)\s*\/|:\s*\(\)\s*\{\s*:|kill\s+-9\s+1|mv\s+\/.*\/dev\/null|curl.*\|\s*(ba)?sh|wget.*-O\s*-\s*\|\s*(ba)?sh)/;
+      const dangerous = /(?:rm\s+(-rf?|--recursive)\s*\/|mkfs|dd\s+if=.*of=\/dev|>\s*\/dev\/sd|chmod\s+(-R|777)\s*\/|:\s*\(\)\s*\{\s*:|kill\s+-9\s+1|mv\s+\/.*\/dev\/null|curl.*\|\s*(ba)?sh|wget.*-O\s*-\s*\|\s*(ba)?sh|shutdown\b|reboot\b|halt\b|poweroff\b|iptables\s+-[A-Z]|nc\s+-[nl]|ncat\s+-[nl]|socat\s|telnet\s|passwd\b|chown\s+\/|chgrp\s+\/|mount\s.*\/dev\/|umount\s+\/)/;
       if (dangerous.test(script)) {
         return resolve("安全拦截：脚本包含危险操作");
       }

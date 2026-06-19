@@ -1,4 +1,14 @@
-# v0.7.4-beta (2026-06-18)
+# v0.7.5-beta (2026-06-19)
+
+### 安全修复 (全面安全审计)
+- **Critical: `/api/setup/reset` bcrypt 兼容** — 首次登录后 `.env` 密码被哈希，reset 端点改为 bcrypt.compare 验证（兼容明文+哈希双模式）
+- **Critical: SSH 密码 AES 加密** — 新增 `encryptSSHPassword`/`decryptSSHPassword`，AES-256-GCM 加密存储密码，密钥派生自 TOKEN_SECRET；读取时自动解密，兼容旧明文数据
+- **High: Nginx 安装 method 白名单** — 限制为 `brew|apt|yum|apk|opkg`，禁止任意命令注入
+- **High: 错误消息脱敏** — 7 个路由文件(cert/nginx/ssh/proxy/ddns/port/setup)新增 `_safeErr()` 工具函数，正则替换文件路径为 `[PATH]`、IP 为 `[IP]`
+- **High: Cron 命令黑名单增强** — 新增拦截 `shutdown/reboot/halt/poweroff/iptables/nc/ncat/socat/telnet/passwd/chown/chgrp/mount/umount`
+- **Medium: SSE 端点改用非流式 POST** — Ssl.vue 证书申请改用 `POST /api/cert/issue`、Pm2.vue 安装改用 `POST /api/pm2/install`，解决 EventSource 无法携带 auth header 问题
+- **Medium: Settings 掩码绕过修复** — 密钥字段不再预填掩码值，空值=保持不变；后端移除 `indexOf('****')` 校验，统一为空值判断
+- **Low: Dashboard Canvas 暗色模式** — 圆环中心文字颜色改用 `getComputedStyle(c).color`，兼容亮/暗双主题
 
 ### 修复
 - **SSL 证书不生效** — 根因: 证书选择器的 `<option>` 缺少 `data-cert`/`data-key` 属性，前端读取 `dataset.cert` 永远为 null

@@ -3,6 +3,8 @@ const router = express.Router();
 const proxyService = require('../services/proxy-service');
 const nginxService = require('../services/nginx-service');
 const sslService = require('../services/ssl-service');
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 
 // 推送通知（静默，失败不影响业务）
 function _tryNotify(action, rule) {
@@ -38,7 +40,7 @@ router.get('/', (req, res) => {
     const stats = proxyService.getStats();
     res.json({ success: true, data: { rules, stats } });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -72,7 +74,7 @@ router.post('/', async (req, res) => {
     res.json({ success: true, message: deployResult.success ? '代理规则已添加并部署' : '规则已保存，但部署失败: ' + deployResult.message, data: { rule } });
     _tryNotify('create', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -85,7 +87,7 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, message: deployResult.success ? '代理规则已更新并部署' : '规则已更新，但部署失败: ' + deployResult.message, data: { rule } });
     _tryNotify('update', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -99,7 +101,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, message: deployResult.success ? '代理规则已删除并部署' : '规则已删除，但部署失败: ' + deployResult.message });
     _tryNotify('delete', { sourceHost: req.params.id, targetHost: '' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -112,7 +114,7 @@ router.post('/:id/toggle', async (req, res) => {
     res.json({ success: true, message: deployResult.success ? (rule.enabled ? '已启用并部署' : '已停用并部署') : '状态已切换，但部署失败: ' + deployResult.message, data: { rule } });
     _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -122,7 +124,7 @@ router.get('/config/preview', (req, res) => {
     const config = proxyService.generateAllConfig();
     res.json({ success: true, data: { config } });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -134,7 +136,7 @@ router.get('/config/preview/:id', (req, res) => {
     const config = proxyService.generateNginxConfig(rule);
     res.json({ success: true, data: { config } });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -146,7 +148,7 @@ router.post('/config/export', (req, res) => {
     const result = proxyService.exportToFile(dest);
     res.json({ success: true, message: `配置已导出到 ${result.path} (${result.rules} 条规则)`, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: '导出失败: ' + err.message });
+    res.status(500).json({success: false, message: '导出失败: ' + _safeErr(err) });
   }
 });
 

@@ -1,6 +1,8 @@
 // 引导安装路由（无需认证）
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 const setupService = require('../services/setup-service');
 const fs = require('fs');
 const path = require('path');
@@ -64,11 +66,23 @@ router.post('/install', async (req, res) => {
 module.exports = router;
 
 // POST /api/setup/reset - 清除所有数据，重装系统（需验证管理员密码）
-router.post('/reset', (req, res) => {
-  // 安全：必须验证当前管理员密码
+router.post('/reset', async (req, res) => {
+  // 安全：必须验证当前管理员密码（支持 bcrypt 哈希 + 明文双模式）
   const currentPass = process.env.ADMIN_PASS || 'admin123';
   const { password } = req.body;
-  if (!password || password !== currentPass) {
+  if (!password) {
+    return res.status(403).json({ success: false, message: '请输入管理员密码' });
+  }
+
+  const isBcrypt = currentPass.startsWith('$2a$') || currentPass.startsWith('$2b$');
+  let matched = false;
+  if (isBcrypt) {
+    const bcrypt = require('bcryptjs');
+    matched = await bcrypt.compare(password, currentPass);
+  } else {
+    matched = (password === currentPass);
+  }
+  if (!matched) {
     return res.status(403).json({ success: false, message: '管理员密码验证失败' });
   }
 

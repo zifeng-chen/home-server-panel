@@ -44,4 +44,9 @@ for (const p of pages) {
   console.log(`  pages/${p}.min.js  ${(result.code.length/1024).toFixed(1)} KB`);
 }
 
+// ── 更新 public/index.html 中所有 cache-busting v= 参数 ──
+let indexHtml = readFileSync('public/index.html', 'utf8');
+indexHtml = indexHtml.replace(/\.(js|css|min\.js)\?v=[a-z0-9]+/g, '.$1?v=' + BUILD_ID);
+writeFileSync('public/index.html', indexHtml);
+
 console.log(`\n✅ HSP v${PKG.version} bundle done (${BUILD_ID})`);

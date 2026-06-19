@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>家庭服务器管理面板</title>
-  <link rel="stylesheet" href="/css/style.css?v=mqg8dudy">
+  <link rel="stylesheet" href="/css/style.css?v=mqkmvon3">
 </head>
 <body>
   <!-- 诊断栏：右上角极小入口，默认隐藏 -->
@@ -93,6 +93,9 @@
         <div class="topbar-left">
           <span class="topbar-metric"><span class="topbar-metric-label">CPU</span><span id="tbCpu">--%</span></span>
           <span class="topbar-metric"><span class="topbar-metric-label">内存</span><span id="tbMem">--%</span></span>
+          <span class="topbar-metric"><span class="topbar-metric-label">网络↓</span><span id="tbNetDown">--</span></span>
+          <span class="topbar-metric"><span class="topbar-metric-label">网络↑</span><span id="tbNetUp">--</span></span>
+          <span class="topbar-metric"><span class="topbar-metric-label">负载</span><span id="tbLoad">--</span></span>
           <span class="topbar-metric"><span class="topbar-metric-label">运行</span><span id="tbUptime">--</span></span>
         </div>
         <div class="topbar-right">
@@ -133,7 +136,7 @@
                 <div class="skeleton skeleton-text" style="width:75%"></div>
               </div>
             </div>
-            <!-- 下方全宽：服务概览 + 资源使用 -->
+            <!-- 下方全宽：服务概览 -->
             <div class="dash-panel dash-services dash-services-full">
               <div class="dash-panel-hd">🟢 服务概览</div>
               <div id="dbFallbackWarning" style="display:none"></div>
@@ -144,9 +147,6 @@
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
                 <div class="service-card skeleton-card"><div class="skeleton skeleton-icon"></div><div class="skeleton-lines"><div class="skeleton skeleton-text"></div></div></div>
-              </div>
-              <div class="resource-ring-grid" id="dashboardMonitor">
-                <div class="skeleton-card" style="min-height:120px"><div class="skeleton skeleton-icon"></div></div>
               </div>
             </div>
           </div>
@@ -535,6 +535,6 @@
 
   <div class="notify-bar hidden" id="notifyBar"></div>
 
-  <script defer src="/js/bundle.js?v=mqg8dudy"></script>
+  <script defer src="/js/bundle.js?v=mqkmvon3"></script>
 </body>
 </html>

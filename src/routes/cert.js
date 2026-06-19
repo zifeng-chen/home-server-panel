@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const sslService = require('../services/ssl-service');
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 
 // 推送通知（静默，失败不影响业务）
 function _tryNotify(action, domain, details) {
@@ -13,7 +15,7 @@ router.get('/acme', async (req, res) => {
     const status = await sslService.checkAcme();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -26,7 +28,7 @@ router.post('/acme/install', async (req, res) => {
     const result = await sslService.installAcme(email);
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: '安装失败: ' + err.message });
+    res.status(500).json({success: false, message: '安装失败: ' + _safeErr(err) });
   }
 });
 
@@ -50,7 +52,7 @@ router.get('/acme/install/stream', async (req, res) => {
     const result = await sslService.installAcmeSSE(email, (type, data) => send(type, data));
     send('done', { message: result.message || 'acme.sh 安装完成' });
   } catch (err) {
-    send('error', { message: err.message });
+    send('error', { message: _safeErr(err) });
   }
   res.end();
 });
@@ -61,7 +63,7 @@ router.post('/acme/uninstall', async (req, res) => {
     const result = await sslService.uninstallAcme();
     res.json({ success: true, message: result.message, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: '卸载失败: ' + err.message });
+    res.status(500).json({success: false, message: '卸载失败: ' + _safeErr(err) });
   }
 });
 
@@ -85,7 +87,7 @@ router.post('/issue', async (req, res) => {
     res.json({ success: true, message: `证书申请成功: ${domain}`, data: result });
     _tryNotify('issue', domain, wildcard ? '通配符证书' : '');
   } catch (err) {
-    res.status(500).json({success: false, message: '证书申请失败: ' + err.message });
+    res.status(500).json({success: false, message: '证书申请失败: ' + _safeErr(err) });
   }
 });
 
@@ -122,7 +124,7 @@ router.get('/issue/stream', async (req, res) => {
       send('error', { message: result.message || '证书申请失败' });
     }
   } catch (err) {
-    send('error', { message: err.message });
+    send('error', { message: _safeErr(err) });
   }
   res.end();
 });
@@ -139,7 +141,7 @@ router.post('/renew', async (req, res) => {
     res.json({ success: true, message: `${action}: ${domain} → ${status}`, data: result });
     if (!result.skipped) _tryNotify('renew', domain, force ? '强制续期' : '自动续期');
   } catch (err) {
-    res.status(500).json({success: false, message: '证书续期失败: ' + err.message });
+    res.status(500).json({success: false, message: '证书续期失败: ' + _safeErr(err) });
   }
 });
 
@@ -150,7 +152,7 @@ router.post('/renew-all', async (req, res) => {
     res.json({ success: true, message: '批量续期完成', data: result });
     _tryNotify('renew', (result.domains || []).join(', ') || '全部', '批量续期');
   } catch (err) {
-    res.status(500).json({success: false, message: '批量续期失败: ' + err.message });
+    res.status(500).json({success: false, message: '批量续期失败: ' + _safeErr(err) });
   }
 });
 
@@ -166,7 +168,7 @@ router.post('/deploy', async (req, res) => {
     res.json({ success: true, message: result.message, data: result });
     _tryNotify('deploy', domain);
   } catch (err) {
-    res.status(500).json({success: false, message: '部署失败: ' + err.message });
+    res.status(500).json({success: false, message: '部署失败: ' + _safeErr(err) });
   }
 });
 
@@ -350,7 +352,7 @@ SSLCertificateChainFile /etc/ssl/certs/${chainName}
       res.send(data);
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: '导出失败: ' + err.message });
+    res.status(500).json({ success: false, message: '导出失败: ' + _safeErr(err) });
   }
 });
 

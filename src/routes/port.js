@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const portService = require('../services/port-service');
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 
 // GET /api/port - 端口列表
 router.get('/', async (req, res) => {
@@ -34,7 +36,7 @@ router.get('/check/:port', async (req, res) => {
     const result = await portService.checkPort(port);
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

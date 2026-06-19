@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const sshService = require('../services/ssh-service');
+// 安全：脱敏错误消息中的文件路径和IP地址
+const _safeErr = (e) => (e.message || '').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]').replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[IP]');
 const sqliteService = require('../services/sqlite-service');
 const dbService = require('../services/db-service');
 
@@ -15,7 +17,7 @@ router.get('/config', (req, res) => {
     const safe = configs.map(c => ({ ...c, password: c.password ? '••••••' : '' }));
     res.json({ success: true, data: safe });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -26,7 +28,7 @@ router.get('/config/:id', (req, res) => {
     if (!config) return res.status(404).json({ success: false, message: '配置不存在' });
     res.json({ success: true, data: config });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -39,7 +41,7 @@ router.post('/config', (req, res) => {
     }
     res.json({ success: true, data: cfg });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -52,7 +54,7 @@ router.put('/config/:id', (req, res) => {
     }
     res.json({ success: true, data: cfg });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -65,7 +67,7 @@ router.delete('/config/:id', (req, res) => {
     }
     res.json({ success: true, message: '已删除' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -86,7 +88,7 @@ router.post('/connect', (req, res) => {
     const sessionId = sshService.connect(opts);
     res.json({ success: true, data: { sessionId, host: opts.host, user: opts.username } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -101,7 +103,7 @@ router.get('/sessions', (req, res) => {
     }
     res.json({ success: true, data: sessions });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 
@@ -111,7 +113,7 @@ router.post('/disconnect/:sessionId', (req, res) => {
     sshService.disconnect(req.params.sessionId);
     res.json({ success: true, message: '已断开' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 

@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const notifyService = require('../services/notify-service');
 const ddnsService = require('../services/ddns-service');
 const sslService = require('../services/ssl-service');
@@ -10,7 +13,7 @@ router.get('/', async (req, res) => {
     const status = await notifyService.getStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -20,7 +23,7 @@ router.post('/test', async (req, res) => {
     const result = await notifyService.test();
     res.json({ success: result.success !== false, message: result.message || '测试推送已发送' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -34,7 +37,7 @@ router.post('/ddns', async (req, res) => {
     const result = await notifyService.notifyDdnsChange(records);
     res.json({ success: result.success !== false, message: 'DDNS 变更通知已发送' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -52,7 +55,7 @@ router.post('/ssl', async (req, res) => {
     const result = await notifyService.notifySslExpire(cert);
     res.json({ success: result.success !== false, message: 'SSL 到期通知已发送' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -65,7 +68,7 @@ router.post('/service', async (req, res) => {
     const result = await notifyService.notifyServiceDown(service, error);
     res.json({ success: result.success !== false, message: '服务异常通知已发送' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -96,7 +99,7 @@ router.put('/config', (req, res) => {
 
     res.json({ success: true, message: 'PushPlus Token 已更新' });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

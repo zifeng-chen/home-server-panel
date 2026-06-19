@@ -1,6 +1,9 @@
 // PM2 进程管理路由
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const pm2Service = require('../services/pm2-service');
 
 // PM2 状态检测（安装/守护进程）
@@ -114,7 +117,7 @@ router.get('/install/stream', (req, res) => {
   });
 
   child.on('error', (err) => {
-    send('error', { message: '安装进程错误: ' + err.message });
+    send('error', { message: '安装进程错误: ' + _safeErr(err) });
     res.end();
   });
 
@@ -188,7 +191,7 @@ router.get('/uninstall/stream', (req, res) => {
   });
 
   child.on('error', (err) => {
-    send('error', { message: '卸载进程错误: ' + err.message });
+    send('error', { message: '卸载进程错误: ' + _safeErr(err) });
     res.end();
   });
 

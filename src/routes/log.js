@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const logService = require('../services/log-service');
 
 // GET /api/log - 查询日志
@@ -15,7 +18,7 @@ router.get('/', async (req, res) => {
     });
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -73,7 +76,7 @@ router.get('/export', async (req, res) => {
       });
     }
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -83,7 +86,7 @@ router.delete('/', (req, res) => {
     const result = logService.clear();
     res.json(result);
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

@@ -1,6 +1,9 @@
 const express = require('express');
 const os = require('os');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 
 // 推送通知（静默，失败不影响业务）
 function _tryNotify(action) {
@@ -164,7 +167,7 @@ router.post('/config', (req, res) => {
     res.json({ success: true, message: '配置已保存并立即生效' });
     _tryNotify('config');
   } catch (err) {
-    res.status(500).json({success: false, message: '保存失败: ' + err.message });
+    res.status(500).json({success: false, message: '保存失败: ' + _safeErr(err) });
   }
 });
 

@@ -1,6 +1,9 @@
 // 进程聚合路由
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const processService = require('../services/process-service');
 const pm2Service = require('../services/pm2-service');
 
@@ -10,7 +13,7 @@ router.get('/', async (req, res) => {
     const data = await processService.listAll();
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: _safeErr(err) });
   }
 });
 

@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const auth = require('../services/auth');
 
 // POST /api/auth/login - 登录

@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const dbService = require('../services/db-service');
 const sqliteService = require('../services/sqlite-service');
 
@@ -9,7 +12,7 @@ router.post('/test', async (req, res) => {
     const result = await dbService.testConnection(req.body);
     res.json(result);
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -19,7 +22,7 @@ router.post('/connect', async (req, res) => {
     const result = await dbService.initMySQL(req.body);
     res.json(result);
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -34,7 +37,7 @@ router.post('/migrate', async (req, res) => {
     const result = await dbService.migrateFromLocal();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -44,7 +47,7 @@ router.get('/migration-status', async (req, res) => {
     const status = await dbService.getMigrationStatus();
     res.json({ success: true, data: status });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -54,7 +57,7 @@ router.post('/disconnect', async (req, res) => {
     const result = await dbService.close();
     res.json(result);
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -64,7 +67,7 @@ router.get('/check', async (req, res) => {
     const result = await dbService.checkIntegrity();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -74,7 +77,7 @@ router.post('/sync', async (req, res) => {
     const result = await dbService.syncFromSQLite();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -94,7 +97,7 @@ router.get('/export', (req, res) => {
       res.send(data);
     });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -138,7 +141,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     }
   } catch (err) {
     if (req.file) { try { require('fs').unlinkSync(req.file.path); } catch(e){} }
-    res.json({ success: false, message: '导入失败: ' + err.message });
+    res.json({ success: false, message: '导入失败: ' + _safeErr(err) });
   }
 });
 
@@ -148,7 +151,7 @@ router.post('/migrate-to-sqlite', (req, res) => {
     const result = sqliteService.migrateFromJson();
     res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -168,7 +171,7 @@ router.get('/info', (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

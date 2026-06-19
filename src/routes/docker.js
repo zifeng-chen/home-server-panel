@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+// 安全：脱敏错误消息中的文件路径
+const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
+
 const docker = require('../services/docker-service');
 
 // GET /api/docker - Docker 概览
@@ -23,7 +26,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -33,7 +36,7 @@ router.get('/info', async (req, res) => {
     const info = await docker.getInfo();
     res.json({ success: true, data: info });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -43,7 +46,7 @@ router.get('/containers', async (req, res) => {
     const containers = await docker.listContainers(req.query.all !== 'false');
     res.json({ success: true, data: containers });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -55,7 +58,7 @@ router.get('/containers/:id', async (req, res) => {
     const stats = container.state === 'running' ? await docker.getStats(container.fullId) : null;
     res.json({ success: true, data: { container, stats } });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -66,7 +69,7 @@ router.get('/containers/:id', async (req, res) => {
       const result = await docker.containerAction(req.params.id, action);
       res.json({ success: true, ...result });
     } catch (err) {
-      res.status(500).json({success: false, message: err.message });
+      res.status(500).json({success: false, message: _safeErr(err) });
     }
   });
 });
@@ -78,7 +81,7 @@ router.delete('/containers/:id', async (req, res) => {
     var result = await docker.removeContainer(req.params.id, force);
     res.json({ success: true, ...result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -88,7 +91,7 @@ router.post('/containers/:id/update', async (req, res) => {
     var result = await docker.updateContainer(req.params.id);
     res.json({ success: true, ...result });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -98,7 +101,7 @@ router.get('/containers/:id/logs', async (req, res) => {
     const logs = await docker.getLogs(req.params.id, parseInt(req.query.lines) || 100);
     res.json({ success: true, data: logs });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -113,7 +116,7 @@ router.get('/stats', async (req, res) => {
     const stats = await docker.getAllStats();
     res.json({ success: true, data: stats });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 
@@ -123,7 +126,7 @@ router.get('/images', async (req, res) => {
     const images = await docker.listImages();
     res.json({ success: true, data: images });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message });
+    res.status(500).json({success: false, message: _safeErr(err) });
   }
 });
 

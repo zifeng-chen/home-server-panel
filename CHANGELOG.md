@@ -1,4 +1,13 @@
-# v0.7.5-beta (2026-06-19)
+# v0.8.0-beta (2026-06-19)
+
+### 安全修复 (全量路由审计 + 残余修复)
+- **全路由错误脱敏** — 全部 16 个路由文件统一 `_safeErr()` 替换 `err.message`，零路径/IP 泄露
+- **Proxy 导出路径穿越** — `POST /config/export` filePath 参数沙箱化为 `/tmp` + `/opt/home-server-panel/data` 白名单，拒绝路径穿越
+- **Proxy 清理死代码** — 移除废弃的 500ms 防抖部署函数（已改为立即 await 部署）
+- **Port 启动命令预填** — `doStart()` 自动填入选中端口进程名，替代空输入框
+- **Canvas 暗色模式适配** — 资源圆环背景色自适应 `rgba(255,255,255,0.08)` (暗色) / `rgba(0,0,0,0.06)` (亮色)
+- **CSRF**: sameSite=strict Cookie 已充分防御现代浏览器 CSRF
+- **云凭证**: 已知设计限制（需架构改造引入密钥保险箱）
 
 ### 安全修复 (全面安全审计)
 - **Critical: `/api/setup/reset` bcrypt 兼容** — 首次登录后 `.env` 密码被哈希，reset 端点改为 bcrypt.compare 验证（兼容明文+哈希双模式）

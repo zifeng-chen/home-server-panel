@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
     const data = await sslService.listCertificates();
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message, data: { certificates: [], acmeInstalled: false } });
+    res.status(500).json({success: false, message: _safeErr(err), data: { certificates: [], acmeInstalled: false } });
   }
 });
 

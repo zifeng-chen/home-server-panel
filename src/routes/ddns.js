@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, data: { records, publicIpv4, publicIpv6 } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message, data: { records: [], publicIpv4: null, publicIpv6: null } });
+    res.status(500).json({ success: false, message: _safeErr(err), data: { records: [], publicIpv4: null, publicIpv6: null } });
   }
 });
 
@@ -113,7 +113,7 @@ router.post('/refresh', async (req, res) => {
       data: { results: allResults, errors }
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'DDNS 刷新失败: ' + err.message });
+    res.status(500).json({ success: false, message: 'DDNS 刷新失败: ' + _safeErr(err) });
   }
 });
 

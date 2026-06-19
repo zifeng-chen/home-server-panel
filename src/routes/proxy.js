@@ -11,28 +11,6 @@ function _tryNotify(action, rule) {
   try { require('../services/notify-service').notifyProxyAction(action, rule).catch(() => {}); } catch (_) {}
 }
 
-// 防抖部署：500ms 内的多次操作合并为一次 deploy
-let _deployTimer = null;
-let _deployPending = false;
-
-function _scheduleDeploy() {
-  if (_deployPending) return; // 已有待执行部署
-  if (!_deployTimer) {
-    _deployTimer = setTimeout(async () => {
-      _deployTimer = null;
-      _deployPending = false;
-      try {
-        const config = proxyService.generateAllConfig();
-        const result = await nginxService.deployProxyConfig(config);
-        console.log('[Proxy] 防抖部署结果:', result.success ? '成功' : result.message);
-      } catch (err) {
-        console.warn('[Proxy] 防抖部署异常:', err.message);
-      }
-    }, 500);
-    _deployPending = true;
-  }
-}
-
 // GET /api/proxy - 代理规则列表
 router.get('/', (req, res) => {
   try {
@@ -144,8 +122,15 @@ router.get('/config/preview/:id', (req, res) => {
 router.post('/config/export', (req, res) => {
   try {
     const { filePath } = req.body;
-    const dest = filePath || '/tmp/proxy-nginx.conf';
-    const result = proxyService.exportToFile(dest);
+    // 安全：只允许写入 /tmp 或项目 data 目录，防止路径穿越
+    const allowedDirs = ['/tmp', '/opt/home-server-panel/data'];
+    const rawPath = filePath || '/tmp/proxy-nginx.conf';
+    const resolved = require('path').resolve(rawPath);
+    const isSafe = allowedDirs.some(d => resolved.startsWith(d));
+    if (!isSafe) {
+      return res.status(400).json({ success: false, message: '不允许写入该路径' });
+    }
+    const result = proxyService.exportToFile(resolved);
     res.json({ success: true, message: `配置已导出到 ${result.path} (${result.rules} 条规则)`, data: result });
   } catch (err) {
     res.status(500).json({success: false, message: '导出失败: ' + _safeErr(err) });
@@ -186,7 +171,7 @@ router.get('/cert-match', async (req, res) => {
 
     res.json({ success: true, data: { certificates: sorted, total: sorted.length } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message, data: { certificates: [] } });
+    res.status(500).json({ success: false, message: _safeErr(err), data: { certificates: [] } });
   }
 });
 

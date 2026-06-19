@@ -123,7 +123,7 @@ function drawRings() {
     ctx.beginPath()
     ctx.arc(cx, cy, rOuter, 0, Math.PI * 2)
     ctx.arc(cx, cy, rInner, Math.PI * 2, 0, true)
-    ctx.fillStyle = 'rgba(0,0,0,0.06)'
+    const isDark = document.documentElement.classList.contains('dark'); ctx.fillStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
     ctx.fill()
     // value ring
     const pct = Math.min(r.getVal(), 100) / 100

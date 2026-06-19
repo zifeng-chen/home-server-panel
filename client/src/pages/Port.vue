@@ -98,8 +98,8 @@ async function doKill(row: any) {
   } catch { /* cancel */ }
 }
 
-function doStart(_row: any) {
-  startCommand.value = ''
+function doStart(row: any) {
+  startCommand.value = row.process || ''
   startVisible.value = true
 }
 async function doExecStart() {

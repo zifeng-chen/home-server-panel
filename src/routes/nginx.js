@@ -43,7 +43,7 @@ router.post('/start', async (req, res) => {
     res.json(result);
     if (result.success) _tryNotify('start');
   } catch (err) {
-    res.status(500).json({success: false, message: '启动失败: ' + err.message });
+    res.status(500).json({success: false, message: '启动失败: ' + _safeErr(err) });
   }
 });
 
@@ -54,7 +54,7 @@ router.post('/stop', async (req, res) => {
     res.json(result);
     if (result.success) _tryNotify('stop');
   } catch (err) {
-    res.status(500).json({success: false, message: '停止失败: ' + err.message });
+    res.status(500).json({success: false, message: '停止失败: ' + _safeErr(err) });
   }
 });
 
@@ -65,7 +65,7 @@ router.post('/reload', async (req, res) => {
     res.json(result);
     if (result.success) _tryNotify('reload');
   } catch (err) {
-    res.status(500).json({success: false, message: '重载失败: ' + err.message });
+    res.status(500).json({success: false, message: '重载失败: ' + _safeErr(err) });
   }
 });
 
@@ -76,7 +76,7 @@ router.post('/restart', async (req, res) => {
     res.json(result);
     if (result.success) _tryNotify('restart');
   } catch (err) {
-    res.status(500).json({success: false, message: '重启失败: ' + err.message });
+    res.status(500).json({success: false, message: '重启失败: ' + _safeErr(err) });
   }
 });
 
@@ -113,7 +113,7 @@ router.get('/sites', async (req, res) => {
     });
     res.json({ success: true, data: { sites: sites } });
   } catch (err) {
-    res.status(500).json({success: false, message: err.message, data: { sites: [] } });
+    res.status(500).json({success: false, message: _safeErr(err), data: { sites: [] } });
   }
 });
 
@@ -147,7 +147,7 @@ router.delete('/sites/:name', async (req, res) => {
     var delResult = await nginxService.deleteSite(site.filePath);
     res.json({ success: true, message: '✅ 站点已删除' + (proxyRuleId ? '，已同步删除关联代理规则' : ''), data: { name: name, path: delResult.path, proxyRuleId: proxyRuleId } });
   } catch (err) {
-    res.status(500).json({ success: false, message: '删除失败: ' + err.message });
+    res.status(500).json({ success: false, message: '删除失败: ' + _safeErr(err) });
   }
 });
 

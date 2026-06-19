@@ -100,7 +100,7 @@ app.use((req, res, next) => {
   // CSP: 允许本站 + xterm CDN + 内联样式(骨架屏/全局CSS)
   res.setHeader('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
     "img-src 'self' data:; " +
     "font-src 'self' https://cdn.jsdelivr.net; " +

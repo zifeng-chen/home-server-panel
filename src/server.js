@@ -202,10 +202,14 @@ app.use(auth.middleware());
 app.use(logService.middleware());
 
 // 缓存爆破中间件：拦截 index.html 请求，注入 BUILD_ID
+// 优先使用 Vue 构建产物，回退到旧版 public
 app.use((req, res, next) => {
   if (req.path === '/' || req.path === '/index.html') {
     const fs = require('fs');
-    const filePath = path.join(__dirname, '..', 'public', 'index.html');
+    // 优先从 client/dist (Vue build) 读取，回退到旧 public/
+    const vueIdx = path.join(__dirname, '..', 'client', 'dist', 'index.html');
+    const legacyIdx = path.join(__dirname, '..', 'public', 'index.html');
+    const filePath = (fs.existsSync(vueIdx) ? vueIdx : legacyIdx);
     try {
       let html = fs.readFileSync(filePath, 'utf-8');
       html = html.replace(/\{BUILD_ID\}/g, BUILD_ID);

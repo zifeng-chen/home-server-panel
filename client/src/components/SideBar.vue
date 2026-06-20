@@ -1,15 +1,30 @@
 <template>
   <aside class="sidebar">
-    <div class="logo">🖥</div>
+    <div class="logo-area">
+      <div class="logo-icon">
+        <svg viewBox="0 0 40 40" width="36" height="36" fill="none">
+          <rect x="3" y="3" width="34" height="34" rx="8" stroke-width="1.5" stroke="currentColor" opacity="0.6" />
+          <rect x="8" y="10" width="10" height="3" rx="1" fill="currentColor" opacity="0.5" />
+          <rect x="8" y="16" width="14" height="3" rx="1" fill="currentColor" opacity="0.35" />
+          <rect x="8" y="22" width="7" height="3" rx="1" fill="currentColor" opacity="0.25" />
+          <circle cx="30" cy="22" r="8" fill="currentColor" opacity="0.12" />
+          <circle cx="30" cy="22" r="3" fill="currentColor" opacity="0.55" />
+        </svg>
+      </div>
+      <span class="logo-text">HSP</span>
+    </div>
     <nav class="nav">
       <router-link v-for="item in navItems" :key="item.path" :to="item.path"
         class="nav-item" :class="{ active: $route.path === item.path || (item.path !== '/' && $route.path.startsWith(item.path)) }">
-        <el-icon :size="20"><component :is="item.icon" /></el-icon>
+        <div class="nav-icon-wrap">
+          <el-icon :size="18"><component :is="item.icon" /></el-icon>
+        </div>
         <span class="nav-label">{{ item.label }}</span>
+        <div v-if="$route.path === item.path || (item.path !== '/' && $route.path.startsWith(item.path))" class="active-dot" />
       </router-link>
     </nav>
     <div class="sidebar-footer">
-      <span class="version">v{{ version }}</span>
+      <div class="version-badge">v{{ version }}</div>
     </div>
   </aside>
 </template>
@@ -21,6 +36,7 @@ import {
   Odometer, Connection, Key, Coin, Switch,
   Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
+
 const { t } = useI18n()
 const version = '0.8.1'
 
@@ -48,35 +64,112 @@ const navItems = computed(() => [
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 16px 12px;
+  padding: 16px 10px;
   flex-shrink: 0;
+  position: relative;
 }
-.logo {
-  font-size: 28px;
-  text-align: center;
-  padding: 8px 0 20px;
-}
-.nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.nav-item {
+
+/* Logo */
+.logo-area {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px 20px;
+}
+.logo-icon {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+}
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+/* Nav */
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   transition: all var(--dur-fast) var(--ease-out);
+  overflow: hidden;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 .nav-item:hover {
-  background: var(--border-color);
   color: var(--text-primary);
+  background: var(--border-color);
 }
+.nav-item:hover::before { opacity: 1; }
 .nav-item.active {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--accent);
 }
+.nav-item.active::before { opacity: 0; }
+.nav-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.nav-item.active .nav-icon-wrap {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
 .nav-label { white-space: nowrap; }
-.sidebar-footer { padding: 12px 12px 4px; }
-.version { font-size: 11px; color: var(--text-tertiary); }
+
+/* Active dot indicator */
+.active-dot {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+  animation: dotIn 0.3s var(--ease-spring);
+}
+@keyframes dotIn {
+  from { height: 0; opacity: 0; }
+  to   { height: 20px; opacity: 1; }
+}
+
+/* Footer */
+.sidebar-footer {
+  padding: 12px 10px 4px;
+}
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  letter-spacing: 0.3px;
+}
 </style>

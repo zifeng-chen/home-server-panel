@@ -251,6 +251,20 @@ class Pm2Service {
     }
   }
 
+  // 添加并启动新进程
+  addProcess(name, script, cwd, args) {
+    try {
+      const parts = [`start '${script}'`, `--name '${name}'`];
+      if (cwd) parts.push(`--cwd '${cwd}'`);
+      if (args) parts.push('-- ' + args);
+      const cmd = parts.join(' ');
+      this._pm2(cmd + ' 2>&1', { timeout: 15000 });
+      return { success: true, message: `进程 ${name} 已添加并启动` };
+    } catch (err) {
+      return { success: false, message: '添加失败: ' + (err.stderr || err.message).slice(-200) };
+    }
+  }
+
   _mapProcess(p) {
     return {
       id: p.pm_id,

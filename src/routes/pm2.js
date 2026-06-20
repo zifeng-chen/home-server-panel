@@ -55,6 +55,15 @@ router.post('/save', (req, res) => {
   res.json(pm2Service.save());
 });
 
+// POST /api/pm2/add - 添加并启动新进程
+router.post('/add', (req, res) => {
+  const { name, script, cwd, args } = req.body;
+  if (!name || !script) {
+    return res.status(400).json({ success: false, message: '进程名和启动脚本不能为空' });
+  }
+  res.json(pm2Service.addProcess(name, script, cwd, args));
+});
+
 // 安装 PM2
 router.post('/install', (req, res) => {
   res.json(pm2Service.install());

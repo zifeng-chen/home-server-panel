@@ -13,25 +13,27 @@
           class="config-card"
           :class="{ active: activeId === cfg.id, connected: activeId === cfg.id && wsReady }"
         >
-          <div class="cfg-name">{{ cfg.name || cfg.host }}</div>
-          <div class="cfg-detail">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</div>
-          <div class="cfg-actions">
-            <el-tooltip :content="activeId === cfg.id && wsReady ? '断开' : '连接'" placement="top">
-              <el-button
-                size="small" circle
-                :type="activeId === cfg.id && wsReady ? 'danger' : 'primary'"
-                @click="activeId === cfg.id && wsReady ? disconnect() : doConnect(cfg)"
-                :loading="connecting === cfg.id"
-                :icon="activeId === cfg.id && wsReady ? SwitchButton : Connection"
-              />
-            </el-tooltip>
-            <el-tooltip content="编辑" placement="top">
-              <el-button size="small" circle @click="showEdit(cfg)" :icon="Edit" />
-            </el-tooltip>
-            <el-tooltip content="删除" placement="top">
-              <el-button size="small" circle type="danger" @click="confirmDelete(cfg)" :icon="Delete" />
-            </el-tooltip>
+          <div class="cfg-top">
+            <div class="cfg-name">{{ cfg.name || cfg.host }}</div>
+            <div class="cfg-actions">
+              <el-tooltip :content="activeId === cfg.id && wsReady ? '断开' : '连接'" placement="top">
+                <el-button
+                  size="small" circle
+                  :type="activeId === cfg.id && wsReady ? 'danger' : 'primary'"
+                  @click="activeId === cfg.id && wsReady ? disconnect() : doConnect(cfg)"
+                  :loading="connecting === cfg.id"
+                  :icon="activeId === cfg.id && wsReady ? SwitchButton : Connection"
+                />
+              </el-tooltip>
+              <el-tooltip content="编辑" placement="top">
+                <el-button size="small" circle @click="showEdit(cfg)" :icon="Edit" />
+              </el-tooltip>
+              <el-tooltip content="删除" placement="top">
+                <el-button size="small" circle type="danger" @click="confirmDelete(cfg)" :icon="Delete" />
+              </el-tooltip>
+            </div>
           </div>
+          <div class="cfg-detail">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</div>
         </div>
         <div v-if="!configs.length" class="empty-hint">暂无连接配置，点击"添加"创建</div>
       </div>
@@ -474,7 +476,7 @@ onUnmounted(() => {
 .config-card {
   background: var(--bg-base);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid transparent;
   transition: border-color var(--dur-fast);
 }
@@ -487,24 +489,35 @@ onUnmounted(() => {
   border-color: var(--accent-green);
 }
 
+.cfg-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .cfg-name {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 4px;
   color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cfg-detail {
   font-size: 12px;
   color: var(--text-tertiary);
   font-family: var(--font-mono);
-  margin-bottom: 10px;
 }
 
 .cfg-actions {
   display: flex;
   gap: 4px;
-  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .empty-hint {

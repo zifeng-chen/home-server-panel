@@ -223,3 +223,30 @@ html.dark .el-select-dropdown__item:hover { background-color: rgba(77,171,247,0.
   box-shadow: var(--shadow-md);
   border-color: color-mix(in srgb, var(--accent) 15%, transparent);
 }
+
+/* ── Dialog 内 Select 下拉框暗色 ── */
+html.dark .el-select-dropdown {
+  background-color: #1e2233;
+  border-color: rgba(255,255,255,0.08);
+}
+html.dark .el-select-dropdown__item {
+  color: var(--text-primary);
+}
+html.dark .el-select-dropdown__item.hover,
+html.dark .el-select-dropdown__item:hover {
+  background-color: rgba(77,171,247,0.1);
+}
+html.dark .el-select-dropdown__item.selected {
+  background-color: rgba(77,171,247,0.15);
+  color: #6db3f8;
+}
+html.dark .el-popper.is-light {
+  background: #1e2233;
+  border-color: rgba(255,255,255,0.08);
+}
+html.dark .el-dialog {
+  --el-dialog-bg-color: var(--bg-elevated);
+}
+html.dark .el-dialog__header {
+  border-bottom: 1px solid var(--border-color);
+}

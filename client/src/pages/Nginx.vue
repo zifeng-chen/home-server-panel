@@ -1,24 +1,23 @@
 <template>
   <div class="page">
-    <!-- ========== Nginx 状态 & 控制 → 合并到一张卡 ========== -->
+    <!-- ========== Nginx 状态 & 控制 → 按钮前置 ========== -->
     <div class="card" v-if="installed">
       <div class="nginx-status-row">
         <div class="status-left">
           <h2 class="status-title">Nginx</h2>
           <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
           <span class="status-ver">版本 {{ nginxVer }}</span>
-        </div>
-        <div class="status-right">
-          <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
-          <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
-          <span class="info-chip"><span class="lbl">状态</span><span class="val">{{ running ? '运行中' : '已停止' }}</span></span>
+          <div class="nginx-actions">
+            <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
+            <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
+            <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
+            <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
+          </div>
         </div>
       </div>
-      <div class="nginx-actions">
-        <el-button @click="doAction('start')" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
-        <el-button @click="doAction('stop')" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
-        <el-button @click="doAction('reload')" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
-        <el-button @click="doAction('restart')" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
+      <div class="nginx-info-row">
+        <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
+        <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
       </div>
     </div>
 
@@ -56,7 +55,7 @@
       <el-table-column :label="$t('nginx.ssl')" width="70">
         <template #default="{ row }"><el-tag :type="row.ssl ? 'success' : 'info'" size="small">{{ row.ssl ? $t('nginx.sslEnable') : $t('nginx.sslDisable') }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="sslCert" label="证书" width="100" show-overflow-tooltip />
+      <el-table-column prop="sslCert" label="证书" min-width="160" show-overflow-tooltip />
       <el-table-column :label="$t('common.status')" width="80">
         <template #default="{ row }">
           <el-switch :model-value="row.enabled" @change="() => toggle(row)" size="small" />
@@ -257,9 +256,9 @@ onMounted(load)
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
-.status-left { display: flex; align-items: center; gap: 12px; }
+.status-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .status-title { font-size: 20px; font-weight: 700; margin: 0; }
 .status-badge {
   font-size: 12px;
@@ -274,12 +273,14 @@ onMounted(load)
   color: #22c55e;
 }
 .status-ver { font-size: 13px; color: var(--text-tertiary); }
-.status-right { display: flex; gap: 20px; flex-wrap: wrap; }
-.info-chip { display: flex; flex-direction: column; gap: 2px; }
-.info-chip .lbl { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; }
-.info-chip .val { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-.mono { font-family: var(--font-mono); font-size: 12px; }
-.nginx-actions { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+.nginx-actions { display: flex; gap: 6px; margin-left: 12px; }
+.nginx-info-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
 
 /* ── 安装指南 ── */
 .guide { background: var(--bg-base); padding: 16px; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; max-height: 400px; }

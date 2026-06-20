@@ -20,30 +20,32 @@
           <el-tag :type="row.status === 'valid' ? 'success' : 'danger'" size="small">{{ row.status === 'valid' ? '有效' : '无效' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="notAfter" label="到期时间" width="160">
-        <template #default="{ row }"><span class="mono">{{ fmtDate(row.notAfter) }}</span></template>
+      <el-table-column prop="expiresAt" label="到期时间" min-width="170">
+        <template #default="{ row }"><span class="mono">{{ fmtDate(row.expiresAt) }}</span></template>
       </el-table-column>
-      <el-table-column label="剩余" width="80">
+      <el-table-column label="剩余" width="90">
         <template #default="{ row }">
-          <span :class="{ warn: row.daysLeft < 30, danger: row.daysLeft < 7 }">{{ row.daysLeft }} 天</span>
+          <span :class="{ warn: row.daysRemaining < 30, danger: row.daysRemaining < 7 }">{{ row.daysRemaining != null ? row.daysRemaining + ' 天' : '--' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="doRenew(row)" size="small">续期</el-button>
-          <el-dropdown trigger="click" @command="(c: string) => exportCert(row.domain, c)">
-            <el-button link size="small">导出 <el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="nginx">Nginx</el-dropdown-item>
-                <el-dropdown-item command="apache">Apache</el-dropdown-item>
-                <el-dropdown-item command="fullchain">Fullchain</el-dropdown-item>
-                <el-dropdown-item command="key">私钥</el-dropdown-item>
-                <el-dropdown-item command="all">全部打包</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button link type="danger" @click="confirmDelete(row)" size="small">删除</el-button>
+          <div class="ssl-actions">
+            <el-button link type="primary" @click="doRenew(row)" size="small">续期</el-button>
+            <el-dropdown trigger="click" @command="(c: string) => exportCert(row.domain, c)">
+              <el-button link size="small">导出 <el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="nginx">Nginx</el-dropdown-item>
+                  <el-dropdown-item command="apache">Apache</el-dropdown-item>
+                  <el-dropdown-item command="fullchain">Fullchain</el-dropdown-item>
+                  <el-dropdown-item command="key">私钥</el-dropdown-item>
+                  <el-dropdown-item command="all">全部打包</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button link type="danger" @click="confirmDelete(row)" size="small">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -180,4 +182,5 @@ onMounted(load)
 .mono { font-family: var(--font-mono); font-size: 12px; }
 .warn { color: var(--accent-orange); }
 .danger { color: var(--accent-red); font-weight: 600; }
+.ssl-actions { display: flex; align-items: center; gap: 0; }
 </style>

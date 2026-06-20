@@ -53,7 +53,7 @@
           <p v-if="error" class="error-msg">{{ error }}</p>
         </Transition>
 
-        <p class="version-tag">v0.8.1-beta</p>
+        <p class="version-tag">v0.8.2-beta</p>
       </div>
     </div>
   </div>

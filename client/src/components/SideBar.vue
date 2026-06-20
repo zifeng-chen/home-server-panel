@@ -38,7 +38,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
-const version = '0.8.1'
+const version = '0.8.2'
 
 const navItems = computed(() => [
   { label: t('sidebar.dashboard'), path: '/',          icon: Odometer },

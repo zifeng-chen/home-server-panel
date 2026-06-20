@@ -46,7 +46,7 @@
 import { ref, computed, onMounted } from 'vue'
 
 const props = withDefaults(defineProps<{
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   showText?: boolean
   alt?: string
 }>(), {
@@ -113,6 +113,10 @@ onMounted(() => {
 .size-lg .logo-img-wrap { width: 56px; height: 56px; }
 .size-lg .logo-text .logo-en { font-size: 18px; }
 .size-lg .logo-text .logo-cn { font-size: 13px; }
+
+.size-xl .logo-img-wrap { width: 120px; height: 120px; }
+.size-xl .logo-text .logo-en { font-size: 22px; }
+.size-xl .logo-text .logo-cn { font-size: 15px; }
 
 /* ── Image wrapper ── */
 .logo-img-wrap {

@@ -67,7 +67,7 @@
     <!-- 关于 -->
     <div class="card about-card">
       <div class="about-content">
-        <Logo size="lg" :show-text="false" class="about-logo" />
+        <Logo size="xl" :show-text="false" class="about-logo" />
         <div class="about-info">
           <h3 class="about-title">{{ $t('about.title') }}</h3>
           <p class="about-desc">{{ $t('about.description') }}</p>

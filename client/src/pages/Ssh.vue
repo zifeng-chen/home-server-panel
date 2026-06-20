@@ -16,16 +16,21 @@
           <div class="cfg-name">{{ cfg.name || cfg.host }}</div>
           <div class="cfg-detail">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</div>
           <div class="cfg-actions">
-            <el-button
-              size="small"
-              :type="activeId === cfg.id && wsReady ? 'warning' : 'primary'"
-              @click="activeId === cfg.id && wsReady ? disconnect() : doConnect(cfg)"
-              :loading="connecting === cfg.id"
-            >
-              {{ activeId === cfg.id && wsReady ? '断开' : '连接' }}
-            </el-button>
-            <el-button size="small" @click="showEdit(cfg)">编辑</el-button>
-            <el-button size="small" type="danger" @click="confirmDelete(cfg)">删除</el-button>
+            <el-tooltip :content="activeId === cfg.id && wsReady ? '断开' : '连接'" placement="top">
+              <el-button
+                size="small" circle
+                :type="activeId === cfg.id && wsReady ? 'danger' : 'primary'"
+                @click="activeId === cfg.id && wsReady ? disconnect() : doConnect(cfg)"
+                :loading="connecting === cfg.id"
+                :icon="activeId === cfg.id && wsReady ? SwitchButton : Connection"
+              />
+            </el-tooltip>
+            <el-tooltip content="编辑" placement="top">
+              <el-button size="small" circle @click="showEdit(cfg)" :icon="Edit" />
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button size="small" circle type="danger" @click="confirmDelete(cfg)" :icon="Delete" />
+            </el-tooltip>
           </div>
         </div>
         <div v-if="!configs.length" class="empty-hint">暂无连接配置，点击"添加"创建</div>
@@ -102,7 +107,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Monitor, Loading, WarningFilled, Link } from '@element-plus/icons-vue'
+import { Plus, Monitor, Loading, WarningFilled, Link, SwitchButton, Connection, Edit, Delete } from '@element-plus/icons-vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
@@ -498,7 +503,8 @@ onUnmounted(() => {
 
 .cfg-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
 .empty-hint {

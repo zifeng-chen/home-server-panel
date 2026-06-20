@@ -103,7 +103,32 @@ html.dark .el-table {
   --el-table-tr-bg-color: var(--bg-elevated);
   --el-table-header-bg-color: var(--bg-base);
   --el-table-border-color: var(--border-color);
+  --el-table-row-hover-bg-color: rgba(77, 171, 247, 0.06);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-primary);
 }
+/* 表格选中行 → 无白色背景 */
+html.dark .el-table tr.current-row > td,
+html.dark .el-table tr.el-table__row--striped > td {
+  background-color: var(--bg-elevated) !important;
+}
+html.dark .el-table tr:hover > td {
+  background-color: rgba(77, 171, 247, 0.06) !important;
+}
+/* 蓝色文字在暗色下高亮 */
+html.dark .el-link.el-link--primary,
+html.dark .el-button--primary.is-link {
+  --el-color-primary: #6db3f8;
+  color: #6db3f8 !important;
+}
+html.dark .el-tag--primary {
+  --el-color-primary: #6db3f8;
+}
+html.dark .el-switch.is-checked .el-switch__core {
+  --el-switch-on-color: #6db3f8;
+}
+/* 表格文字亮度提升 */
+html.dark .el-table td .cell { color: var(--text-primary); }
 html.dark .el-dialog { --el-dialog-bg-color: var(--bg-elevated); }
 html.dark .el-form-item__label { color: var(--text-secondary); }
 html.dark .el-input__wrapper {
@@ -112,6 +137,7 @@ html.dark .el-input__wrapper {
 }
 html.dark .el-input__inner { color: var(--text-primary); }
 html.dark .el-select .el-input__wrapper { background-color: rgba(255,255,255,0.04); }
+html.dark .el-radio__label { color: var(--text-primary); }
 
 /* Button hover animation */
 .el-button { transition: all var(--dur-fast) var(--ease-spring) !important; }

@@ -28,10 +28,14 @@
     <div class="card services">
       <h3 class="card-title">{{ $t('dashboard.serviceOverview') }}</h3>
       <div class="service-grid">
-        <div class="service-item" v-for="s in services" :key="s.name">
-          <div class="s-dot" :style="{ background: s.online ? 'var(--accent-green)' : 'var(--text-tertiary)' }"></div>
-          <span class="s-name">{{ s.name }}</span>
-          <el-tag :type="s.online ? 'success' : 'info'" size="small" effect="plain">{{ s.online ? $t('dashboard.running') : $t('dashboard.stopped') }}</el-tag>
+        <div class="service-item" v-for="s in services" :key="s.name" :class="{ online: s.online }">
+          <div class="s-icon-wrap" :style="{ background: s.online ? s.color + '18' : 'var(--bg-base)' }">
+            <component :is="s.icon" :size="28" :style="{ color: s.online ? s.color : 'var(--text-tertiary)' }" />
+          </div>
+          <div class="s-info">
+            <span class="s-name">{{ s.name }}</span>
+            <span class="s-status" :style="{ color: s.online ? s.color : 'var(--text-tertiary)' }">{{ s.online ? $t('dashboard.running') : $t('dashboard.stopped') }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -43,6 +47,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useSystemStore } from '../stores/system'
 import api from '../api'
+import { Monitor, Coin, Box, Connection, SetUp, Key } from '@element-plus/icons-vue'
 
 const sys = useSystemStore()
 
@@ -69,12 +74,12 @@ async function fetchLogs() {
 
 // 服务状态
 const services = ref([
-  { name: 'Nginx',    online: false },
-  { name: 'MySQL',    online: false },
-  { name: 'Docker',   online: false },
-  { name: 'SSH',      online: false },
-  { name: 'PM2',      online: false },
-  { name: 'acme.sh',  online: false },
+  { name: 'Nginx',    online: false, icon: Monitor, color: '#4F7CFF' },
+  { name: 'MySQL',    online: false, icon: Coin, color: '#FF9A3D' },
+  { name: 'Docker',   online: false, icon: Box, color: '#15C39A' },
+  { name: 'SSH',      online: false, icon: Connection, color: '#A78BFA' },
+  { name: 'PM2',      online: false, icon: SetUp, color: '#F59E0B' },
+  { name: 'acme.sh',  online: false, icon: Key, color: '#EC4899' },
 ])
 async function fetchServices() {
   try {
@@ -136,9 +141,28 @@ onMounted(async () => {
 .log-time { color: var(--text-tertiary); font-family: var(--font-mono); flex-shrink: 0; }
 .log-msg { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 24px 0; }
-.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-.service-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-base); font-size: 13px; }
-.s-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.s-name { flex: 1; color: var(--text-primary); }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.service-item.online { border-color: transparent; }
+.service-item:hover { box-shadow: var(--shadow-md); }
+.s-icon-wrap {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--dur-fast);
+}
+.s-info { display: flex; flex-direction: column; gap: 2px; }
+.s-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.s-status { font-size: 12px; font-weight: 500; }
 @media (max-width: 900px) { .row-top { grid-template-columns: 1fr; } }
 </style>

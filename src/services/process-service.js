@@ -115,7 +115,7 @@ class ProcessService {
       { name: 'Samba', bin: 'smbd', check: () => this._checkProcess('smbd') },
       { name: 'Server Panel', bin: 'node', check: () => this._checkPort(3456) },
       { name: 'MySQL', bin: 'mysqld', check: () => this._checkProcess('mysqld') || this._checkPort(3306) },
-      { name: 'acme.sh', bin: 'acme.sh', check: () => this._checkProcess('acme.sh') }
+      { name: 'acme.sh', bin: 'acme.sh', check: () => fs.existsSync('/root/.acme.sh/acme.sh') || fs.existsSync(os.homedir() + '/.acme.sh/acme.sh') }
     ];
 
     for (const s of svcDefs) {

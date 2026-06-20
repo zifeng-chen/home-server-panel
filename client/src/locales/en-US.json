@@ -44,7 +44,7 @@
     "ddns": "DDNS",
     "ssl": "SSL Cert",
     "nginx": "Nginx",
-    "proxy": "Proxy",
+
     "port": "Ports",
     "pm2": "PM2",
     "cron": "Cron",
@@ -148,7 +148,20 @@
     "status": "Status",
     "version": "Version",
     "configPath": "Config Path",
-    "subtitle": "Web server & reverse proxy engine"
+    "subtitle": "Web server & reverse proxy engine",
+    "addRule": "Add Rule",
+    "editRule": "Edit Rule",
+    "deleteRule": "Delete Rule",
+    "domain": "Domain",
+    "target": "Target",
+    "targetHost": "Target Host",
+    "targetPort": "Target Port",
+    "ssl": "SSL",
+    "sslEnable": "On",
+    "sslDisable": "Off",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "exportConfig": "Export Config"
   },
   "proxy": {
     "title": "Reverse Proxy",
@@ -251,6 +264,17 @@
     "restartService": "Restart Service",
     "restartConfirm": "Restart the service?",
     "saveSuccess": "Settings saved",
-    "restartSuccess": "Service restarted"
+    "restartSuccess": "Service restarted",
+    "cloudCredentials": "Cloud Credentials",
+    "aliAkId": "Alibaba AK ID",
+    "aliAkSecret": "Alibaba AK Secret",
+    "tencentSecretId": "Tencent Secret ID",
+    "tencentSecretKey": "Tencent Secret Key",
+    "configured": "Configured",
+    "leaveEmptyHint": "leave empty = no change",
+    "takesEffectHint": "takes effect on save",
+    "modules": "Modules",
+    "acmeEmail": "ACME Email",
+    "dnsProvider": "DNS Provider"
   }
 }

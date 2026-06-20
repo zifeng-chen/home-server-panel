@@ -9,18 +9,18 @@
     </div>
 
     <div class="card">
-      <h3>Cloud Credentials</h3>
+      <h3>{{ $t('settings.cloudCredentials') }}</h3>
       <el-form :model="form" label-width="140px">
-        <el-form-item label="Alibaba AK ID">
-          <el-input v-model="form.aliKeyId" :placeholder="form._hasAliKey ? 'leave empty = no change' : 'takes effect on save'" />
-          <el-tag v-if="form._hasAliKey" type="success" size="small" style="margin-left:8px">Configured</el-tag>
+        <el-form-item :label="$t('settings.aliAkId')">
+          <el-input v-model="form.aliKeyId" :placeholder="form._hasAliKey ? $t('settings.leaveEmptyHint') : $t('settings.takesEffectHint')" />
+          <el-tag v-if="form._hasAliKey" type="success" size="small" style="margin-left:8px">{{ $t('settings.configured') }}</el-tag>
         </el-form-item>
-        <el-form-item label="Alibaba AK Secret"><el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="form._hasAliKey ? 'leave empty = no change' : 'takes effect on save'" /></el-form-item>
-        <el-form-item label="Tencent Secret ID">
-          <el-input v-model="form.tencentSecretId" :placeholder="form._hasTencentKey ? 'leave empty = no change' : 'takes effect on save'" />
-          <el-tag v-if="form._hasTencentKey" type="success" size="small" style="margin-left:8px">Configured</el-tag>
+        <el-form-item :label="$t('settings.aliAkSecret')"><el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="form._hasAliKey ? $t('settings.leaveEmptyHint') : $t('settings.takesEffectHint')" /></el-form-item>
+        <el-form-item :label="$t('settings.tencentSecretId')">
+          <el-input v-model="form.tencentSecretId" :placeholder="form._hasTencentKey ? $t('settings.leaveEmptyHint') : $t('settings.takesEffectHint')" />
+          <el-tag v-if="form._hasTencentKey" type="success" size="small" style="margin-left:8px">{{ $t('settings.configured') }}</el-tag>
         </el-form-item>
-        <el-form-item label="Tencent Secret Key"><el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="form._hasTencentKey ? 'leave empty = no change' : 'takes effect on save'" /></el-form-item>
+        <el-form-item :label="$t('settings.tencentSecretKey')"><el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="form._hasTencentKey ? $t('settings.leaveEmptyHint') : $t('settings.takesEffectHint')" /></el-form-item>
       </el-form>
     </div>
 
@@ -28,17 +28,17 @@
       <h3>{{ $t('settings.notification') }}</h3>
       <el-form :model="form" label-width="140px">
         <el-form-item label="PushPlus Token"><el-input v-model="form.pushplusToken" :placeholder="$t('settings.pushplusToken')" /></el-form-item>
-        <el-form-item label="ACME Email"><el-input v-model="form.acmeEmail" placeholder="admin@example.com" /></el-form-item>
-        <el-form-item label="DNS Provider"><el-input v-model="form.acmeDns" placeholder="alidns" /></el-form-item>
+        <el-form-item :label="$t('settings.acmeEmail')"><el-input v-model="form.acmeEmail" placeholder="admin@example.com" /></el-form-item>
+        <el-form-item :label="$t('settings.dnsProvider')"><el-input v-model="form.acmeDns" placeholder="alidns" /></el-form-item>
         <el-form-item :label="$t('ssl.expiry')"><el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> {{ $t('ssl.days') }}</el-form-item>
       </el-form>
     </div>
 
     <div class="card">
-      <h3>Modules</h3>
+      <h3>{{ $t('settings.modules') }}</h3>
       <el-form label-width="80px">
         <el-form-item v-for="m in modules" :key="m.key" :label="m.name">
-          <el-tag :type="m.enabled ? 'success' : 'info'">{{ m.enabled ? 'Enabled' : 'Disabled' }}</el-tag>
+          <el-tag :type="m.enabled ? 'success' : 'info'">{{ m.enabled ? $t('common.enable') : $t('common.disable') }}</el-tag>
           <span class="hint-mod">{{ m.key }}</span>
         </el-form-item>
       </el-form>

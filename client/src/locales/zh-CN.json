@@ -44,7 +44,7 @@
     "ddns": "DDNS",
     "ssl": "SSL证书",
     "nginx": "Nginx管理",
-    "proxy": "反向代理",
+
     "port": "端口管理",
     "pm2": "PM2进程",
     "cron": "定时任务",
@@ -148,7 +148,20 @@
     "status": "状态",
     "version": "版本",
     "configPath": "配置文件",
-    "subtitle": "Web 服务器与反向代理引擎"
+    "subtitle": "Web 服务器与反向代理引擎",
+    "addRule": "添加规则",
+    "editRule": "编辑规则",
+    "deleteRule": "删除规则",
+    "domain": "域名",
+    "target": "目标地址",
+    "targetHost": "目标主机",
+    "targetPort": "目标端口",
+    "ssl": "SSL",
+    "sslEnable": "开启",
+    "sslDisable": "关闭",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "exportConfig": "导出配置"
   },
   "proxy": {
     "title": "反向代理",
@@ -251,6 +264,17 @@
     "restartService": "重启服务",
     "restartConfirm": "确定要重启服务吗？",
     "saveSuccess": "设置已保存",
-    "restartSuccess": "服务已重启"
+    "restartSuccess": "服务已重启",
+    "cloudCredentials": "云服务凭据",
+    "aliAkId": "阿里云 AccessKey ID",
+    "aliAkSecret": "阿里云 AccessKey Secret",
+    "tencentSecretId": "腾讯云 Secret ID",
+    "tencentSecretKey": "腾讯云 Secret Key",
+    "configured": "已配置",
+    "leaveEmptyHint": "留空 = 保持不变",
+    "takesEffectHint": "保存后生效",
+    "modules": "模块管理",
+    "acmeEmail": "ACME 邮箱",
+    "dnsProvider": "DNS 服务商"
   }
 }

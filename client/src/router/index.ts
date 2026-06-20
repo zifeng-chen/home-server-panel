@@ -14,7 +14,6 @@ const router = createRouter({
         { path: 'ddns',       name: 'ddns',      component: () => import('../pages/Ddns.vue') },
         { path: 'ssl',        name: 'ssl',       component: () => import('../pages/Ssl.vue') },
         { path: 'nginx',      name: 'nginx',     component: () => import('../pages/Nginx.vue') },
-        { path: 'proxy',      name: 'proxy',     component: () => import('../pages/Proxy.vue') },
         { path: 'port',       name: 'port',      component: () => import('../pages/Port.vue') },
         { path: 'pm2',        name: 'pm2',       component: () => import('../pages/Pm2.vue') },
         { path: 'cron',       name: 'cron',      component: () => import('../pages/Cron.vue') },

@@ -83,7 +83,7 @@ async function load() {
       installed.value = sRes.data.installed !== false
       version.value = sRes.data.version || ''
     }
-    if (pRes.success) processes.value = pRes.data || []
+    if (pRes.success) processes.value = pRes.data?.processes || []
   } catch { /* ignore */ }
   finally { loading.value = false }
 }
@@ -93,7 +93,7 @@ async function doInstall() {
   installLog.value = ''
   try {
     const res = await api.post('/pm2/install') as any
-    if (res?.success) { ElMessage.success('PM2 安装成功'); await load() }
+    if (res?.success) { ElMessage.success('PM2 安装成功'); try { await api.post('/pm2/start-daemon') } catch {} await load() }
     else ElMessage.error(res?.message || '安装失败')
   } catch { ElMessage.error('安装失败') }
   finally { installing.value = false }

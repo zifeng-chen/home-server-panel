@@ -36,24 +36,15 @@
       </div>
     </div>
 
-    <!-- 资源监控 (圆环) -->
-    <div class="row-monitor">
-      <div class="card ring-card" v-for="ring in rings" :key="ring.key">
-        <canvas :ref="el => ringRefs[ring.key] = el" width="140" height="140" class="ring-canvas"></canvas>
-        <span class="ring-label">{{ ring.label() }}</span>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, onMounted } from 'vue'
 import { useSystemStore } from '../stores/system'
 import api from '../api'
 
 const sys = useSystemStore()
-const { t } = useI18n()
 
 // 公网IP
 const publicIp = computed(() => {
@@ -67,8 +58,8 @@ const logs = ref<{ time: string; message: string }[]>([])
 async function fetchLogs() {
   try {
     const res = await api.get('/log', { params: { page: 1, limit: 8 } }) as any
-    if (res.success && res.data?.records) {
-      logs.value = res.data.records.map((r: any) => ({
+    if (res.success && res.data?.list) {
+      logs.value = res.data.list.map((r: any) => ({
         time: r.timeCst?.match(/\d{2}:\d{2}/)?.[0] || '--:--',
         message: r.message || r.action || ''
       }))
@@ -112,47 +103,6 @@ async function fetchServices() {
   } catch { /* ignore */ }
 }
 
-// 资源环
-const ringRefs = ref<Record<string, any>>({})
-const rings = [
-  { key: 'cpu',  label: () => t('dashboard.cpu'),  getVal: () => sys.cpu },
-  { key: 'mem',  label: () => t('dashboard.memory'),  getVal: () => sys.memPct },
-  { key: 'netD', label: () => t('dashboard.networkDown'), getVal: () => Math.min(sys.netDown / 1048576 * 100, 100) },
-  { key: 'netU', label: () => t('dashboard.networkUp'), getVal: () => Math.min(sys.netUp   / 1048576 * 100, 100) },
-]
-let ringTimer: ReturnType<typeof setInterval> | null = null
-
-function drawRings() {
-  rings.forEach(r => {
-    const c = ringRefs.value[r.key]
-    if (!c) return
-    const ctx = c.getContext('2d')
-    if (!ctx) return
-    const w = c.width, h = c.height
-    const cx = w / 2, cy = h / 2, rOuter = 55, rInner = 40
-    ctx.clearRect(0, 0, w, h)
-    // bg ring
-    ctx.beginPath()
-    ctx.arc(cx, cy, rOuter, 0, Math.PI * 2)
-    ctx.arc(cx, cy, rInner, Math.PI * 2, 0, true)
-    const isDark = document.documentElement.classList.contains('dark'); ctx.fillStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-    ctx.fill()
-    // value ring
-    const pct = Math.min(r.getVal(), 100) / 100
-    ctx.beginPath()
-    ctx.arc(cx, cy, rOuter, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct)
-    ctx.arc(cx, cy, rInner, -Math.PI / 2 + Math.PI * 2 * pct, -Math.PI / 2, true)
-    ctx.fillStyle = 'var(--accent)'
-    ctx.fill()
-    // center text (use CSS variable for dark/light mode compatibility)
-    ctx.fillStyle = getComputedStyle(c).color || '#1d1d1f'
-    ctx.font = 'bold 22px ' + getComputedStyle(c).fontFamily
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(r.getVal().toFixed(0) + '%', cx, cy)
-  })
-}
-
 function fmtUptime(s: number) {
   if (!s || s < 0) return '--'
   const d = Math.floor(s / 86400)
@@ -163,13 +113,6 @@ function fmtUptime(s: number) {
 
 onMounted(async () => {
   await Promise.all([fetchLogs(), fetchServices()])
-  await nextTick()
-  drawRings()
-  ringTimer = setInterval(drawRings, 5000)
-})
-
-onUnmounted(() => {
-  if (ringTimer) clearInterval(ringTimer)
 })
 </script>
 
@@ -196,11 +139,5 @@ onUnmounted(() => {
 .service-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-base); font-size: 13px; }
 .s-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .s-name { flex: 1; color: var(--text-primary); }
-.row-monitor { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-.ring-card { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.ring-canvas { width: 140px; height: 140px; }
-.ring-label { font-size: 12px; color: var(--text-tertiary); }
-
-@media (max-width: 900px) { .row-top { grid-template-columns: 1fr; } .row-monitor { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .row-monitor { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 900px) { .row-top { grid-template-columns: 1fr; } }
 </style>

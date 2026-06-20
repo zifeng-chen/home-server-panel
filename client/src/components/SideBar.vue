@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  Odometer, Connection, Key, Coin, Share, Switch,
+  Odometer, Connection, Key, Coin, Switch,
   Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
 const { t } = useI18n()
@@ -29,7 +29,6 @@ const navItems = computed(() => [
   { label: t('sidebar.ddns'),      path: '/ddns',      icon: Connection },
   { label: t('sidebar.ssl'),       path: '/ssl',       icon: Key },
   { label: t('sidebar.nginx'),     path: '/nginx',     icon: Coin },
-  { label: t('sidebar.proxy'),     path: '/proxy',     icon: Share },
   { label: t('sidebar.port'),      path: '/port',      icon: Switch },
   { label: t('sidebar.pm2'),       path: '/pm2',       icon: Loading },
   { label: t('sidebar.cron'),      path: '/cron',      icon: Timer },

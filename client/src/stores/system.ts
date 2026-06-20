@@ -12,6 +12,7 @@ export const useSystemStore = defineStore('system', () => {
   const sysInfo = ref<any>(null)
 
   let timer: ReturnType<typeof setInterval> | null = null
+  let uptimeTickTimer: ReturnType<typeof setInterval> | null = null
 
   async function fetchInfo() {
     try {
@@ -46,5 +47,14 @@ export const useSystemStore = defineStore('system', () => {
     if (timer) { clearInterval(timer); timer = null }
   }
 
-  return { cpu, memPct, netDown, netUp, load, uptime, sysInfo, fetchInfo, pollMonitor, startPolling, stopPolling }
+  function startUptimeTicking() {
+    if (uptimeTickTimer) return
+    uptimeTickTimer = setInterval(() => { uptime.value++ }, 1000)
+  }
+
+  function stopUptimeTicking() {
+    if (uptimeTickTimer) { clearInterval(uptimeTickTimer); uptimeTickTimer = null }
+  }
+
+  return { cpu, memPct, netDown, netUp, load, uptime, sysInfo, fetchInfo, pollMonitor, startPolling, stopPolling, startUptimeTicking, stopUptimeTicking }
 })

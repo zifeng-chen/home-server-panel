@@ -86,11 +86,12 @@ function fmtBytes(b: number) {
 }
 
 function fmtUptime(s: number) {
-  if (s < 60) return s + '秒'
-  if (s < 3600) return Math.floor(s / 60) + '分' + (s % 60) + '秒'
+  if (s < 60) return Math.floor(s) + '秒'
+  if (s < 3600) return Math.floor(s / 60) + '分' + Math.floor(s % 60) + '秒'
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
-  return h + '时' + m + '分'
+  const sec = Math.floor(s % 60)
+  return h + '时' + m + '分' + sec + '秒'
 }
 
 const isDark = ref(document.documentElement.classList.contains('dark'))

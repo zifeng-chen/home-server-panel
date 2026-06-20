@@ -21,8 +21,8 @@ import TopBar from '../components/TopBar.vue'
 import { useSystemStore } from '../stores/system'
 
 const sys = useSystemStore()
-onMounted(() => { sys.fetchInfo(); sys.startPolling() })
-onUnmounted(() => sys.stopPolling())
+onMounted(() => { sys.fetchInfo(); sys.startPolling(); sys.startUptimeTicking() })
+onUnmounted(() => { sys.stopPolling(); sys.stopUptimeTicking() })
 </script>
 
 <style scoped>

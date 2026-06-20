@@ -1,4 +1,4 @@
-/* HSP v0.8.1-beta (mqltunzj) */
+/* HSP v0.8.1-beta (mqlufljt) */
 (()=>{const c=window.Utils={notify(e,t="info"){const n=document.getElementById("notifyBar");n&&(n.className=`notify-bar ${t}`,n.textContent=e,n.classList.remove("hidden"),n.classList.add("show"),setTimeout(()=>{n.classList.remove("show"),setTimeout(()=>n.classList.add("hidden"),400)},v.NOTIFY_DURATION))},openModal(e,t,n){const r=document.getElementById("modalOverlay"),a=document.getElementById("modalTitle"),o=document.getElementById("modalBody"),s=document.getElementById("modalFooter");r&&a&&o&&(a.textContent=e,o.innerHTML=t||"",s.innerHTML=n||"",r.classList.remove("hidden"))},closeModal(){const e=document.getElementById("modalOverlay");e&&e.classList.add("hidden")},confirm(e,t,n){c.openModal(e,`<p>${t}</p>`,`<button class="btn btn-secondary" onclick="Utils.closeModal()">\u53D6\u6D88</button>
       <button class="btn btn-danger" id="modalConfirmBtn">\u786E\u8BA4</button>`),document.getElementById("modalConfirmBtn")?.addEventListener("click",()=>{c.closeModal(),n&&n()})},showError(e,t,n){const r=n?`
 

@@ -196,16 +196,18 @@ class LogService {
         const duration = Date.now() - start;
         const statusCode = res.statusCode;
 
-        // 只有非成功 GET 和所有 POST/PUT/DELETE 记录
-        if (req.method === "GET" && statusCode === 200 && obj && obj.success === true) {
-          return origJson(obj);
-        }
+        // 记录所有 API 请求（GET 成功记录为 info，POST/PUT/DELETE 记录更详细）
+        const isSilentGet = req.method === "GET" && statusCode === 200 && obj && obj.success === true;
 
         // ---- 构建日志信息 ----
         let level = "info";
         let message = "";
 
-        if (statusCode >= 500) {
+        if (isSilentGet) {
+          // 成功 GET 请求轻量化记录
+          message = `${actionDesc} (${duration}ms)`;
+          level = "info";
+        } else if (statusCode >= 500) {
           level = "error";
           message = obj?.message || "服务器内部错误";
         } else if (statusCode >= 400) {

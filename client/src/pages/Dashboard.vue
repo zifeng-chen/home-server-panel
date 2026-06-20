@@ -108,7 +108,8 @@ function fmtUptime(s: number) {
   const d = Math.floor(s / 86400)
   const h = Math.floor((s % 86400) / 3600)
   const m = Math.floor((s % 3600) / 60)
-  return (d ? d + '天 ' : '') + h + '时' + m + '分'
+  const sec = Math.floor(s % 60)
+  return (d ? d + '天 ' : '') + h + '时' + m + '分' + sec + '秒'
 }
 
 onMounted(async () => {

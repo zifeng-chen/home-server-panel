@@ -1,36 +1,70 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h2>{{ $t('ssh.title') }}</h2>
-        <p class="sub">管理 SSH 连接配置，快速连接远程服务器</p>
+  <div class="ssh-layout">
+    <!-- 左侧连接列表 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>SSH 连接</h3>
+        <el-button size="small" type="primary" @click="showAdd" :icon="Plus">添加</el-button>
       </div>
-      <el-button type="primary" @click="showAdd" :icon="Plus">添加连接</el-button>
+      <div class="config-list">
+        <div
+          v-for="cfg in configs"
+          :key="cfg.id"
+          class="config-card"
+          :class="{ active: activeId === cfg.id, connected: activeId === cfg.id && wsReady }"
+        >
+          <div class="cfg-name">{{ cfg.name || cfg.host }}</div>
+          <div class="cfg-detail">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</div>
+          <div class="cfg-actions">
+            <el-button
+              size="small"
+              :type="activeId === cfg.id && wsReady ? 'warning' : 'primary'"
+              @click="activeId === cfg.id && wsReady ? disconnect() : doConnect(cfg)"
+              :loading="connecting === cfg.id"
+            >
+              {{ activeId === cfg.id && wsReady ? '断开' : '连接' }}
+            </el-button>
+            <el-button size="small" @click="showEdit(cfg)">编辑</el-button>
+            <el-button size="small" type="danger" @click="confirmDelete(cfg)">删除</el-button>
+          </div>
+        </div>
+        <div v-if="!configs.length" class="empty-hint">暂无连接配置，点击"添加"创建</div>
+      </div>
     </div>
 
-    <!-- 配置列表 -->
-    <div class="grid" v-if="configs.length">
-      <div class="ssh-card" v-for="cfg in configs" :key="cfg.id">
-        <div class="cfg-header">
-          <span class="cfg-name">{{ cfg.name || cfg.host }}</span>
-          <span class="cfg-dot" :style="{ background: activeId === cfg.id ? 'var(--accent-green)' : 'var(--text-tertiary)' }"></span>
-        </div>
-        <div class="cfg-info">
-          <span class="mono">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</span>
-        </div>
-        <div class="cfg-actions">
-          <el-button size="small" @click="doConnect(cfg)" :loading="connecting === cfg.id">连接</el-button>
-          <el-button size="small" @click="showEdit(cfg)">编辑</el-button>
-          <el-button size="small" type="danger" @click="confirmDelete(cfg)">删除</el-button>
-        </div>
-        <!-- 终端区域（连接后显示） -->
-        <div v-if="activeId === cfg.id" class="term-wrap">
-          <div class="term-bar">已连接 {{ cfg.username }}@{{ cfg.host }} <el-button link size="small" @click="disconnect">断开</el-button></div>
-          <div ref="termRef" class="term-box"></div>
-        </div>
+    <!-- 右侧终端区域 -->
+    <div class="terminal-area" ref="termContainer">
+      <div v-if="!activeId" class="term-placeholder">
+        <el-icon :size="48" color="var(--text-tertiary)"><Monitor /></el-icon>
+        <p>选择左侧连接配置开始 SSH 会话</p>
       </div>
+      <template v-else>
+        <div class="term-bar">
+          <span class="term-bar-left">
+            <span class="term-dot" :style="{ background: wsReady ? '#4ade80' : '#f87171' }"></span>
+            {{ currentLabel }}
+          </span>
+          <el-button link size="small" @click="disconnect">断开</el-button>
+        </div>
+        <div class="term-wrapper" ref="termWrapper">
+          <div ref="termEl" class="term-box"></div>
+          <div v-if="!wsReady && !wsError" class="term-overlay">
+            <el-icon class="spin" :size="24"><Loading /></el-icon>
+            <span>正在连接...</span>
+          </div>
+          <div v-if="wsError" class="term-overlay clickable" @click="reconnect">
+            <el-icon :size="24"><WarningFilled /></el-icon>
+            <span>{{ wsError }}</span>
+            <span class="reconnect-hint">点击重新连接</span>
+          </div>
+          <div v-if="disconnected" class="term-overlay clickable" @click="reconnect">
+            <el-icon :size="24"><Link /></el-icon>
+            <span>连接已断开</span>
+            <span class="reconnect-hint">点击重新连接</span>
+          </div>
+        </div>
+      </template>
     </div>
-    <div v-else class="card"><p class="dim">暂无保存的 SSH 连接，点击"添加连接"开始</p></div>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="editId ? '编辑连接' : '添加连接'" width="420">
@@ -49,7 +83,14 @@
 
     <!-- 密码输入对话框 -->
     <el-dialog v-model="pwVisible" title="输入密码" width="320">
-      <el-input v-model="pwInput" type="password" show-password placeholder="SSH 密码" @keyup.enter="doConnectWithPw" />
+      <el-input
+        ref="pwInputRef"
+        v-model="pwInput"
+        type="password"
+        show-password
+        placeholder="SSH 密码"
+        @keyup.enter="doConnectWithPw"
+      />
       <template #footer>
         <el-button @click="pwVisible = false">取消</el-button>
         <el-button type="primary" @click="doConnectWithPw" :loading="connecting !== null">连接</el-button>
@@ -59,14 +100,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Monitor, Loading, WarningFilled, Link } from '@element-plus/icons-vue'
+import { Terminal } from 'xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import 'xterm/css/xterm.css'
 import api from '../api'
 
+// ============ 终端相关 ============
+const termWrapper = ref<HTMLElement | null>(null)
+const termEl = ref<HTMLElement | null>(null)
+
+let term: Terminal | null = null
+let fitAddon: FitAddon | null = null
+let ws: WebSocket | null = null
+let resizeObserver: ResizeObserver | null = null
+
+// ============ 状态 ============
 const configs = ref<any[]>([])
 const activeId = ref<number | null>(null)
 const connecting = ref<number | null>(null)
+const wsReady = ref(false)
+const wsError = ref('')
+const disconnected = ref(false)
+const currentLabel = ref('')
+const pwTarget = ref<any>(null)
 
 const dialogVisible = ref(false)
 const editId = ref<number | null>(null)
@@ -75,8 +134,9 @@ const form = ref({ name: '', host: '', port: 22, username: 'root', password: '' 
 
 const pwVisible = ref(false)
 const pwInput = ref('')
-const pwTarget = ref<any>(null)
+const pwInputRef = ref<any>(null)
 
+// ============ 数据加载 ============
 async function load() {
   try {
     const res = await api.get('/ssh/config') as any
@@ -84,8 +144,18 @@ async function load() {
   } catch { /* */ }
 }
 
-function showAdd() { editId.value = null; form.value = { name: '', host: '', port: 22, username: 'root', password: '' }; dialogVisible.value = true }
-function showEdit(row: any) { editId.value = row.id; form.value = { ...row, password: '' }; dialogVisible.value = true }
+// ============ 配置 CRUD ============
+function showAdd() {
+  editId.value = null
+  form.value = { name: '', host: '', port: 22, username: 'root', password: '' }
+  dialogVisible.value = true
+}
+
+function showEdit(row: any) {
+  editId.value = row.id
+  form.value = { ...row, password: '' }
+  dialogVisible.value = true
+}
 
 async function doSave() {
   if (!form.value.host) return ElMessage.warning('请填写主机地址')
@@ -94,82 +164,462 @@ async function doSave() {
     let res: any
     const payload: any = { ...form.value }
     if (!payload.password) delete (payload as any).password
-    if (editId.value) { res = await api.put(`/ssh/config/${editId.value}`, payload) }
-    else { res = await api.post('/ssh/config', payload) }
-    if (res.success) { ElMessage.success('保存成功'); dialogVisible.value = false; await load() }
-    else ElMessage.error(res.message || '保存失败')
-  } catch { ElMessage.error('保存失败') }
-  finally { saving.value = false }
+    if (editId.value) {
+      res = await api.put(`/ssh/config/${editId.value}`, payload)
+    } else {
+      res = await api.post('/ssh/config', payload)
+    }
+    if (res.success) {
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      await load()
+    } else {
+      ElMessage.error(res.message || '保存失败')
+    }
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除连接 ${row.name || row.host}？`, '确认删除')
   try {
+    await ElMessageBox.confirm(`确定删除连接 ${row.name || row.host}？`, '确认删除')
     const res = await api.delete(`/ssh/config/${row.id}`) as any
-    if (res.success) { ElMessage.success('已删除'); await load() }
-    else ElMessage.error(res.message || '删除失败')
+    if (res.success) { ElMessage.success('已删除'); await load() } else ElMessage.error(res.message || '删除失败')
   } catch { /* cancel */ }
 }
 
-// 连接：如果有密码直接连，没密码弹输入框
-function doConnect(cfg: any) {
-  pwTarget.value = cfg
-  if (cfg.password && cfg.password !== '••••••') {
-    execConnect(cfg, cfg.password)
+// ============ SSH 连接 ============
+async function fetchConfigDetail(id: number) {
+  const res = await api.get(`/ssh/config/${id}`) as any
+  if (res.success) return res.data
+  return null
+}
+
+async function doConnect(cfg: any) {
+  if (ws) disconnect()
+
+  // 先获取完整配置（含密码）
+  const detail = await fetchConfigDetail(cfg.id)
+  if (!detail) { ElMessage.error('获取配置失败'); return }
+
+  pwTarget.value = detail
+  if (detail.password && detail.password !== '••••••') {
+    startConnection(detail)
   } else {
     pwInput.value = ''
     pwVisible.value = true
+    nextTick(() => pwInputRef.value?.focus?.())
   }
 }
+
 function doConnectWithPw() {
-  if (pwTarget.value) execConnect(pwTarget.value, pwInput.value)
+  if (pwTarget.value) {
+    const detail = { ...pwTarget.value, password: pwInput.value }
+    startConnection(detail)
+  }
   pwVisible.value = false
 }
 
-async function execConnect(cfg: any, password: string) {
-  connecting.value = cfg.id
-  try {
-    const res = await api.post('/ssh/connect', { configId: cfg.id, password }) as any
-    if (res.success) {
-      activeId.value = cfg.id
-      ElMessage.success(`已连接 ${res.data.host}`)
-    } else ElMessage.error(res.message || '连接失败')
-  } catch { ElMessage.error('连接失败') }
-  finally { connecting.value = null }
+function startConnection(detail: any) {
+  const id = detail.id
+  connecting.value = id
+  activeId.value = id
+  wsError.value = ''
+  disconnected.value = false
+  wsReady.value = false
+  currentLabel.value = `${detail.username}@${detail.host}:${detail.port || 22}`
+
+  // 延迟初始化终端（等待 DOM 渲染）
+  nextTick(() => initTerminal(detail))
 }
 
+function initTerminal(detail: any) {
+  // 如果已存在终端实例则销毁
+  if (term) {
+    term.dispose()
+    term = null
+    fitAddon = null
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+
+  if (!termEl.value) return
+
+  // 创建 xterm 实例
+  term = new Terminal({
+    cursorBlink: true,
+    cursorStyle: 'underline',
+    fontSize: 14,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    theme: {
+      background: '#1a1b26',
+      foreground: '#a9b1d6',
+      cursor: '#c0caf5',
+      selectionBackground: '#33467c',
+      black: '#32344a',
+      red: '#f7768e',
+      green: '#9ece6a',
+      yellow: '#e0af68',
+      blue: '#7aa2f7',
+      magenta: '#ad8ee6',
+      cyan: '#449dab',
+      white: '#787c99',
+      brightBlack: '#444b6a',
+      brightRed: '#ff7a93',
+      brightGreen: '#b9f27c',
+      brightYellow: '#ff9e64',
+      brightBlue: '#7da6ff',
+      brightMagenta: '#bb9af7',
+      brightCyan: '#0db9d7',
+      brightWhite: '#acb0d0'
+    },
+    allowProposedApi: true
+  })
+
+  fitAddon = new FitAddon()
+  term.loadAddon(fitAddon)
+  term.open(termEl.value)
+
+  // 自适应容器
+  nextTick(() => {
+    try { fitAddon!.fit() } catch {}
+  })
+
+  // 监听容器尺寸变化
+  resizeObserver = new ResizeObserver(() => {
+    try { fitAddon!.fit() } catch {}
+    if (ws && ws.readyState === WebSocket.OPEN && term) {
+      ws.send(JSON.stringify({
+        type: 'resize',
+        cols: term.cols,
+        rows: term.rows
+      }))
+    }
+  })
+  resizeObserver.observe(termWrapper.value!)
+
+  // 键盘输入 → WebSocket
+  term.onData((data: string) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'input', data }))
+    }
+  })
+
+  // 建立 WebSocket 连接
+  connectWebSocket(detail)
+}
+
+function connectWebSocket(detail: any) {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${protocol}//${location.host}/ws/ssh`
+  ws = new WebSocket(wsUrl)
+  ws.binaryType = 'arraybuffer'
+
+  ws.onopen = () => {
+    connecting.value = null
+    ws!.send(JSON.stringify({
+      type: 'connect',
+      host: detail.host,
+      port: detail.port || 22,
+      username: detail.username,
+      password: detail.password,
+      cols: term?.cols || 80,
+      rows: term?.rows || 24
+    }))
+  }
+
+  ws.onmessage = (event: MessageEvent) => {
+    // 二进制数据 = 终端输出
+    if (event.data instanceof ArrayBuffer) {
+      const uint8 = new Uint8Array(event.data)
+      term?.write(uint8)
+      return
+    }
+
+    // JSON 控制消息
+    try {
+      const msg = JSON.parse(event.data as string)
+      switch (msg.type) {
+        case 'ready':
+          wsReady.value = true
+          disconnected.value = false
+          wsError.value = ''
+          term?.focus()
+          break
+        case 'error':
+          wsError.value = msg.message || '连接失败'
+          wsReady.value = false
+          break
+        case 'status':
+          if (msg.status === 'disconnected' || msg.status === 'shell-closed') {
+            wsReady.value = false
+            disconnected.value = true
+          } else if (msg.status === 'error') {
+            wsReady.value = false
+            wsError.value = 'SSH 连接出错'
+          }
+          break
+      }
+    } catch {
+      // 可能是纯文本数据，写入终端
+      term?.write(event.data as string)
+    }
+  }
+
+  ws.onerror = () => {
+    wsError.value = 'WebSocket 连接失败'
+    wsReady.value = false
+    connecting.value = null
+  }
+
+  ws.onclose = () => {
+    if (!disconnected.value && !wsError.value) {
+      disconnected.value = true
+    }
+    wsReady.value = false
+    connecting.value = null
+  }
+}
+
+// ============ 断开/重连 ============
 function disconnect() {
+  if (ws) {
+    try { ws.send(JSON.stringify({ type: 'disconnect' })) } catch {}
+    ws.close()
+    ws = null
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  if (term) {
+    term.dispose()
+    term = null
+    fitAddon = null
+  }
   activeId.value = null
-  ElMessage.info('已断开')
+  wsReady.value = false
+  wsError.value = ''
+  disconnected.value = false
+  currentLabel.value = ''
 }
 
+function reconnect() {
+  if (!activeId.value) return
+  const cfg = configs.value.find(c => c.id === activeId.value)
+  if (!cfg) return
+  doConnect(cfg)
+}
+
+// ============ 生命周期 ============
 onMounted(load)
+
+onUnmounted(() => {
+  disconnect()
+})
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 20px; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.page-header h2 { font-size: 20px; font-weight: 600; }
-.sub { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
-.grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.ssh-card {
+.ssh-layout {
+  display: flex;
+  height: calc(100vh - 48px - 48px); /* topbar 48 + content padding 24*2 */
+  gap: 0;
+}
+
+/* 左侧边栏 */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
   background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  box-shadow: var(--shadow-sm);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.config-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.cfg-header { display: flex; justify-content: space-between; align-items: center; }
-.cfg-name { font-size: 15px; font-weight: 600; }
-.cfg-dot { width: 8px; height: 8px; border-radius: 50%; }
-.cfg-info { font-size: 13px; color: var(--text-tertiary); }
-.cfg-actions { display: flex; gap: 8px; }
-.mono { font-family: var(--font-mono); }
-.term-wrap { margin-top: 8px; }
-.term-bar { font-size: 12px; color: var(--text-secondary); padding: 6px 10px; background: var(--bg-base); border-radius: var(--radius-sm) var(--radius-sm) 0 0; display: flex; justify-content: space-between; align-items: center; }
-.term-box { background: #000; height: 300px; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
-.card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm); text-align: center; }
-.dim { color: var(--text-tertiary); font-size: 13px; }
+
+.config-card {
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  border: 1px solid transparent;
+  transition: border-color var(--dur-fast);
+}
+
+.config-card.active {
+  border-color: var(--accent);
+}
+
+.config-card.connected {
+  border-color: var(--accent-green);
+}
+
+.cfg-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.cfg-detail {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-bottom: 10px;
+}
+
+.cfg-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.empty-hint {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* 右侧终端 */
+.terminal-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1a1b26;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.term-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.term-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  background: #24283b;
+  font-size: 12px;
+  color: #a9b1d6;
+  flex-shrink: 0;
+}
+
+.term-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.term-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.term-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.term-box {
+  position: absolute;
+  inset: 0;
+  padding: 4px 8px;
+}
+
+/* xterm overrides */
+.term-box :deep(.xterm) {
+  height: 100%;
+}
+
+.term-box :deep(.xterm-viewport) {
+  overflow-y: auto !important;
+}
+
+.term-box :deep(.xterm-viewport::-webkit-scrollbar) {
+  width: 6px;
+}
+
+.term-box :deep(.xterm-viewport::-webkit-scrollbar-thumb) {
+  background: #414868;
+  border-radius: 3px;
+}
+
+/* 蒙层 */
+.term-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 27, 38, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #a9b1d6;
+  font-size: 14px;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.term-overlay.clickable {
+  cursor: pointer;
+}
+
+.term-overlay.clickable:hover {
+  background: rgba(26, 27, 38, 0.75);
+}
+
+.reconnect-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.spin {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg) }
+  to { transform: rotate(360deg) }
+}
 </style>

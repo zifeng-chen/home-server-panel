@@ -330,6 +330,17 @@ server.listen(PORT, () => {
   logService.log({ module: 'system', action: 'STARTUP', level: 'info',
     message: `服务已启动，端口 ${PORT}，数据库模式 ${dbMode}`,
     detail: `Node ${process.version} | ${process.platform} ${process.arch}` });
+  logService.log({ module: 'system', action: 'STARTUP', level: 'info',
+    message: `静态文件目录: ${hasVueBuild ? 'Vue build (client/dist)' : 'legacy public'}`,
+    detail: `BUILD_ID: ${BUILD_ID}` });
+  logService.log({ module: 'system', action: 'STARTUP', level: 'info',
+    message: '安全模块已加载',
+    detail: 'CSP | HSTS | RateLimit | CSRF-Origin Check' });
+  logService.log({ module: 'system', action: 'STARTUP', level: 'info',
+    message: `API 路由已挂载: DDNS SSL Nginx Proxy Port Notify Log Cron PM2 Docker SSH Monitor` });
+  logService.log({ module: 'system', action: 'STARTUP', level: 'info',
+    message: 'WebSocket 服务已就绪',
+    detail: 'path: /ws/ssh (SSH 终端实时通道)' });
   require('./services/cron-service'); // 启动定时任务
   require('./services/ssl-renew-service'); // 启动 SSL 自动续期
 });

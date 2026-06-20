@@ -35,6 +35,8 @@ router.get('/info', (req, res) => {
       hostname: os.hostname(),
       platform: os.platform(),
       arch: os.arch(),
+      os: `${os.type()} ${os.release()}`,
+      kernel: os.release(),
       cpus: os.cpus().length,
       nodeVersion: process.version,
       panelVersion: pkg.version,

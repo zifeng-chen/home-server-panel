@@ -7,6 +7,7 @@
         <p class="sub">{{ $t('ddns.subtitle') }}</p>
       </div>
       <div class="header-actions">
+        <el-button type="primary" @click="showAddDlg = true" :icon="Plus">{{ $t('ddns.addDomain') }}</el-button>
         <el-button @click="refreshAll" :loading="refreshing" :icon="Refresh">Refresh All</el-button>
       </div>
     </div>
@@ -48,13 +49,51 @@
         <el-button type="danger" @click="doDelete" :loading="deleting">确认删除</el-button>
       </template>
     </el-dialog>
+
+    <!-- 添加对话框 -->
+    <el-dialog v-model="showAddDlg" :title="$t('ddns.addDomain')" width="480">
+      <el-form :model="addForm" label-width="80px">
+        <el-form-item :label="$t('ddns.provider')">
+          <el-radio-group v-model="addForm.provider">
+            <el-radio value="aliyun">{{ $t('ddns.aliyun') }}</el-radio>
+            <el-radio value="tencent">{{ $t('ddns.tencent') }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="$t('ddns.domain')" required>
+          <el-input v-model="addForm.domain" placeholder="example.com" />
+        </el-form-item>
+        <el-form-item :label="$t('ddns.rr')">
+          <el-input v-model="addForm.subdomain" placeholder="@ 或 www" />
+        </el-form-item>
+        <el-form-item :label="$t('ddns.type')">
+          <el-select v-model="addForm.recordType">
+            <el-option label="A (IPv4)" value="A" />
+            <el-option label="AAAA (IPv6)" value="AAAA" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('ddns.value')">
+          <el-input v-model="addForm.value" :placeholder="addForm.recordType === 'AAAA' ? ipv6 || '自动获取IPv6' : ipv4 || '自动获取IPv4'" />
+        </el-form-item>
+        <el-form-item label="TTL">
+          <el-select v-model="addForm.ttl">
+            <el-option label="600 (10分钟)" :value="600" />
+            <el-option label="120 (2分钟)" :value="120" />
+            <el-option label="1800 (30分钟)" :value="1800" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDlg = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doAdd" :loading="adding">{{ $t('common.save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Delete } from '@element-plus/icons-vue'
+import { Refresh, Delete, Plus } from '@element-plus/icons-vue'
 import api from '../api'
 
 const loading    = ref(false)
@@ -66,6 +105,11 @@ const ipv6       = ref('')
 
 const delVisible = ref(false)
 const delTarget  = ref<any>(null)
+
+// 添加
+const showAddDlg = ref(false)
+const adding = ref(false)
+const addForm = ref({ provider: 'aliyun', domain: '', subdomain: '@', recordType: 'A', value: '', ttl: 600 })
 
 // 加载数据
 async function load() {
@@ -119,6 +163,34 @@ async function doDelete() {
     else ElMessage.error(res.message || '删除失败')
   } catch { ElMessage.error('删除失败') }
   finally { deleting.value = false }
+}
+
+// 添加域名
+async function doAdd() {
+  if (!addForm.value.domain.trim()) {
+    ElMessage.warning('请输入域名')
+    return
+  }
+  adding.value = true
+  try {
+    const res = await api.post('/ddns/domains', {
+      provider: addForm.value.provider,
+      name: addForm.value.domain.trim(),
+      subdomain: addForm.value.subdomain || '@',
+      recordType: addForm.value.recordType,
+      value: addForm.value.value || '',
+      ttl: addForm.value.ttl
+    }) as any
+    if (res.success) {
+      ElMessage.success(res.message || '添加成功')
+      showAddDlg.value = false
+      addForm.value = { provider: 'aliyun', domain: '', subdomain: '@', recordType: 'A', value: '', ttl: 600 }
+      await load()
+    } else {
+      ElMessage.error(res.message || '添加失败')
+    }
+  } catch { ElMessage.error('添加失败') }
+  finally { adding.value = false }
 }
 
 onMounted(load)

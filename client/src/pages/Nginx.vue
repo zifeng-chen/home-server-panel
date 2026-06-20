@@ -1,23 +1,19 @@
 <template>
   <div class="page">
-    <!-- ========== Nginx 状态 & 控制 ========== -->
+    <!-- ========== Nginx 状态 & 控制（全部同一行） ========== -->
     <div class="card" v-if="installed">
       <div class="nginx-status-row">
-        <div class="status-left">
-          <h2 class="status-title">Nginx</h2>
-          <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
-          <span class="status-ver">版本 {{ nginxVer }}</span>
+        <h2 class="status-title">Nginx</h2>
+        <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
+        <span class="status-ver">版本 {{ nginxVer }}</span>
+        <div class="nginx-actions">
+          <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
+          <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
+          <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
+          <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
         </div>
-        <div class="status-right">
-          <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
-          <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
-        </div>
-      </div>
-      <div class="nginx-actions">
-        <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
-        <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
-        <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
-        <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
+        <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
+        <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
       </div>
     </div>
 
@@ -249,17 +245,14 @@ onMounted(load)
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 
-/* ── Nginx 状态区 ── */
+/* ── Nginx 状态区（单行全排列）── */
 .nginx-status-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 10px;
 }
-.status-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.status-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-.status-title { font-size: 20px; font-weight: 700; margin: 0; }
+.status-title { font-size: 20px; font-weight: 700; margin: 0; flex-shrink: 0; }
 .status-badge {
   font-size: 12px;
   font-weight: 600;
@@ -267,18 +260,21 @@ onMounted(load)
   border-radius: 10px;
   background: rgba(239,68,68,0.12);
   color: #ef4444;
+  flex-shrink: 0;
 }
 .status-badge.running {
   background: rgba(34,197,94,0.12);
   color: #22c55e;
 }
-.status-ver { font-size: 13px; color: var(--text-tertiary); }
+.status-ver { font-size: 13px; color: var(--text-tertiary); flex-shrink: 0; }
+.nginx-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .info-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 .info-chip .lbl {
   color: var(--text-tertiary);
@@ -286,13 +282,12 @@ onMounted(load)
 }
 .info-chip .val {
   color: var(--text-secondary);
-  max-width: 280px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .info-chip .val.mono { font-family: var(--font-mono); font-size: 11px; }
-.nginx-actions { display: flex; gap: 6px; padding-top: 14px; border-top: 1px solid var(--border-color); }
 
 /* ── 安装指南 ── */
 .guide { background: var(--bg-base); padding: 16px; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; max-height: 400px; }

@@ -276,5 +276,12 @@
     "modules": "模块管理",
     "acmeEmail": "ACME 邮箱",
     "dnsProvider": "DNS 服务商"
+  },
+  "about": {
+    "title": "关于",
+    "description": "Home Server Panel 是一款轻量级家庭服务器管理面板，支持 Nginx 管理、DDNS 动态解析、SSL 证书管理、Docker 容器管理、PM2 进程管理、SSH 远程终端等功能。专为 iStoreOS / OpenWrt / Debian 等 Linux 环境设计，一站式管理您的家庭服务器。",
+    "version": "当前版本",
+    "author": "作者",
+    "techStack": "技术栈: Vue 3 + Element Plus + Node.js"
   }
 }

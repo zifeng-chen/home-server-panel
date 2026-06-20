@@ -63,6 +63,22 @@
     <div class="card save-bar">
       <el-button type="primary" @click="doSave" :loading="saving" :icon="Check">{{ $t('common.save') }}</el-button>
     </div>
+
+    <!-- 关于 -->
+    <div class="card about-card">
+      <div class="about-content">
+        <Logo size="lg" :show-text="false" class="about-logo" />
+        <div class="about-info">
+          <h3 class="about-title">{{ $t('about.title') }}</h3>
+          <p class="about-desc">{{ $t('about.description') }}</p>
+          <div class="about-meta">
+            <span class="about-item"><span class="about-label">{{ $t('about.version') }}</span><el-tag size="small" effect="plain" round>{{ version }}</el-tag></span>
+            <span class="about-item"><span class="about-label">{{ $t('about.author') }}</span><strong>{{ author }}</strong></span>
+          </div>
+          <p class="about-tech">{{ $t('about.techStack') }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -72,6 +88,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { Check, RefreshRight, Message } from '@element-plus/icons-vue'
 import api from '../api'
+import Logo from '../components/Logo.vue'
+
+declare const __APP_VERSION__: string
+declare const __APP_AUTHOR__: string
+const version = __APP_VERSION__
+const author = __APP_AUTHOR__
 
 const { t } = useI18n()
 const saving = ref(false)
@@ -158,4 +180,16 @@ onMounted(load)
 .save-bar { display: flex; justify-content: flex-end; }
 /* 防止云服务凭据标签换行 */
 .card :deep(.el-form-item__label) { white-space: nowrap; }
+
+/* ── 关于卡片 ── */
+.about-card { padding: 28px 32px; }
+.about-content { display: flex; gap: 24px; align-items: flex-start; }
+.about-logo { flex-shrink: 0; }
+.about-info { flex: 1; min-width: 0; }
+.about-title { font-size: 16px; font-weight: 700; margin: 0 0 10px; color: var(--text-primary); }
+.about-desc { font-size: 13px; line-height: 1.8; color: var(--text-secondary); margin: 0 0 16px; }
+.about-meta { display: flex; gap: 24px; align-items: center; margin-bottom: 12px; }
+.about-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.about-label { color: var(--text-tertiary); }
+.about-tech { font-size: 12px; color: var(--text-tertiary); margin: 0; }
 </style>

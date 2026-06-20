@@ -22,6 +22,10 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
   },
+  define: {
+    __APP_VERSION__: JSON.stringify('0.8.4-beta'),
+    __APP_AUTHOR__: JSON.stringify('陈子疯'),
+  },
   css: {
     preprocessorOptions: {
       scss: { additionalData: '' }

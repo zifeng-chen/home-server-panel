@@ -276,5 +276,12 @@
     "modules": "Modules",
     "acmeEmail": "ACME Email",
     "dnsProvider": "DNS Provider"
+  },
+  "about": {
+    "title": "About",
+    "description": "Home Server Panel is a lightweight home server management panel featuring Nginx management, DDNS dynamic DNS, SSL certificate management, Docker container management, PM2 process management, SSH terminal, and more. Designed for iStoreOS / OpenWrt / Debian Linux environments, providing one-stop management for your home server.",
+    "version": "Version",
+    "author": "Author",
+    "techStack": "Stack: Vue 3 + Element Plus + Node.js"
   }
 }

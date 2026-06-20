@@ -138,6 +138,21 @@ html.dark .el-input__wrapper {
 html.dark .el-input__inner { color: var(--text-primary); }
 html.dark .el-select .el-input__wrapper { background-color: rgba(255,255,255,0.04); }
 html.dark .el-radio__label { color: var(--text-primary); }
+/* 暗色加载遮罩 → 暗色 */
+html.dark .el-loading-mask {
+  background-color: rgba(10, 14, 24, 0.75) !important;
+}
+html.dark .el-loading-spinner .el-loading-text,
+html.dark .el-loading-spinner .circular { color: var(--text-secondary); }
+/* 暗色下拉菜单 */
+html.dark .el-select-dropdown,
+html.dark .el-popper.is-light {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-color) !important;
+}
+html.dark .el-select-dropdown__item { color: var(--text-primary); }
+html.dark .el-select-dropdown__item.hover,
+html.dark .el-select-dropdown__item:hover { background-color: rgba(77,171,247,0.08); }
 
 /* Button hover animation */
 .el-button { transition: all var(--dur-fast) var(--ease-spring) !important; }

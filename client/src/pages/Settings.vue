@@ -10,7 +10,7 @@
 
     <div class="card">
       <h3>{{ $t('settings.cloudCredentials') }}</h3>
-      <el-form :model="form" label-width="140px">
+      <el-form :model="form" label-width="170px">
         <el-form-item :label="$t('settings.aliAkId')">
           <el-input v-model="form.aliKeyId" :placeholder="form._hasAliKey ? $t('settings.leaveEmptyHint') : $t('settings.takesEffectHint')" />
           <el-tag v-if="form._hasAliKey" type="success" size="small" style="margin-left:8px">{{ $t('settings.configured') }}</el-tag>
@@ -129,4 +129,6 @@ onMounted(load)
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
 .save-bar { display: flex; justify-content: flex-end; }
 .hint-mod { margin-left: 12px; font-size: 12px; color: var(--text-tertiary); font-family: var(--font-mono); }
+/* 防止云服务凭据标签换行 */
+.card :deep(.el-form-item__label) { white-space: nowrap; }
 </style>

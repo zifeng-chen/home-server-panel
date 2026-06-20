@@ -1,30 +1,34 @@
 <template>
   <div class="page">
-    <!-- ========== Nginx 状态 & 控制 ========== -->
-    <div class="page-header">
+    <!-- ========== Nginx 状态 & 控制 → 合并到一张卡 ========== -->
+    <div class="card" v-if="installed">
+      <div class="nginx-status-row">
+        <div class="status-left">
+          <h2 class="status-title">Nginx</h2>
+          <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
+          <span class="status-ver">版本 {{ nginxVer }}</span>
+        </div>
+        <div class="status-right">
+          <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
+          <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
+          <span class="info-chip"><span class="lbl">状态</span><span class="val">{{ running ? '运行中' : '已停止' }}</span></span>
+        </div>
+      </div>
+      <div class="nginx-actions">
+        <el-button @click="doAction('start')" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
+        <el-button @click="doAction('stop')" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
+        <el-button @click="doAction('reload')" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
+        <el-button @click="doAction('restart')" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
+      </div>
+    </div>
+
+    <!-- 未安装 -->
+    <div class="page-header" v-if="!installed">
       <div>
         <h2>{{ $t('nginx.title') }}</h2>
         <p class="sub">{{ statusText }}</p>
       </div>
-      <div class="header-actions">
-        <el-button v-if="!installed" type="primary" @click="installGuide" :loading="loadingInst">{{ $t('nginx.install') }}</el-button>
-        <template v-else>
-          <el-button @click="doAction('start')" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
-          <el-button @click="doAction('stop')" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
-          <el-button @click="doAction('reload')" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
-          <el-button @click="doAction('restart')" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
-        </template>
-      </div>
-    </div>
-
-    <!-- 状态卡片 -->
-    <div class="card" v-if="installed">
-      <div class="info-grid">
-        <div class="info-item"><span class="lbl">{{ $t('nginx.version') }}</span><span class="val">{{ nginxVer }}</span></div>
-        <div class="info-item"><span class="lbl">{{ $t('nginx.configPath') }}</span><span class="val mono">{{ confPath }}</span></div>
-        <div class="info-item"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></div>
-        <div class="info-item"><span class="lbl">{{ $t('nginx.status') }}</span><span class="val">{{ running ? $t('dashboard.running') : $t('dashboard.stopped') }}</span></div>
-      </div>
+      <el-button type="primary" @click="installGuide" :loading="loadingInst">{{ $t('nginx.install') }}</el-button>
     </div>
 
     <!-- 安装指南 -->
@@ -33,31 +37,18 @@
       <pre class="guide">{{ guideText }}</pre>
     </div>
 
-    <!-- ========== 反向代理规则管理 ========== -->
-    <div class="section-divider" v-if="installed">
+    <!-- ========== 反向代理规则 → 标题与统计并行 ========== -->
+    <div class="proxy-header" v-if="installed">
       <h3 class="section-title">反向代理规则</h3>
-    </div>
-
-    <div class="page-header" v-if="installed">
-      <div>
-        <p class="sub">{{ statsText }}</p>
-      </div>
-      <div class="header-actions">
+      <span class="proxy-count" v-if="stats">{{ stats.total }} 条规则 / {{ stats.enabled }} 启用</span>
+      <div class="proxy-actions">
         <el-button type="primary" @click="showAddEdit(null)" :icon="Plus">{{ $t('nginx.addRule') }}</el-button>
         <el-button @click="exportConfig">{{ $t('nginx.exportConfig') }}</el-button>
       </div>
     </div>
 
-    <!-- 统计 -->
-    <div class="stat-row" v-if="stats && installed">
-      <div class="stat-item"><span class="num">{{ stats.total }}</span><span class="lbl">总数</span></div>
-      <div class="stat-item"><span class="num green">{{ stats.enabled }}</span><span class="lbl">{{ $t('nginx.enabled') }}</span></div>
-      <div class="stat-item"><span class="num">{{ stats.disabled }}</span><span class="lbl">{{ $t('nginx.disabled') }}</span></div>
-      <div class="stat-item"><span class="num purple">{{ stats.sslCount }}</span><span class="lbl">{{ $t('nginx.ssl') }}</span></div>
-    </div>
-
     <!-- 规则表格 -->
-    <el-table v-if="installed" :data="rules" v-loading="loadingRules" stripe class="data-table">
+    <el-table v-if="installed" :data="rules" v-loading="loadingRules" stripe class="data-table no-white-mask">
       <el-table-column prop="sourceHost" :label="$t('nginx.domain')" min-width="160" />
       <el-table-column :label="$t('nginx.target')" min-width="200">
         <template #default="{ row }">{{ row.targetProtocol || 'http' }}://{{ row.targetHost }}:{{ row.targetPort || 80 }}</template>
@@ -137,7 +128,6 @@ async function load() {
       confPath.value  = d.confPath || '--'
       pid.value       = d.pid || '--'
     }
-    // 加载代理规则
     if (installed.value) await loadRules()
   } catch { /* ignore */ }
 }
@@ -174,11 +164,6 @@ const saving   = ref(false)
 const editId   = ref('')
 const form     = ref<any>({ sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' })
 const sslCerts = ref<any[]>([])
-
-const statsText = computed(() => {
-  if (!stats.value) return ''
-  return `总计 ${stats.value.total} 条规则，${stats.value.enabled} 条已启用`
-})
 
 async function loadRules() {
   loadingRules.value = true
@@ -262,22 +247,54 @@ onMounted(load)
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; }
 .page-header h2 { font-size: 20px; font-weight: 600; }
 .sub { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
-.header-actions { display: flex; gap: 8px; }
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
-.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-.info-item { display: flex; flex-direction: column; gap: 4px; }
-.info-item .lbl { font-size: 12px; color: var(--text-tertiary); }
-.info-item .val { font-size: 14px; font-weight: 500; color: var(--text-primary); }
-.mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* ── Nginx 状态区（合并版）── */
+.nginx-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.status-left { display: flex; align-items: center; gap: 12px; }
+.status-title { font-size: 20px; font-weight: 700; margin: 0; }
+.status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+}
+.status-badge.running {
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+}
+.status-ver { font-size: 13px; color: var(--text-tertiary); }
+.status-right { display: flex; gap: 20px; flex-wrap: wrap; }
+.info-chip { display: flex; flex-direction: column; gap: 2px; }
+.info-chip .lbl { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; }
+.info-chip .val { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.nginx-actions { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+
+/* ── 安装指南 ── */
 .guide { background: var(--bg-base); padding: 16px; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; max-height: 400px; }
-.section-divider { border-top: 1px solid var(--border-color); padding-top: 8px; }
-.section-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
-.stat-row { display: flex; gap: 24px; }
-.stat-item { display: flex; flex-direction: column; align-items: center; }
-.stat-item .num { font-size: 24px; font-weight: 700; color: var(--text-primary); }
-.stat-item .num.green { color: var(--accent-green); }
-.stat-item .num.purple { color: var(--accent-purple); }
-.stat-item .lbl { font-size: 12px; color: var(--text-tertiary); }
+
+/* ── 反向代理标题行（标题+数量+按钮并行）── */
+.proxy-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.proxy-header .section-title { font-size: 17px; font-weight: 600; margin: 0; white-space: nowrap; }
+.proxy-count { font-size: 13px; color: var(--text-tertiary); }
+.proxy-actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* ── 表格 ── */
 .data-table { border-radius: var(--radius-md); overflow: hidden; }
 </style>

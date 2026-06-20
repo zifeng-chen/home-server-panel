@@ -1,23 +1,23 @@
 <template>
   <div class="page">
-    <!-- ========== Nginx 状态 & 控制 → 按钮前置 ========== -->
+    <!-- ========== Nginx 状态 & 控制 ========== -->
     <div class="card" v-if="installed">
       <div class="nginx-status-row">
         <div class="status-left">
           <h2 class="status-title">Nginx</h2>
           <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
           <span class="status-ver">版本 {{ nginxVer }}</span>
-          <div class="nginx-actions">
-            <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
-            <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
-            <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
-            <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
-          </div>
+        </div>
+        <div class="status-right">
+          <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
+          <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
         </div>
       </div>
-      <div class="nginx-info-row">
-        <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
-        <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
+      <div class="nginx-actions">
+        <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
+        <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
+        <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
+        <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
       </div>
     </div>
 
@@ -249,16 +249,16 @@ onMounted(load)
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 
-/* ── Nginx 状态区（合并版）── */
+/* ── Nginx 状态区 ── */
 .nginx-status-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 12px;
 }
 .status-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .status-title { font-size: 20px; font-weight: 700; margin: 0; }
 .status-badge {
   font-size: 12px;
@@ -273,14 +273,26 @@ onMounted(load)
   color: #22c55e;
 }
 .status-ver { font-size: 13px; color: var(--text-tertiary); }
-.nginx-actions { display: flex; gap: 6px; margin-left: 12px; }
-.nginx-info-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
+.info-chip .lbl {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+.info-chip .val {
+  color: var(--text-secondary);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.info-chip .val.mono { font-family: var(--font-mono); font-size: 11px; }
+.nginx-actions { display: flex; gap: 6px; padding-top: 14px; border-top: 1px solid var(--border-color); }
 
 /* ── 安装指南 ── */
 .guide { background: var(--bg-base); padding: 16px; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; max-height: 400px; }

@@ -5,17 +5,9 @@
       <div class="card-inner">
         <div class="brand-icon">
           <div class="icon-ring" />
-          <svg viewBox="0 0 48 48" width="48" height="48" fill="none">
-            <rect x="4" y="4" width="40" height="40" rx="8" stroke-width="2" stroke="currentColor" />
-            <rect x="10" y="12" width="12" height="4" rx="1" fill="currentColor" opacity="0.6" />
-            <rect x="10" y="20" width="16" height="4" rx="1" fill="currentColor" opacity="0.4" />
-            <rect x="10" y="28" width="8" height="4" rx="1" fill="currentColor" opacity="0.3" />
-            <circle cx="36" cy="26" r="10" fill="currentColor" opacity="0.15" />
-            <circle cx="36" cy="26" r="4" fill="currentColor" opacity="0.5" />
-          </svg>
+          <Logo size="lg" :show-text="false" />
         </div>
-        <h2 class="title">Home Server Panel</h2>
-        <p class="subtitle">高性能服务器管理面板</p>
+        <Logo size="md" class="login-brand-text" />
 
         <el-form ref="formRef" :model="form" :rules="rules" @submit.prevent="doLogin" size="large" class="login-form">
           <el-form-item prop="username">
@@ -53,7 +45,7 @@
           <p v-if="error" class="error-msg">{{ error }}</p>
         </Transition>
 
-        <p class="version-tag">v0.8.2-beta</p>
+        <p class="version-tag">v0.8.4-beta</p>
       </div>
     </div>
   </div>
@@ -64,6 +56,7 @@ import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import Logo from '../components/Logo.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const auth   = useAuthStore()
@@ -263,10 +256,9 @@ onUnmounted(() => cancelAnimationFrame(animId))
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  margin-bottom: 20px;
-  color: #5c9eff;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
   animation: iconPulse 0.6s var(--ease-out) 0.1s both;
 }
 @keyframes iconPulse {
@@ -275,7 +267,7 @@ onUnmounted(() => cancelAnimationFrame(animId))
 }
 .icon-ring {
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: 50%;
   border: 1.5px solid rgba(92, 158, 255, 0.25);
   animation: ringSpin 8s linear infinite;
@@ -285,19 +277,21 @@ onUnmounted(() => cancelAnimationFrame(animId))
   to   { transform: rotate(360deg); }
 }
 
-.title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #f0f0f5;
-  letter-spacing: -0.3px;
+.login-brand-text {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 36px;
   animation: fadeUp 0.5s var(--ease-out) 0.2s both;
 }
-.subtitle {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 6px;
-  margin-bottom: 36px;
-  animation: fadeUp 0.5s var(--ease-out) 0.3s both;
+.login-brand-text :deep(.logo-en) {
+  text-align: center;
+  font-size: 22px !important;
+  color: #f0f0f5 !important;
+}
+.login-brand-text :deep(.logo-cn) {
+  text-align: center;
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }

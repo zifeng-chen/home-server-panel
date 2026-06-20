@@ -1,17 +1,7 @@
 <template>
   <aside class="sidebar">
     <div class="logo-area">
-      <div class="logo-icon">
-        <svg viewBox="0 0 40 40" width="36" height="36" fill="none">
-          <rect x="3" y="3" width="34" height="34" rx="8" stroke-width="1.5" stroke="currentColor" opacity="0.6" />
-          <rect x="8" y="10" width="10" height="3" rx="1" fill="currentColor" opacity="0.5" />
-          <rect x="8" y="16" width="14" height="3" rx="1" fill="currentColor" opacity="0.35" />
-          <rect x="8" y="22" width="7" height="3" rx="1" fill="currentColor" opacity="0.25" />
-          <circle cx="30" cy="22" r="8" fill="currentColor" opacity="0.12" />
-          <circle cx="30" cy="22" r="3" fill="currentColor" opacity="0.55" />
-        </svg>
-      </div>
-      <span class="logo-text">HSP</span>
+      <Logo size="md" />
     </div>
     <nav class="nav">
       <router-link v-for="item in navItems" :key="item.path" :to="item.path"
@@ -32,13 +22,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Logo from './Logo.vue'
 import {
   Odometer, Connection, Key, Coin, Switch,
   Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
-const version = '0.8.2'
+const version = '0.8.4'
 
 const navItems = computed(() => [
   { label: t('sidebar.dashboard'), path: '/',          icon: Odometer },
@@ -71,21 +62,7 @@ const navItems = computed(() => [
 
 /* Logo */
 .logo-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 8px 10px 20px;
-}
-.logo-icon {
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-}
-.logo-text {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--text-primary);
 }
 
 /* Nav */

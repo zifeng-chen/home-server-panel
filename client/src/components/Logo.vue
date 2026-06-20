@@ -98,6 +98,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   user-select: none;
+  max-width: 100%;
 }
 
 /* ── Sizes ── */
@@ -120,10 +121,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 .logo-img, .logo-svg-fallback {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 

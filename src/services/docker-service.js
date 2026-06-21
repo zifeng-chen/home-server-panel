@@ -350,7 +350,7 @@ class DockerService {
     return portsStr.split(',').map(p => {
       // 兼容两种格式: "15433->5432/tcp" 和 "0.0.0.0:15433->5432/tcp" 和 ":::15433->5432/tcp"
       const m = p.trim().match(/(?:[\[\]:.0-9a-fA-F]*:)?(\d+)->(\d+)\/(tcp|udp)/);
-      return m ? { host: parseInt(m[1]), container: parseInt(m[2]), protocol: m[3] } : { raw: p.trim() };
+      return m ? { publicPort: parseInt(m[1]), privatePort: parseInt(m[2]), protocol: m[3] } : { raw: p.trim() };
     });
   }
 }

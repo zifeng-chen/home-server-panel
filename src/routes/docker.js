@@ -8,13 +8,28 @@ const docker = require('../services/docker-service');
 // GET /api/docker - Docker 概览
 router.get('/', async (req, res) => {
   try {
-    const [info, containers, images, networks, volumes] = await Promise.all([
+    const [info, containers, images, networks, volumes, stats] = await Promise.all([
       docker.getInfo(),
       docker.listContainers(true),
       docker.listImages(),
       docker.listNetworks(),
-      docker.listVolumes()
+      docker.listVolumes(),
+      docker.getAllStats().catch(() => [])
     ]);
+
+    // 合并 stats (CPU/内存) 到容器列表 (按 name 匹配)
+    const statsMap = {};
+    for (const s of stats) { statsMap[s.name] = s; }
+    for (const c of containers) {
+      const s = statsMap[c.name];
+      if (s) {
+        c.cpu = (s.cpuPercent || 0) + '%';
+        c.memUsage = s.memoryUsage || '--';
+        c.mem = s.memoryLimit || '--';
+        c.memPercent = (s.memoryPercent || 0) + '%';
+      }
+    }
+
     res.json({
       success: true,
       data: {

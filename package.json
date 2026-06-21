@@ -9,7 +9,7 @@
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop home-server-panel",
     "pm2:restart": "pm2 restart home-server-panel",
-    "build": "node build.mjs"
+    "build": "cd client && npm run build && cd .. && node build.mjs"
   },
   "keywords": [
     "ddns",

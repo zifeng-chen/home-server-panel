@@ -23,7 +23,7 @@ export default defineConfig({
     assetsDir: 'assets',
   },
   define: {
-    __APP_VERSION__: JSON.stringify('0.8.4-beta'),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.8.5-beta'),
     __APP_AUTHOR__: JSON.stringify('陈子疯'),
   },
   css: {

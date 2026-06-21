@@ -5,7 +5,10 @@
         <h2>{{ $t('settings.title') }}</h2>
         <p class="sub">{{ $t('settings.basic') }}</p>
       </div>
-      <el-button type="danger" @click="confirmRestart" :icon="RefreshRight" plain>{{ $t('settings.restartService') }}</el-button>
+      <div class="header-actions">
+        <el-button type="primary" @click="doSave" :loading="saving" :icon="Check">{{ $t('common.save') }}</el-button>
+        <el-button type="danger" @click="confirmRestart" :icon="RefreshRight" plain>{{ $t('settings.restartService') }}</el-button>
+      </div>
     </div>
 
     <!-- 云服务凭据 → 显示脱敏值，移除标签 -->
@@ -58,10 +61,6 @@
         </el-form-item>
         <el-form-item :label="$t('ssl.expiry')"><el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> {{ $t('ssl.days') }}</el-form-item>
       </el-form>
-    </div>
-
-    <div class="card save-bar">
-      <el-button type="primary" @click="doSave" :loading="saving" :icon="Check">{{ $t('common.save') }}</el-button>
     </div>
 
     <!-- 关于 -->
@@ -172,12 +171,12 @@ onMounted(load)
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 20px; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .page-header h2 { font-size: 20px; font-weight: 600; }
 .sub { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
-.save-bar { display: flex; justify-content: flex-end; }
 /* 防止云服务凭据标签换行 */
 .card :deep(.el-form-item__label) { white-space: nowrap; }
 
@@ -192,4 +191,18 @@ onMounted(load)
 .about-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .about-label { color: var(--text-tertiary); }
 .about-tech { font-size: 12px; color: var(--text-tertiary); margin: 0; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .card :deep(.el-form-item) { display: block; margin-bottom: 16px; }
+  .card :deep(.el-form-item__label) { width: auto !important; text-align: left; padding-bottom: 4px; }
+  .card :deep(.el-form-item__content) { margin-left: 0 !important; }
+}
+@media (max-width: 480px) {
+  .header-actions { width: 100%; }
+  .header-actions .el-button { flex: 1; }
+  .about-content { flex-direction: column; align-items: center; text-align: center; }
+  .about-meta { flex-direction: column; gap: 8px; }
+  .card { padding: 16px; }
+}
 </style>

@@ -5,27 +5,27 @@
         <h2>{{ $t('users.title') }}</h2>
         <p class="sub">{{ $t('users.subtitle') }}</p>
       </div>
-      <el-button type="primary" @click="openCreate" :icon="Plus" v-if="isAdmin">{{ $t('users.addUser') }}</el-button>
+      <el-button type="primary" @click="openCreate" :icon="Plus" v-if="auth.isAdmin">{{ $t('users.addUser') }}</el-button>
     </div>
 
     <div class="card">
       <el-table :data="users" stripe size="default" v-loading="loading" empty-text="暂无用户">
-        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="username" :label="$t('users.username')" min-width="120" />
-        <el-table-column :label="$t('users.role')" width="120">
+        <el-table-column :label="$t('users.role')" width="100">
           <template #default="{row}">
-            <el-tag :type="row.role === 'admin' ? 'danger' : 'info'" size="small" effect="plain">
+            <el-tag :type="row.role === 'admin' ? 'danger' : ''" size="small" effect="plain">
               {{ row.role === 'admin' ? $t('users.admin') : $t('users.user') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('users.createdAt')" width="180">
+        <el-table-column :label="$t('users.createdAt')" width="170">
           <template #default="{row}">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column :label="$t('users.updatedAt')" width="180">
+        <el-table-column :label="$t('users.updatedAt')" width="170">
           <template #default="{row}">{{ formatTime(row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column v-if="isAdmin" :label="$t('common.actions')" width="160" fixed="right">
+        <el-table-column v-if="auth.isAdmin" :label="$t('common.actions')" width="150" fixed="right">
           <template #default="{row}">
             <el-button text type="primary" size="small" @click="openEdit(row)" :icon="Edit">{{ $t('common.edit') }}</el-button>
             <el-popconfirm v-if="row.username !== 'admin'" :title="$t('users.deleteConfirm')" @confirm="doDelete(row.id)">
@@ -39,13 +39,20 @@
     </div>
 
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editingUser ? $t('users.editUserTitle') : $t('users.addUserTitle')" width="480px" :close-on-click-modal="false">
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingUser ? $t('users.editUserTitle') : $t('users.addUserTitle')"
+      width="520px"
+      :close-on-click-modal="false"
+      class="user-dialog"
+    >
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="user-form" @submit.prevent>
         <el-form-item :label="$t('users.username')" prop="username">
           <el-input v-model="form.username" :placeholder="$t('users.usernameHint')" :disabled="!!editingUser" />
         </el-form-item>
         <el-form-item :label="$t('users.password')" prop="password">
-          <el-input v-model="form.password" type="password" show-password :placeholder="editingUser ? $t('users.passwordEditHint') : $t('users.passwordHint')" />
+          <el-input v-model="form.password" type="password" show-password
+            :placeholder="editingUser ? $t('users.passwordEditHint') : $t('users.passwordHint')" />
         </el-form-item>
         <el-form-item :label="$t('users.role')" prop="role">
           <el-radio-group v-model="form.role" :disabled="editingUser?.username === 'admin'">
@@ -63,20 +70,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import api from '../api'
+import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
+const auth = useAuthStore()
+
 const users = ref<any[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const editingUser = ref<any>(null)
-const currentUser = reactive({ username: '', role: 'user' })
-const isAdmin = computed(() => currentUser.role === 'admin')
 
 const form = reactive({ username: '', password: '', role: 'user' })
 const formRef = ref<FormInstance>()
@@ -96,10 +104,6 @@ function formatTime(s: string) {
   return new Date(s).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
 }
 
-async function fetchMe() {
-  try { const res = await api.get('/users/me') as any; if (res.success) { currentUser.username = res.data.username; currentUser.role = res.data.role } } catch { /* */ }
-}
-
 async function fetchUsers() {
   loading.value = true
   try {
@@ -114,8 +118,12 @@ function openCreate() {
   form.username = ''
   form.password = ''
   form.role = 'user'
-  // 新建时密码必填
-  (rules.password as any).unshift({ required: true, message: '请输入密码', trigger: 'blur' })
+  const pwRule = rules.password as any[]
+  if (!pwRule.some((r: any) => r.required)) {
+    pwRule.unshift({ required: true, message: '请输入密码', trigger: 'blur' })
+  }
+  // 重置表单校验
+  formRef.value?.resetFields()
   dialogVisible.value = true
 }
 
@@ -124,10 +132,10 @@ function openEdit(user: any) {
   form.username = user.username
   form.password = ''
   form.role = user.role
-  // 编辑时密码选填
   const pwRule = rules.password as any[]
   const idx = pwRule.findIndex((r: any) => r.required)
   if (idx >= 0) pwRule.splice(idx, 1)
+  formRef.value?.resetFields()
   dialogVisible.value = true
 }
 
@@ -160,20 +168,39 @@ async function doDelete(id: number) {
   } catch { ElMessage.error(t('common.error')) }
 }
 
-onMounted(async () => {
-  await fetchMe()
-  if (isAdmin.value) fetchUsers()
+onMounted(() => {
+  if (auth.isAdmin) fetchUsers()
 })
 </script>
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 20px; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
-.page-header h2 { font-size: 20px; font-weight: 600; }
+.page-header h2 { font-size: 20px; font-weight: 600; margin: 0; color: var(--text-primary); }
 .sub { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); overflow-x: auto; }
+
+/* 对话框暗色模式适配 */
+:global(.dark) .user-dialog :deep(.el-dialog) {
+  --el-dialog-bg-color: var(--bg-elevated, #1a1a2e);
+}
+.user-dialog :deep(.el-dialog__header) { padding-bottom: 8px; }
+.user-dialog :deep(.el-dialog__body)  { padding-top: 8px; padding-bottom: 8px; }
+.user-form :deep(.el-form-item) { margin-bottom: 18px; }
+.user-form :deep(.el-form-item:last-child) { margin-bottom: 0; }
+
+/* 暗色模式下 radio 文字可见 */
+:global(body.dark) .user-dialog :deep(.el-radio__label) { color: var(--text-secondary, #c0c0d0); }
+:global(body.dark) .user-dialog :deep(.el-radio.is-checked .el-radio__label) { color: var(--brand, #6366f1); }
+
+/* 移动端 */
 @media (max-width: 768px) {
   .card { padding: 12px; }
   .page-header .el-button { width: 100%; }
+  .user-dialog :deep(.el-dialog) { width: 95vw !important; }
+}
+@media (max-width: 500px) {
+  .user-form :deep(.el-form-item) { flex-direction: column; }
+  .user-form :deep(.el-form-item__label) { width: auto !important; text-align: left; }
 }
 </style>

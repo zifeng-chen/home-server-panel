@@ -8,7 +8,7 @@
       </div>
       <div class="header-actions">
         <el-button type="primary" @click="showAddDlg = true" :icon="Plus">{{ $t('ddns.addDomain') }}</el-button>
-        <el-button @click="refreshAll" :loading="refreshing" :icon="Refresh">Refresh All</el-button>
+        <el-button @click="refreshAll" :loading="refreshing" :icon="Refresh">{{ $t('common.refresh') }}</el-button>
       </div>
     </div>
 
@@ -20,13 +20,13 @@
 
     <!-- 记录表格 -->
     <el-table :data="records" v-loading="loading" stripe class="data-table">
-      <el-table-column label="云商" width="80">
-        <template #default="{ row }"><el-tag :type="row.provider === 'tencent' ? 'warning' : 'primary'" size="small">{{ row.provider === 'tencent' ? '腾讯云' : '阿里云' }}</el-tag></template>
+      <el-table-column :label="$t('ddns.provider')" width="80">
+        <template #default="{ row }"><el-tag :type="row.provider === 'tencent' ? 'warning' : 'primary'" size="small">{{ row.provider === 'tencent' ? $t('ddns.tencent') : $t('ddns.aliyun') }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="domain" label="域名" min-width="160" />
-      <el-table-column prop="rr" label="主机记录" width="100" />
-      <el-table-column prop="recordType" label="类型" width="70" />
-      <el-table-column prop="ip" label="解析值" min-width="200" show-overflow-tooltip>
+      <el-table-column prop="domain" :label="$t('ddns.domain')" min-width="160" />
+      <el-table-column prop="rr" :label="$t('ddns.rr')" width="100" />
+      <el-table-column prop="recordType" :label="$t('ddns.type')" width="70" />
+      <el-table-column prop="ip" :label="$t('ddns.value')" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <code class="ip-code">{{ row.ip || row.value || '--' }}</code>
         </template>
@@ -41,27 +41,27 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column prop="line" label="线路" width="80" />
+      <el-table-column prop="line" :label="$t('ddns.line')" width="80" />
       <el-table-column prop="ttl" label="TTL" width="70" />
-      <el-table-column label="状态" width="80">
+      <el-table-column :label="$t('ddns.status')" width="80">
         <template #default="{ row }">
           <el-switch :model-value="row.enabled !== false" @change="() => toggleRecord(row)" size="small" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="130" fixed="right">
+      <el-table-column :label="$t('ddns.actions')" width="130" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openEdit(row)" :icon="Edit" size="small">编辑</el-button>
-          <el-button link type="danger" @click="confirmDelete(row)" :icon="Delete" size="small">删除</el-button>
+          <el-button link type="primary" @click="openEdit(row)" :icon="Edit" size="small">{{ $t('common.edit') }}</el-button>
+          <el-button link type="danger" @click="confirmDelete(row)" :icon="Delete" size="small">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 删除确认 -->
-    <el-dialog v-model="delVisible" title="确认删除" width="360">
-      <p>确定要删除 <b>{{ delTarget?.rr }}.{{ delTarget?.domain }}</b> 的 DNS 记录吗？</p>
+    <el-dialog v-model="delVisible" :title="$t('ddns.deleteConfirm')" width="360">
+      <p>{{ $t('ddns.deleteDialog', { name: (delTarget?.rr || '') + '.' + (delTarget?.domain || '') }) }}</p>
       <template #footer>
-        <el-button @click="delVisible = false">取消</el-button>
-        <el-button type="danger" @click="doDelete" :loading="deleting">确认删除</el-button>
+        <el-button @click="delVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" @click="doDelete" :loading="deleting">{{ $t('common.delete') }}</el-button>
       </template>
     </el-dialog>
 
@@ -108,24 +108,24 @@
     </el-dialog>
 
     <!-- 编辑对话框 -->
-    <el-dialog v-model="showEditDlg" title="编辑 DNS 记录" width="480">
+    <el-dialog v-model="showEditDlg" :title="$t('ddns.editRecord')" width="480">
       <el-form v-if="editTarget" :model="editForm" label-width="80px">
-        <el-form-item label="域名">
+        <el-form-item :label="$t('ddns.domain')">
           <el-input :model-value="editTarget.domain" disabled />
         </el-form-item>
-        <el-form-item label="主机记录">
+        <el-form-item :label="$t('ddns.rr')">
           <el-input v-model="editForm.rr" />
         </el-form-item>
-        <el-form-item label="记录类型">
+        <el-form-item :label="$t('ddns.type')">
           <el-select v-model="editForm.recordType">
             <el-option label="A (IPv4)" value="A" />
             <el-option label="AAAA (IPv6)" value="AAAA" />
           </el-select>
         </el-form-item>
-        <el-form-item label="解析值">
+        <el-form-item :label="$t('ddns.value')">
           <el-input v-model="editForm.ip" />
         </el-form-item>
-        <el-form-item label="线路">
+        <el-form-item :label="$t('ddns.line')">
           <el-input v-model="editForm.line" placeholder="default" />
         </el-form-item>
         <el-form-item label="TTL">
@@ -191,7 +191,7 @@ async function load() {
       ipv4.value = res.data.publicIpv4 || ''
       ipv6.value = res.data.publicIpv6 || ''
     }
-  } catch { ElMessage.error('加载 DDNS 数据失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { loading.value = false }
 }
 
@@ -200,9 +200,9 @@ async function refreshAll() {
   refreshing.value = true
   try {
     const res = await api.post('/ddns/refresh') as any
-    ElMessage.success(res.message || '刷新完成')
+    ElMessage.success(res.message || $t('common.success'))
     await load()
-  } catch { ElMessage.error('刷新失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { refreshing.value = false }
 }
 
@@ -215,8 +215,8 @@ async function toggleRecord(row: any) {
       status: row.enabled === false ? 'ENABLE' : 'DISABLE'
     }) as any
     if (res.success) { ElMessage.success(res.message); await load() }
-    else ElMessage.error(res.message || '操作失败')
-  } catch { ElMessage.error('操作失败') }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 // 删除
@@ -229,16 +229,16 @@ async function doDelete() {
   deleting.value = true
   try {
     const res = await api.delete(`/ddns/record/${delTarget.value.id}`) as any
-    if (res.success) { ElMessage.success('已删除'); delVisible.value = false; await load() }
-    else ElMessage.error(res.message || '删除失败')
-  } catch { ElMessage.error('删除失败') }
+    if (res.success) { ElMessage.success($t('common.success')); delVisible.value = false; await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
   finally { deleting.value = false }
 }
 
 // 添加域名
 async function doAdd() {
   if (!addForm.value.domain.trim()) {
-    ElMessage.warning('请输入域名')
+    ElMessage.warning($t('common.error'))
     return
   }
   adding.value = true
@@ -252,14 +252,14 @@ async function doAdd() {
       ttl: addForm.value.ttl
     }) as any
     if (res.success) {
-      ElMessage.success(res.message || '添加成功')
+      ElMessage.success(res.message || $t('common.success'))
       showAddDlg.value = false
       addForm.value = { provider: 'aliyun', domain: '', subdomain: '@', recordType: 'A', value: '', ttl: 600 }
       await load()
     } else {
-      ElMessage.error(res.message || '添加失败')
+      ElMessage.error(res.message || $t('common.error'))
     }
-  } catch { ElMessage.error('添加失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { adding.value = false }
 }
 
@@ -287,9 +287,9 @@ async function doEdit() {
       ttl: editForm.value.ttl,
       line: editForm.value.line
     }) as any
-    if (res.success) { ElMessage.success(res.message || '已更新'); showEditDlg.value = false; await load() }
-    else ElMessage.error(res.message || '编辑失败')
-  } catch { ElMessage.error('编辑失败') }
+    if (res.success) { ElMessage.success(res.message || $t('common.success')); showEditDlg.value = false; await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
   finally { editing.value = false }
 }
 

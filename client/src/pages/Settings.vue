@@ -16,16 +16,16 @@
       <h3>{{ $t('settings.cloudCredentials') }}</h3>
       <el-form :model="form" label-width="170px">
         <el-form-item :label="$t('settings.aliAkId')">
-          <el-input v-model="form.aliKeyId" placeholder="输入新的 AccessKey ID" clearable />
+          <el-input v-model="form.aliKeyId" :placeholder="$t('settings.takesEffectHint')" clearable />
         </el-form-item>
         <el-form-item :label="$t('settings.aliAkSecret')">
-          <el-input v-model="form.aliKeySecret" type="password" show-password placeholder="输入新的 AccessKey Secret" />
+          <el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="$t('settings.takesEffectHint')" />
         </el-form-item>
         <el-form-item :label="$t('settings.tencentSecretId')">
-          <el-input v-model="form.tencentSecretId" placeholder="输入新的 Secret ID" clearable />
+          <el-input v-model="form.tencentSecretId" :placeholder="$t('settings.takesEffectHint')" clearable />
         </el-form-item>
         <el-form-item :label="$t('settings.tencentSecretKey')">
-          <el-input v-model="form.tencentSecretKey" type="password" show-password placeholder="输入新的 Secret Key" />
+          <el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="$t('settings.takesEffectHint')" />
         </el-form-item>
       </el-form>
     </div>
@@ -39,7 +39,7 @@
           <el-input v-model="form.acmeEmail" placeholder="admin@example.com" />
         </el-form-item>
         <el-form-item :label="$t('settings.dnsProvider')">
-          <el-select v-model="form.acmeDns" filterable placeholder="选择 DNS 服务商" style="width:100%">
+          <el-select v-model="form.acmeDns" filterable :placeholder="$t('settings.dnsProvider')" style="width:100%">
             <el-option-group label="国内">
               <el-option label="阿里云 DNS (alidns)" value="alidns" />
               <el-option label="腾讯云 DNSPod (dns_dp)" value="dns_dp" />
@@ -68,8 +68,8 @@
       <el-form :model="form" label-width="140px">
         <el-form-item :label="$t('settings.pushplusToken')">
           <div style="display:flex;gap:8px;width:100%">
-            <el-input v-model="form.pushplusToken" placeholder="PushPlus Token" style="flex:1" />
-            <el-button @click="testPush" :loading="testing" :icon="Message">{{ testing ? '测试中' : '测试推送' }}</el-button>
+            <el-input v-model="form.pushplusToken" :placeholder="$t('settings.pushplusToken')" style="flex:1" />
+            <el-button @click="testPush" :loading="testing" :icon="Message">{{ testing ? $t('common.loading') : $t('common.submit') }}</el-button>
           </div>
         </el-form-item>
         <el-form-item :label="$t('settings.pushplusTitle')">
@@ -145,7 +145,7 @@ async function load() {
       form.aliKeySecret = d.aliKeySecret || ''
       form.tencentSecretId = d.tencentSecretId || ''
       form.tencentSecretKey = d.tencentSecretKey || ''
-      form.pushplusToken = d.pushplusToken === '已配置' ? '••••••••••' : d.pushplusToken || ''
+      form.pushplusToken = d.pushplusToken === $t('settings.configured') ? '••••••••••' : d.pushplusToken || ''
       form.pushplusTitle = d.pushplusTitle || ''
       form.pushplusChannel = d.pushplusChannel || 'wechat'
       form.acmeEmail = d.acmeEmail || ''
@@ -159,10 +159,10 @@ async function testPush() {
   testing.value = true
   try {
     const res = await api.post('/notify/test') as any
-    if (res.success) ElMessage.success(res.message || '推送测试成功')
-    else ElMessage.warning(res.message || '推送测试失败')
+    if (res.success) ElMessage.success(res.message || $t('common.success'))
+    else ElMessage.warning(res.message || $t('common.error'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '推送测试失败')
+    ElMessage.error(e?.message || $t('common.error'))
   } finally {
     testing.value = false
   }

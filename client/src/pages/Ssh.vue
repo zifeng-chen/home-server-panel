@@ -3,8 +3,8 @@
     <!-- 左侧连接列表 -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h3>SSH 连接</h3>
-        <el-button size="small" type="primary" @click="showAdd" :icon="Plus">添加</el-button>
+        <h3>{{ $t('ssh.title') }}</h3>
+        <el-button size="small" type="primary" @click="showAdd" :icon="Plus">{{ $t('common.add') }}</el-button>
       </div>
       <div class="config-list">
         <div
@@ -16,7 +16,7 @@
           <div class="cfg-top">
             <div class="cfg-name">{{ cfg.name || cfg.host }}</div>
             <div class="cfg-actions">
-              <el-tooltip :content="activeId === cfg.id && wsReady ? '断开' : '连接'" placement="top">
+              <el-tooltip :content="activeId === cfg.id && wsReady ? $t('ssh.disconnect') : $t('ssh.connect')" placement="top">
                 <el-button
                   size="small" circle
                   :type="activeId === cfg.id && wsReady ? 'danger' : 'primary'"
@@ -25,17 +25,17 @@
                   :icon="activeId === cfg.id && wsReady ? SwitchButton : Connection"
                 />
               </el-tooltip>
-              <el-tooltip content="编辑" placement="top">
+              <el-tooltip :content="$t('common.edit')" placement="top">
                 <el-button size="small" circle @click="showEdit(cfg)" :icon="Edit" />
               </el-tooltip>
-              <el-tooltip content="删除" placement="top">
+              <el-tooltip :content="$t('common.delete')" placement="top">
                 <el-button size="small" circle type="danger" @click="confirmDelete(cfg)" :icon="Delete" />
               </el-tooltip>
             </div>
           </div>
           <div class="cfg-detail">{{ cfg.username }}@{{ cfg.host }}:{{ cfg.port || 22 }}</div>
         </div>
-        <div v-if="!configs.length" class="empty-hint">暂无连接配置，点击"添加"创建</div>
+        <div v-if="!configs.length" class="empty-hint">{{ $t('common.noData') }}</div>
       </div>
     </div>
 
@@ -43,7 +43,7 @@
     <div class="terminal-area" ref="termContainer">
       <div v-if="!activeId" class="term-placeholder">
         <el-icon :size="48" color="var(--text-tertiary)"><Monitor /></el-icon>
-        <p>选择左侧连接配置开始 SSH 会话</p>
+        <p>{{ $t('ssh.subtitle') }}</p>
       </div>
       <template v-else>
         <div class="term-bar">
@@ -51,56 +51,56 @@
             <span class="term-dot" :style="{ background: wsReady ? '#4ade80' : '#f87171' }"></span>
             {{ currentLabel }}
           </span>
-          <el-button link size="small" @click="disconnect">断开</el-button>
+          <el-button link size="small" @click="disconnect">{{ $t('ssh.disconnect') }}</el-button>
         </div>
         <div class="term-wrapper" ref="termWrapper">
           <div ref="termEl" class="term-box"></div>
           <div v-if="!wsReady && !wsError" class="term-overlay">
             <el-icon class="spin" :size="24"><Loading /></el-icon>
-            <span>正在连接...</span>
+            <span>{{ $t('ssh.connecting') }}</span>
           </div>
           <div v-if="wsError" class="term-overlay clickable" @click="reconnect">
             <el-icon :size="24"><WarningFilled /></el-icon>
             <span>{{ wsError }}</span>
-            <span class="reconnect-hint">点击重新连接</span>
+            <span class="reconnect-hint">{{ $t('ssh.reconnect') }}</span>
           </div>
           <div v-if="disconnected" class="term-overlay clickable" @click="reconnect">
             <el-icon :size="24"><Link /></el-icon>
-            <span>连接已断开</span>
-            <span class="reconnect-hint">点击重新连接</span>
+            <span>{{ $t('ssh.disconnected') }}</span>
+            <span class="reconnect-hint">{{ $t('ssh.reconnect') }}</span>
           </div>
         </div>
       </template>
     </div>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑连接' : '添加连接'" width="420">
+    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="420">
       <el-form :model="form" label-width="80px">
-        <el-form-item label="名称"><el-input v-model="form.name" placeholder="我的服务器" /></el-form-item>
-        <el-form-item label="主机"><el-input v-model="form.host" placeholder="192.168.1.1" /></el-form-item>
-        <el-form-item label="端口"><el-input-number v-model="form.port" :min="1" :max="65535" /></el-form-item>
-        <el-form-item label="用户名"><el-input v-model="form.username" placeholder="root" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="form.password" type="password" show-password placeholder="留空连接时手动输入" /></el-form-item>
+        <el-form-item :label="$t('common.name')"><el-input v-model="form.name" placeholder="" /></el-form-item>
+        <el-form-item :label="$t('ssh.host')"><el-input v-model="form.host" placeholder="192.168.1.1" /></el-form-item>
+        <el-form-item :label="$t('ssh.port')"><el-input-number v-model="form.port" :min="1" :max="65535" /></el-form-item>
+        <el-form-item :label="$t('ssh.username')"><el-input v-model="form.username" placeholder="root" /></el-form-item>
+        <el-form-item :label="$t('ssh.password')"><el-input v-model="form.password" type="password" show-password placeholder="" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="doSave" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doSave" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 密码输入对话框 -->
-    <el-dialog v-model="pwVisible" title="输入密码" width="320">
+    <el-dialog v-model="pwVisible" :title="$t('ssh.password')" width="320">
       <el-input
         ref="pwInputRef"
         v-model="pwInput"
         type="password"
         show-password
-        placeholder="SSH 密码"
+        :placeholder="$t('ssh.password')"
         @keyup.enter="doConnectWithPw"
       />
       <template #footer>
-        <el-button @click="pwVisible = false">取消</el-button>
-        <el-button type="primary" @click="doConnectWithPw" :loading="connecting !== null">连接</el-button>
+        <el-button @click="pwVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doConnectWithPw" :loading="connecting !== null">{{ $t('ssh.connect') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -165,7 +165,7 @@ function showEdit(row: any) {
 }
 
 async function doSave() {
-  if (!form.value.host) return ElMessage.warning('请填写主机地址')
+  if (!form.value.host) return ElMessage.warning($t('common.error'))
   saving.value = true
   try {
     let res: any
@@ -177,14 +177,14 @@ async function doSave() {
       res = await api.post('/ssh/config', payload)
     }
     if (res.success) {
-      ElMessage.success('保存成功')
+      ElMessage.success($t('common.success'))
       dialogVisible.value = false
       await load()
     } else {
-      ElMessage.error(res.message || '保存失败')
+      ElMessage.error(res.message || $t('common.error'))
     }
   } catch {
-    ElMessage.error('保存失败')
+    ElMessage.error($t('common.error'))
   } finally {
     saving.value = false
   }
@@ -192,9 +192,9 @@ async function doSave() {
 
 async function confirmDelete(row: any) {
   try {
-    await ElMessageBox.confirm(`确定删除连接 ${row.name || row.host}？`, '确认删除')
+    await ElMessageBox.confirm($t('common.confirmDelete'), $t('common.delete'))
     const res = await api.delete(`/ssh/config/${row.id}`) as any
-    if (res.success) { ElMessage.success('已删除'); await load() } else ElMessage.error(res.message || '删除失败')
+    if (res.success) { ElMessage.success($t('common.success')); await load() } else ElMessage.error(res.message || $t('common.error'))
   } catch { /* cancel */ }
 }
 
@@ -210,7 +210,7 @@ async function doConnect(cfg: any) {
 
   // 先获取完整配置（含密码）
   const detail = await fetchConfigDetail(cfg.id)
-  if (!detail) { ElMessage.error('获取配置失败'); return }
+  if (!detail) { ElMessage.error($t('common.error')); return }
 
   pwTarget.value = detail
   if (detail.password && detail.password !== '••••••') {
@@ -359,7 +359,7 @@ function connectWebSocket(detail: any) {
           term?.focus()
           break
         case 'error':
-          wsError.value = msg.message || '连接失败'
+          wsError.value = msg.message || $t('common.error')
           wsReady.value = false
           break
         case 'status':
@@ -368,7 +368,7 @@ function connectWebSocket(detail: any) {
             disconnected.value = true
           } else if (msg.status === 'error') {
             wsReady.value = false
-            wsError.value = 'SSH 连接出错'
+            wsError.value = $t('common.error')
           }
           break
       }
@@ -379,7 +379,7 @@ function connectWebSocket(detail: any) {
   }
 
   ws.onerror = () => {
-    wsError.value = 'WebSocket 连接失败'
+    wsError.value = $t('common.error')
     wsReady.value = false
     connecting.value = null
   }

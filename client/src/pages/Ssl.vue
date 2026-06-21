@@ -3,77 +3,77 @@
     <div class="page-header">
       <div>
         <h2>{{ $t('ssl.title') }}</h2>
-        <p class="sub">acme.sh 自动申请与管理</p>
+        <p class="sub">{{ $t('ssl.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <el-button v-if="!acmeInstalled" type="primary" @click="showInstall = true" :icon="Download">安装 acme.sh</el-button>
-        <el-button v-else @click="showIssue = true" type="primary" :icon="Plus">申请证书</el-button>
-        <el-button @click="renewAll" :loading="renewing" :disabled="!acmeInstalled">续期全部</el-button>
+        <el-button v-else @click="showIssue = true" type="primary" :icon="Plus">{{ $t('ssl.issue') }}</el-button>
+        <el-button @click="renewAll" :loading="renewing" :disabled="!acmeInstalled">{{ $t('ssl.renew') }}</el-button>
       </div>
     </div>
 
     <!-- 证书列表 -->
     <el-table :data="certs" v-loading="loading" stripe class="data-table">
-      <el-table-column prop="domain" label="域名" min-width="180" />
-      <el-table-column label="状态" width="100">
+      <el-table-column prop="domain" :label="$t('ssl.domain')" min-width="180" />
+      <el-table-column :label="$t('ssl.status')" width="100">
         <template #default="{ row }">
           <el-tag :type="row.status === 'valid' ? 'success' : 'danger'" size="small">{{ row.status === 'valid' ? '有效' : '无效' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="expiresAt" label="到期时间" min-width="170">
+      <el-table-column prop="expiresAt" :label="$t('ssl.expiry')" min-width="170">
         <template #default="{ row }"><span class="mono">{{ fmtDate(row.expiresAt) }}</span></template>
       </el-table-column>
-      <el-table-column label="剩余" width="90">
+      <el-table-column :label="$t('ssl.validDays')" width="90">
         <template #default="{ row }">
-          <span :class="{ warn: row.daysRemaining < 30, danger: row.daysRemaining < 7 }">{{ row.daysRemaining != null ? row.daysRemaining + ' 天' : '--' }}</span>
+          <span :class="{ warn: row.daysRemaining < 30, danger: row.daysRemaining < 7 }">{{ row.daysRemaining != null ? row.daysRemaining + ' ' + $t('ssl.days') : '--' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="220" fixed="right">
         <template #default="{ row }">
           <div class="ssl-actions">
-            <el-button link type="primary" @click="doRenew(row)" size="small">续期</el-button>
+            <el-button link type="primary" @click="doRenew(row)" size="small">{{ $t('ssl.renew') }}</el-button>
             <el-dropdown trigger="click" @command="(c: string) => exportCert(row.domain, c)">
-              <el-button link size="small">导出 <el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <el-button link size="small">{{ $t('ssl.export') }} <el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="nginx">Nginx</el-dropdown-item>
                   <el-dropdown-item command="apache">Apache</el-dropdown-item>
                   <el-dropdown-item command="fullchain">Fullchain</el-dropdown-item>
-                  <el-dropdown-item command="key">私钥</el-dropdown-item>
-                  <el-dropdown-item command="all">全部打包</el-dropdown-item>
+                  <el-dropdown-item command="privkey">私钥</el-dropdown-item>
+                  <el-dropdown-item command="all">{{ $t('ssl.allFiles') }}</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <el-button link type="danger" @click="confirmDelete(row)" size="small">删除</el-button>
+            <el-button link type="danger" @click="confirmDelete(row)" size="small">{{ $t('common.delete') }}</el-button>
           </div>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 安装 acme.sh 对话框 -->
-    <el-dialog v-model="showInstall" title="安装 acme.sh" width="420">
+    <el-dialog v-model="showInstall" :title="$t('ssl.title')" width="420">
       <el-form label-width="100px">
-        <el-form-item label="联系邮箱">
+        <el-form-item :label="$t('ssl.domain')">
           <el-input v-model="installEmail" placeholder="admin@example.com" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showInstall = false">取消</el-button>
-        <el-button type="primary" @click="doInstall" :loading="installing">安装</el-button>
+        <el-button @click="showInstall = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doInstall" :loading="installing">{{ $t('common.add') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 申请证书对话框 -->
-    <el-dialog v-model="showIssue" title="申请证书" width="480">
+    <el-dialog v-model="showIssue" :title="$t('ssl.issue')" width="480">
       <el-form label-width="100px">
-        <el-form-item label="域名"><el-input v-model="issueDomain" placeholder="example.com" /></el-form-item>
-        <el-form-item label="通配符"><el-switch v-model="issueWildcard" /></el-form-item>
-        <el-form-item label="CA"><el-select v-model="issueProvider"><el-option label="ZeroSSL" value="zerossl" /><el-option label="Let's Encrypt" value="letsencrypt" /></el-select></el-form-item>
-        <el-form-item label="强制重新申请"><el-switch v-model="issueForce" /></el-form-item>
+        <el-form-item :label="$t('ssl.domain')"><el-input v-model="issueDomain" placeholder="example.com" /></el-form-item>
+        <el-form-item :label="$t('ssl.fullChain')"><el-switch v-model="issueWildcard" /></el-form-item>
+        <el-form-item :label="$t('ssl.ca')"><el-select v-model="issueProvider"><el-option :label="$t('ssl.zerossl')" value="zerossl" /><el-option :label="$t('ssl.letsencrypt')" value="letsencrypt" /></el-select></el-form-item>
+        <el-form-item :label="$t('ssl.forceRenew')"><el-switch v-model="issueForce" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showIssue = false">取消</el-button>
-        <el-button type="primary" @click="doIssue" :loading="issuing">申请</el-button>
+        <el-button @click="showIssue = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doIssue" :loading="issuing">{{ $t('ssl.issue') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -110,47 +110,47 @@ async function load() {
       certs.value = res.data.certificates || []
       acmeInstalled.value = !!res.data.acmeInstalled
     }
-  } catch { ElMessage.error('加载证书列表失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { loading.value = false }
 }
 
 async function doInstall() {
-  if (!installEmail.value) return ElMessage.warning('请输入邮箱')
+  if (!installEmail.value) return ElMessage.warning($t('common.error'))
   installing.value = true
   try {
     const res = await api.post('/cert/acme/install', { email: installEmail.value }) as any
-    if (res.success) { ElMessage.success('安装成功'); showInstall.value = false; await load() }
-    else ElMessage.error(res.message || '安装失败')
-  } catch { ElMessage.error('安装失败') }
+    if (res.success) { ElMessage.success($t('common.success')); showInstall.value = false; await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
   finally { installing.value = false }
 }
 
 async function doIssue() {
-  if (!issueDomain.value) return ElMessage.warning('请输入域名')
+  if (!issueDomain.value) return ElMessage.warning($t('common.error'))
   issuing.value = true
   try {
     const res = await api.post('/cert/issue', { domain: issueDomain.value, wildcard: issueWildcard.value, force: issueForce.value, provider: issueProvider.value }) as any
-    if (res.success) { ElMessage.success('证书申请成功'); showIssue.value = false; await load() }
-    else ElMessage.error(res.message || '申请失败')
-  } catch { ElMessage.error('申请失败') }
+    if (res.success) { ElMessage.success($t('common.success')); showIssue.value = false; await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
   finally { issuing.value = false }
 }
 
 async function doRenew(row: any) {
   try {
     const res = await api.post('/cert/renew', { domain: row.domain }) as any
-    ElMessage.success(res.message || '续期成功')
+    ElMessage.success(res.message || $t('common.success'))
     await load()
-  } catch { ElMessage.error('续期失败') }
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 async function renewAll() {
   renewing.value = true
   try {
     const res = await api.post('/cert/renew-all') as any
-    ElMessage.success(res.message || '批量续期完成')
+    ElMessage.success(res.message || $t('common.success'))
     await load()
-  } catch { ElMessage.error('批量续期失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { renewing.value = false }
 }
 
@@ -159,12 +159,12 @@ function exportCert(domain: string, format: string) {
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除 ${row.domain} 的证书吗？`, '确认删除')
+  await ElMessageBox.confirm(`确定删除 ${row.domain} 的证书吗？`, $t('common.confirmDelete'))
   try {
     const res = await api.delete(`/cert/domains/${row.domain}`, { params: { deleteFiles: 'true' } }) as any
-    if (res.success) { ElMessage.success('已删除'); await load() }
-    else ElMessage.error(res.message || '删除失败')
-  } catch { ElMessage.error('删除失败') }
+    if (res.success) { ElMessage.success($t('common.success')); await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 function fmtDate(d: string) { if (!d) return '--'; return new Date(d).toLocaleDateString('zh-CN') }

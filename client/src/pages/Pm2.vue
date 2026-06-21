@@ -7,56 +7,56 @@
         <p class="sub">{{ statusText }}</p>
       </div>
       <div class="header-actions">
-        <el-button v-if="installed" type="primary" @click="showAddProc = true" :icon="Plus" size="default">添加进程</el-button>
-        <el-button v-if="!installed" type="primary" @click="doInstall" :loading="installing" :icon="Download">安装 PM2</el-button>
-        <el-button v-else @click="load" :loading="loading" :icon="Refresh">刷新</el-button>
+        <el-button v-if="installed" type="primary" @click="showAddProc = true" :icon="Plus" size="default">{{ $t('common.add') }}{{ $t('port.process') }}</el-button>
+        <el-button v-if="!installed" type="primary" @click="doInstall" :loading="installing" :icon="Download">{{ $t('pm2.install') }}</el-button>
+        <el-button v-else @click="load" :loading="loading" :icon="Refresh">{{ $t('common.refresh') }}</el-button>
       </div>
     </div>
 
     <!-- Not installed -->
     <div v-if="!installed && !installing" class="empty-card">
       <div class="empty-icon">📦</div>
-      <p class="empty-title">PM2 未安装</p>
-      <p class="empty-desc">点击"安装 PM2"按钮开始安装进程管理器</p>
+      <p class="empty-title">{{ $t('pm2.notInstalled') }}</p>
+      <p class="empty-desc">{{ $t('pm2.subtitle') }}</p>
     </div>
 
     <!-- Installing progress -->
     <div v-if="installing" class="card install-log">
-      <p class="install-start">⏳ 正在安装 PM2...</p>
+      <p class="install-start">{{ $t('pm2.install') }}...</p>
       <pre class="log-output">{{ installLog }}</pre>
     </div>
 
     <!-- Processes table -->
     <div v-if="installed">
       <el-table v-if="processes.length" :data="processes" v-loading="loading" stripe class="data-table">
-        <el-table-column prop="name" label="名称" min-width="140">
+        <el-table-column prop="name" :label="$t('common.name')" min-width="140">
           <template #default="{ row }">
             <span class="proc-name">{{ row.name }}</span>
             <span class="proc-meta">ID: {{ row.id }} · PID: {{ row.pid || '—' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="90">
+        <el-table-column :label="$t('common.status')" width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 'online' ? 'success' : 'danger'" size="small" effect="dark">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="mode" label="模式" width="70" />
+        <el-table-column prop="mode" :label="$t('common.type')" width="70" />
         <el-table-column prop="cpu" label="CPU" width="80">
           <template #default="{ row }">{{ row.cpu || 0 }}%</template>
         </el-table-column>
-        <el-table-column prop="memory" label="内存" width="90">
+        <el-table-column prop="memory" :label="$t('dashboard.memory')" width="90">
           <template #default="{ row }">{{ fmtMem(row.memory) }}</template>
         </el-table-column>
-        <el-table-column label="运行时间" width="110">
+        <el-table-column :label="$t('topbar.uptime')" width="110">
           <template #default="{ row }">{{ fmtTime(row.uptime) }}</template>
         </el-table-column>
-        <el-table-column prop="restarts" label="重启" width="60" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="restarts" :label="$t('nginx.restart')" width="60" />
+        <el-table-column :label="$t('common.actions')" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="doAction(row.name,'restart')" size="small">重启</el-button>
-            <el-button link type="warning" @click="doAction(row.name,'stop')" v-if="row.status === 'online'" size="small">停止</el-button>
-            <el-button link type="primary" @click="doAction(row.name,'start')" v-else size="small">启动</el-button>
-            <el-button link type="danger" @click="confirmDelete(row.name)" size="small">删除</el-button>
+            <el-button link type="primary" @click="doAction(row.name,'restart')" size="small">{{ $t('nginx.restart') }}</el-button>
+            <el-button link type="warning" @click="doAction(row.name,'stop')" v-if="row.status === 'online'" size="small">{{ $t('nginx.stop') }}</el-button>
+            <el-button link type="primary" @click="doAction(row.name,'start')" v-else size="small">{{ $t('nginx.start') }}</el-button>
+            <el-button link type="danger" @click="confirmDelete(row.name)" size="small">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -64,24 +64,25 @@
       <!-- Empty state when installed but no processes -->
       <div v-else-if="!loading" class="empty-card">
         <div class="empty-icon">🚀</div>
-        <p class="empty-title">暂无托管进程</p>
-        <p class="empty-desc">PM2 已安装运行，点击"添加进程"注册新应用</p>
+        <p class="empty-title">{{ $t('common.noData') }}</p>
+        <p class="empty-desc">{{ $t('pm2.subtitle') }}</p>
       </div>
     </div>
 
     <!-- Add process dialog -->
-    <el-dialog v-model="showAddProc" title="添加 PM2 进程" width="480">
+    <el-dialog v-model="showAddProc" :title="$t('common.add') + ' PM2'" width="480">
       <el-form :model="addProc" label-width="80px">
-        <el-form-item label="进程名" required>
-          <el-input v-model="addProc.name" placeholder="如 hsp-server" />
+        <el-form-item :label="$t('common.name')" required>
+          <el-input v-model="addProc.name" placeholder="hsp-server" />
         </el-form-item>
-        <el-form-item label="启动脚本" required>
-          <el-input v-model="addProc.script" placeholder="如 src/server.js" />
+        <el-form-item :label="$t('cron.command')" required>
+          <el-input v-model="addProc.script" placeholder="src/server.js" />
         </el-form-item>
         <el-form-item label="工作目录">
-          <el-input v-model="addProc.cwd" placeholder="默认项目根目录" />
+          <el-input v-model="addProc.cwd" placeholder="" />
         </el-form-item>
         <el-form-item label="参数">
+          <el-input v-model="addProc.args" placeholder="--port 4567" />
           <el-input v-model="addProc.args" placeholder="如 --port 4567" />
         </el-form-item>
       </el-form>
@@ -110,9 +111,9 @@ const addingProc  = ref(false)
 const addProc = ref({ name: '', script: '', cwd: '', args: '' })
 
 const statusText = computed(() => {
-  if (!installed.value) return 'PM2 未安装'
+  if (!installed.value) return $t('pm2.notInstalled')
   const on = processes.value.filter((p: any) => p.status === 'online').length
-  return `v${version.value} · ${on}/${processes.value.length} 在线`
+  return `v${version.value} · ${on}/${processes.value.length} ${$t('common.online')}`
 })
 
 async function load() {
@@ -144,38 +145,38 @@ async function doInstall() {
   try {
     const res = await api.post('/pm2/install') as any
     if (res?.success) {
-      ElMessage.success('PM2 安装成功')
+      ElMessage.success($t('common.success'))
       try { await api.post('/pm2/start-daemon') } catch {}
       await load()
     } else {
-      ElMessage.error(res?.message || '安装失败')
+      ElMessage.error(res?.message || $t('common.error'))
     }
-  } catch { ElMessage.error('安装失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { installing.value = false }
 }
 
 async function doAction(name: string, action: string) {
   try {
     const res = await api.post(`/pm2/${name}/${action}`) as any
-    if (res?.success) { ElMessage.success(res.message || `${action} 成功`); await load() }
-    else ElMessage.error(res.message || '操作失败')
-  } catch { ElMessage.error('操作失败') }
+    if (res?.success) { ElMessage.success(res.message || $t('common.success')); await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 async function confirmDelete(name: string) {
   try {
-    await ElMessageBox.confirm(`确定删除 PM2 进程 ${name}？`, '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm($t('common.confirmDelete'), $t('common.delete'), { type: 'warning' })
   } catch { return }
   try {
     const res = await api.delete(`/pm2/${name}`) as any
-    if (res?.success) { ElMessage.success('已删除'); await load() }
-    else ElMessage.error(res.message || '删除失败')
-  } catch { ElMessage.error('删除失败') }
+    if (res?.success) { ElMessage.success($t('common.success')); await load() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 async function doAddProc() {
   if (!addProc.value.name || !addProc.value.script) {
-    ElMessage.warning('进程名和启动脚本不能为空')
+    ElMessage.warning($t('common.error'))
     return
   }
   addingProc.value = true
@@ -187,14 +188,14 @@ async function doAddProc() {
       args: addProc.value.args || undefined
     }) as any
     if (res?.success) {
-      ElMessage.success('进程已添加并启动')
+      ElMessage.success($t('common.success'))
       showAddProc.value = false
       addProc.value = { name: '', script: '', cwd: '', args: '' }
       await load()
     } else {
-      ElMessage.error(res?.message || '添加失败')
+      ElMessage.error(res?.message || $t('common.error'))
     }
-  } catch { ElMessage.error('添加失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { addingProc.value = false }
 }
 

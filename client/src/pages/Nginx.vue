@@ -4,15 +4,15 @@
     <div class="card" v-if="installed">
       <div class="nginx-status-row">
         <h2 class="status-title">Nginx</h2>
-        <span class="status-badge" :class="{ running: running }">{{ running ? '运行中' : '已停止' }}</span>
-        <span class="status-ver">版本 {{ nginxVer }}</span>
+        <span class="status-badge" :class="{ running: running }">{{ running ? $t('dashboard.running') : $t('dashboard.stopped') }}</span>
+        <span class="status-ver">{{ $t('nginx.version') }} {{ nginxVer }}</span>
         <div class="nginx-actions">
           <el-button @click="doAction('start')" size="small" :icon="VideoPlay" :disabled="running" :loading="acting === 'start'">{{ $t('nginx.start') }}</el-button>
           <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
           <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
           <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
         </div>
-        <span class="info-chip"><span class="lbl">配置文件</span><span class="val mono">{{ confPath }}</span></span>
+        <span class="info-chip"><span class="lbl">{{ $t('nginx.configPath') }}</span><span class="val mono">{{ confPath }}</span></span>
         <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
       </div>
     </div>
@@ -34,8 +34,8 @@
 
     <!-- ========== 反向代理规则 → 标题与统计并行 ========== -->
     <div class="proxy-header" v-if="installed">
-      <h3 class="section-title">反向代理规则</h3>
-      <span class="proxy-count" v-if="stats">{{ stats.total }} 条规则 / {{ stats.enabled }} 启用</span>
+      <h3 class="section-title">{{ $t('proxy.title') }}</h3>
+      <span class="proxy-count" v-if="stats">{{ stats.total }} / {{ stats.enabled }} {{ $t('proxy.enabled') }}</span>
       <div class="proxy-actions">
         <el-button type="primary" @click="showAddEdit(null)" :icon="Plus">{{ $t('nginx.addRule') }}</el-button>
         <el-button @click="exportConfig">{{ $t('nginx.exportConfig') }}</el-button>
@@ -51,7 +51,7 @@
       <el-table-column :label="$t('nginx.ssl')" width="70">
         <template #default="{ row }"><el-tag :type="row.ssl ? 'success' : 'info'" size="small">{{ row.ssl ? $t('nginx.sslEnable') : $t('nginx.sslDisable') }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="sslCert" label="证书" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="sslCert" :label="$t('ssl.certificate')" min-width="160" show-overflow-tooltip />
       <el-table-column :label="$t('common.status')" width="80">
         <template #default="{ row }">
           <el-switch :model-value="row.enabled" @change="() => toggle(row)" size="small" />
@@ -74,12 +74,12 @@
           <el-input-number v-model="form.targetPort" :min="1" :max="65535" style="width:100px;margin-left:4px" />
         </el-form-item>
         <el-form-item :label="$t('nginx.ssl')"><el-switch v-model="form.ssl" /></el-form-item>
-        <el-form-item label="SSL 证书" v-if="form.ssl">
-          <el-select v-model="form.sslCert" filterable clearable placeholder="选择证书">
+        <el-form-item :label="$t('ssl.certificate')" v-if="form.ssl">
+          <el-select v-model="form.sslCert" filterable clearable :placeholder="$t('ssl.certificate')">
             <el-option v-for="c in sslCerts" :key="c.domain" :value="c.domain" :label="c.domain" />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注"><el-input v-model="form.note" placeholder="可选" /></el-form-item>
+        <el-form-item :label="$t('cron.desc')"><el-input v-model="form.note" placeholder="" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
@@ -109,7 +109,7 @@ const guideText = ref('')
 
 const statusText = computed(() => {
   if (!installed.value) return 'Nginx 未安装 / Not installed'
-  return running.value ? 'Nginx 运行中 / Running' : 'Nginx 已停止 / Stopped'
+  return running.value ? $t('dashboard.running') : $t('dashboard.stopped')
 })
 
 async function load() {
@@ -168,7 +168,7 @@ async function loadRules() {
       rules.value = res.data.rules || []
       stats.value = res.data.stats || null
     }
-  } catch { ElMessage.error('加载代理规则失败') }
+  } catch { ElMessage.error($t('common.error')) }
   finally { loadingRules.value = false }
 }
 
@@ -192,7 +192,7 @@ function showAddEdit(row: any | null) {
 }
 
 async function doSaveRule() {
-  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning('请填写域名和目标地址')
+  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning($t('common.error'))
   saving.value = true
   try {
     let res: any
@@ -201,9 +201,9 @@ async function doSaveRule() {
     } else {
       res = await api.post('/proxy', form.value)
     }
-    if (res.success) { ElMessage.success(res.message || '保存成功'); dialogVisible.value = false; await loadRules() }
-    else ElMessage.error(res.message || '保存失败')
-  } catch { ElMessage.error('保存失败') }
+    if (res.success) { ElMessage.success(res.message || $t('common.success')); dialogVisible.value = false; await loadRules() }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
   finally { saving.value = false }
 }
 
@@ -211,16 +211,16 @@ async function toggle(row: any) {
   try {
     const res = await api.post(`/proxy/${row.id}/toggle`) as any
     if (res.success) { ElMessage.success(res.message); await loadRules() }
-    else ElMessage.error(res.message || '操作失败')
-  } catch { ElMessage.error('操作失败') }
+    else ElMessage.error(res.message || $t('common.error'))
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除 ${row.sourceHost} 的代理规则吗？`, '确认删除')
+  await ElMessageBox.confirm($t('proxy.deleteConfirm'), $t('common.confirmDelete'))
   try {
     const res = await api.delete(`/proxy/${row.id}`) as any
     if (res.success) { ElMessage.success(res.message); await loadRules() }
-    else ElMessage.error(res.message || '删除失败')
+    else ElMessage.error(res.message || $t('common.error'))
   } catch { /* cancelled */ }
 }
 
@@ -231,7 +231,7 @@ async function exportConfig() {
       const blob = new Blob([res.data.config], { type: 'text/plain' })
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proxy-nginx.conf'; a.click()
     }
-  } catch { ElMessage.error('导出失败') }
+  } catch { ElMessage.error($t('common.error')) }
 }
 
 onMounted(load)

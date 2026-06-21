@@ -43,31 +43,49 @@ class Auth {
       return { success: false, message: `登录尝试过多，请 ${Math.ceil(rateCheck.remainingMs / 60000)} 分钟后再试` };
     }
 
-    if (username !== ADMIN_USER) {
+    // 从数据库查用户
+    let user = sqliteService.getUserByUsername(username);
+
+    // 如果数据库无此用户且是 admin，尝试用 .env 的密码登录并自动迁移
+    if (!user && username === ADMIN_USER) {
+      let passwordOk = false;
+      if (USE_BCRYPT) {
+        passwordOk = await bcrypt.compare(password, ADMIN_PASS);
+      } else {
+        passwordOk = (password === ADMIN_PASS);
+      }
+      if (passwordOk) {
+        // 自动迁移到 users 表
+        const hash = await bcrypt.hash(password, 10);
+        sqliteService.createUser(ADMIN_USER, hash, 'admin');
+        if (!USE_BCRYPT) this._upgradeToBcrypt(password).catch(() => {});
+        const token = this._generateToken(username);
+        this._createSession(token, username);
+        return { success: true, token };
+      }
       return { success: false, message: '用户名或密码错误' };
     }
 
-    let passwordOk = false;
+    if (!user) {
+      return { success: false, message: '用户名或密码错误' };
+    }
 
-    if (USE_BCRYPT) {
-      // bcrypt 哈希模式
-      passwordOk = await bcrypt.compare(password, ADMIN_PASS);
-    } else {
-      // 明文模式（兼容旧配置）
-      passwordOk = (password === ADMIN_PASS);
-      // 自动升级：登录成功后把密码哈希写入 .env
-      if (passwordOk) {
+    const passwordOk = await bcrypt.compare(password, user.password);
+    if (!passwordOk) {
+      // 兼容旧 .env 明文
+      if (username === ADMIN_USER && password === ADMIN_PASS && !USE_BCRYPT) {
+        const hash = await bcrypt.hash(password, 10);
+        sqliteService.updateUser(user.id, { password: hash });
         this._upgradeToBcrypt(password).catch(() => {});
+      } else {
+        return { success: false, message: '用户名或密码错误' };
       }
     }
 
-    if (passwordOk) {
-      this._clearRateLimit(ip || 'unknown');
-      const token = this._generateToken(username);
-      this._createSession(token);
-      return { success: true, token };
-    }
-    return { success: false, message: '用户名或密码错误' };
+    this._clearRateLimit(ip || 'unknown');
+    const token = this._generateToken(username);
+    this._createSession(token, username);
+    return { success: true, token };
   }
 
   // 自动升级：将 .env 中明文密码替换为 bcrypt 哈希
@@ -135,6 +153,18 @@ class Auth {
     return this.sessions[token] !== undefined;
   }
 
+  getUserRole(token) {
+    const name = this.getUsername(token);
+    if (!name) return null;
+    const user = sqliteService.getUserByUsername(name);
+    return user?.role || 'user';
+  }
+
+  getUsername(token) {
+    if (!token) return null;
+    return this.sessions[token]?.username || null;
+  }
+
   middleware() {
     return (req, res, next) => {
       // Allow all non-API requests through (SPA handles auth client-side)
@@ -175,12 +205,12 @@ class Auth {
       .digest('hex');
   }
 
-  _createSession(token) {
+  _createSession(token, username) {
     this.sessions[token] = {
-      username: ADMIN_USER,
+      username: username || ADMIN_USER,
       createdAt: Date.now()
     };
-    sqliteService.createSession(token, ADMIN_USER);
+    sqliteService.createSession(token, username || ADMIN_USER);
   }
 
   _cleanSessions() {

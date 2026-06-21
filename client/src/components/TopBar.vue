@@ -20,6 +20,9 @@
           <el-dropdown-menu>
             <el-dropdown-item command="lang-zh">🇨🇳 中文</el-dropdown-item>
             <el-dropdown-item command="lang-en">🇺🇸 English</el-dropdown-item>
+            <el-dropdown-item v-if="auth.isAdmin" command="users" divided>
+              <el-icon><UserFilled /></el-icon> {{ $t('topbar.userMgmt') }}
+            </el-dropdown-item>
             <el-dropdown-item command="logout" divided>
               <el-icon><SwitchButton /></el-icon> {{ $t('auth.logout') }}
             </el-dropdown-item>
@@ -89,6 +92,8 @@ function handleCmd(cmd: string) {
     auth.logout()
     sys.stopPolling()
     router.push('/login')
+  } else if (cmd === 'users') {
+    router.push('/users')
   } else if (cmd === 'lang-zh') {
     locale.value = 'zh-CN'
     localStorage.setItem('hsp_lang', 'zh-CN')

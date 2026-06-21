@@ -81,6 +81,8 @@ router.get('/config', (req, res) => {
     acmeEmail: process.env.ACME_EMAIL || '',
     acmeDnsProvider: process.env.ACME_DNS_PROVIDER || '',
     pushplusToken: (process.env.PUSHPLUS_TOKEN || '').length > 0 ? '已配置' : '未配置',
+    pushplusTitle: process.env.PUSHPLUS_TITLE || '',
+    pushplusChannel: process.env.PUSHPLUS_CHANNEL || 'wechat',
     certExpireDays: parseInt(process.env.CERT_EXPIRE_WARN_DAYS || '30'),
     serverPort: process.env.SERVER_PORT || '3456',
     nginxConfDir: process.env.NGINX_CONF_DIR || '',
@@ -121,13 +123,15 @@ router.post('/config', (req, res) => {
       }
     };
 
-    const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, acmeEmail, acmeDns, certExpireDays } = req.body;
+    const { aliKeyId, aliKeySecret, tencentSecretId, tencentSecretKey, pushplusToken, pushplusTitle, pushplusChannel, acmeEmail, acmeDns, certExpireDays } = req.body;
     // 前端传空字符串 = 用户未修改，保持不变
     if (aliKeyId) updater('ALIYUN_ACCESS_KEY_ID', aliKeyId);
     if (aliKeySecret) updater('ALIYUN_ACCESS_KEY_SECRET', aliKeySecret);
     if (tencentSecretId) updater('TENCENT_SECRET_ID', tencentSecretId);
     if (tencentSecretKey) updater('TENCENT_SECRET_KEY', tencentSecretKey);
     if (pushplusToken) updater('PUSHPLUS_TOKEN', pushplusToken);
+    if (pushplusTitle !== undefined) updater('PUSHPLUS_TITLE', pushplusTitle);
+    if (pushplusChannel) updater('PUSHPLUS_CHANNEL', pushplusChannel);
     if (acmeEmail) updater('ACME_EMAIL', acmeEmail);
     if (acmeDns) updater('ACME_DNS_PROVIDER', acmeDns);
     if (certExpireDays) updater('CERT_EXPIRE_WARN_DAYS', certExpireDays);
@@ -159,6 +163,8 @@ router.post('/config', (req, res) => {
       process.env.PUSHPLUS_TOKEN = pushplusToken;
       try { require('../services/notify-service').setToken(pushplusToken); } catch (_) {}
     }
+    if (pushplusTitle !== undefined) process.env.PUSHPLUS_TITLE = pushplusTitle;
+    if (pushplusChannel) process.env.PUSHPLUS_CHANNEL = pushplusChannel;
     if (acmeEmail) process.env.ACME_EMAIL = acmeEmail;
     if (acmeDns) process.env.ACME_DNS_PROVIDER = acmeDns;
     if (certExpireDays) {

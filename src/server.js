@@ -73,6 +73,9 @@ const auth = require('./services/auth');
 const logService = require('./services/log-service');
 const dbService = require('./services/db-service');
 
+// 创建默认管理员（如果不存在）
+sqliteService.seedDefaultAdmin();
+
 const app = express();
 const PORT = process.env.SERVER_PORT || 3456;
 
@@ -290,6 +293,7 @@ app.use('/api/process', require('./routes/process'));
 app.use('/api/docker', require('./routes/docker'));
 app.use('/api/ssh', require('./routes/ssh'));
 app.use('/api/db', require('./routes/db'));
+app.use('/api/users', require('./routes/users'));
 app.use('/api/monitor', require('./routes/monitor'));
 
 // SPA fallback

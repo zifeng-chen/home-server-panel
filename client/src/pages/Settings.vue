@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <!-- 云服务凭据 → 显示脱敏值，移除标签 -->
+    <!-- 云服务凭据 -->
     <div class="card">
       <h3>{{ $t('settings.cloudCredentials') }}</h3>
       <el-form :model="form" label-width="170px">
@@ -30,17 +30,14 @@
       </el-form>
     </div>
 
-    <!-- 通知推送 → 增加测试按钮 -->
+    <!-- SSL/证书设置 → ACME 邮件、DNS 服务商、到期预警 -->
     <div class="card">
-      <h3>{{ $t('settings.notification') }}</h3>
+      <h3>{{ $t('settings.sslSettings') }}</h3>
+      <p class="card-desc">{{ $t('settings.sslSettingsDesc') }}</p>
       <el-form :model="form" label-width="140px">
-        <el-form-item label="PushPlus Token">
-          <div style="display:flex;gap:8px;width:100%">
-            <el-input v-model="form.pushplusToken" placeholder="PushPlus Token" style="flex:1" />
-            <el-button @click="testPush" :loading="testing" :icon="Message">{{ testing ? '测试中' : '测试推送' }}</el-button>
-          </div>
+        <el-form-item :label="$t('settings.acmeEmail')">
+          <el-input v-model="form.acmeEmail" placeholder="admin@example.com" />
         </el-form-item>
-        <el-form-item :label="$t('settings.acmeEmail')"><el-input v-model="form.acmeEmail" placeholder="admin@example.com" /></el-form-item>
         <el-form-item :label="$t('settings.dnsProvider')">
           <el-select v-model="form.acmeDns" filterable placeholder="选择 DNS 服务商" style="width:100%">
             <el-option-group label="国内">
@@ -59,7 +56,35 @@
             </el-option-group>
           </el-select>
         </el-form-item>
-        <el-form-item :label="$t('ssl.expiry')"><el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> {{ $t('ssl.days') }}</el-form-item>
+        <el-form-item :label="$t('ssl.expiry')">
+          <el-input-number v-model="form.certExpireDays" :min="1" :max="90" /> {{ $t('ssl.days') }}
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <!-- 通知推送 -->
+    <div class="card">
+      <h3>{{ $t('settings.notification') }}</h3>
+      <el-form :model="form" label-width="140px">
+        <el-form-item :label="$t('settings.pushplusToken')">
+          <div style="display:flex;gap:8px;width:100%">
+            <el-input v-model="form.pushplusToken" placeholder="PushPlus Token" style="flex:1" />
+            <el-button @click="testPush" :loading="testing" :icon="Message">{{ testing ? '测试中' : '测试推送' }}</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item :label="$t('settings.pushplusTitle')">
+          <el-input v-model="form.pushplusTitle" :placeholder="$t('settings.pushplusTitleHint')" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.pushplusChannel')">
+          <el-select v-model="form.pushplusChannel" style="width:100%">
+            <el-option label="微信" value="wechat" />
+            <el-option label="企业微信" value="wxwork" />
+            <el-option label="钉钉" value="dingtalk" />
+            <el-option label="飞书" value="feishu" />
+            <el-option label="邮件" value="mail" />
+            <el-option label="短信" value="sms" />
+          </el-select>
+        </el-form-item>
       </el-form>
     </div>
 
@@ -104,6 +129,8 @@ const form = reactive<any>({
   tencentSecretId: '',
   tencentSecretKey: '',
   pushplusToken: '',
+  pushplusTitle: '',
+  pushplusChannel: 'wechat',
   acmeEmail: '',
   acmeDns: '',
   certExpireDays: 30
@@ -114,12 +141,13 @@ async function load() {
     const res = await api.get('/system/config') as any
     if (res.success) {
       const d = res.data
-      // API 已返回脱敏值(如 AKIDxxxx**** / ****)，直接展示在输入框中
       form.aliKeyId = d.aliKeyId || ''
       form.aliKeySecret = d.aliKeySecret || ''
       form.tencentSecretId = d.tencentSecretId || ''
       form.tencentSecretKey = d.tencentSecretKey || ''
       form.pushplusToken = d.pushplusToken === '已配置' ? '••••••••••' : d.pushplusToken || ''
+      form.pushplusTitle = d.pushplusTitle || ''
+      form.pushplusChannel = d.pushplusChannel || 'wechat'
       form.acmeEmail = d.acmeEmail || ''
       form.acmeDns = d.acmeDnsProvider || ''
       form.certExpireDays = d.certExpireDays || 30
@@ -144,12 +172,13 @@ async function doSave() {
   saving.value = true
   try {
     const payload: any = { certExpireDays: form.certExpireDays }
-    // 仅当有输入内容时才发送（空 = 不修改）
     if (form.aliKeyId && form.aliKeyId !== '••••••••' && !form.aliKeyId.endsWith('****')) payload.aliKeyId = form.aliKeyId
     if (form.aliKeySecret && form.aliKeySecret !== '••••••••' && form.aliKeySecret !== '****') payload.aliKeySecret = form.aliKeySecret
     if (form.tencentSecretId && !form.tencentSecretId.endsWith('****')) payload.tencentSecretId = form.tencentSecretId
     if (form.tencentSecretKey && form.tencentSecretKey !== '••••••••' && form.tencentSecretKey !== '****') payload.tencentSecretKey = form.tencentSecretKey
     if (form.pushplusToken && form.pushplusToken !== '••••••••••') payload.pushplusToken = form.pushplusToken
+    if (form.pushplusTitle) payload.pushplusTitle = form.pushplusTitle
+    if (form.pushplusChannel) payload.pushplusChannel = form.pushplusChannel
     if (form.acmeEmail) payload.acmeEmail = form.acmeEmail
     if (form.acmeDns) payload.acmeDns = form.acmeDns
 
@@ -177,7 +206,7 @@ onMounted(load)
 .sub { color: var(--text-tertiary); font-size: 13px; margin-top: 4px; }
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
-/* 防止云服务凭据标签换行 */
+.card-desc { font-size: 12px; color: var(--text-tertiary); margin: -10px 0 16px; line-height: 1.6; }
 .card :deep(.el-form-item__label) { white-space: nowrap; }
 
 /* ── 关于卡片 ── */

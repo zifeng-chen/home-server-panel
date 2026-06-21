@@ -14,18 +14,22 @@ class NotifyService {
   }
 
   // 发送 PushPlus 消息
-  async send({ title, content, template = 'html', topic = '', channel = 'wechat' }) {
+  async send({ title, content, template = 'html', topic = '', channel = '' }) {
     if (!this.token) {
       throw new Error('PushPlus Token 未配置');
     }
 
+    // 使用配置的默认值
+    const defaultTitle = process.env.PUSHPLUS_TITLE || 'Server Panel 通知';
+    const defaultChannel = process.env.PUSHPLUS_CHANNEL || 'wechat';
+
     const data = JSON.stringify({
       token: this.token,
-      title: title || 'Server Panel 通知',
+      title: title || defaultTitle,
       content: content || '',
       template,
       topic: topic || '',
-      channel
+      channel: channel || defaultChannel
     });
 
     return new Promise((resolve, reject) => {

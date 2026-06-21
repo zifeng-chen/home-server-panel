@@ -50,7 +50,8 @@
     "cron": "定时任务",
     "docker": "Docker",
     "ssh": "SSH终端",
-    "settings": "系统设置"
+    "settings": "系统设置",
+    "users": "用户管理"
   },
   "topbar": {
     "cpu": "CPU",
@@ -59,7 +60,8 @@
     "networkUp": "网络↑",
     "load": "负载",
     "uptime": "运行",
-    "theme": "切换深色/浅色模式"
+    "theme": "切换深色/浅色模式",
+    "userMgmt": "用户管理"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -249,6 +251,28 @@
     "connecting": "正在连接...",
     "subtitle": "远程终端访问"
   },
+  "users": {
+    "title": "用户管理",
+    "subtitle": "管理面板登录账号与权限",
+    "addUser": "添加用户",
+    "addUserTitle": "新建用户",
+    "editUserTitle": "编辑用户",
+    "username": "用户名",
+    "usernameHint": "输入用户名",
+    "password": "密码",
+    "passwordHint": "输入密码",
+    "passwordEditHint": "留空则不修改密码",
+    "role": "角色",
+    "admin": "管理员",
+    "user": "普通用户",
+    "createdAt": "创建时间",
+    "updatedAt": "更新时间",
+    "createSuccess": "用户创建成功",
+    "updateSuccess": "用户已更新",
+    "deleteSuccess": "用户已删除",
+    "deleteConfirm": "确定删除该用户？此操作不可恢复。"
+  },
+
   "settings": {
     "title": "系统设置",
     "basic": "基础设置",
@@ -275,7 +299,12 @@
     "takesEffectHint": "保存后生效",
     "modules": "模块管理",
     "acmeEmail": "ACME 邮箱",
-    "dnsProvider": "DNS 服务商"
+    "dnsProvider": "DNS 服务商",
+    "sslSettings": "SSL/证书设置",
+    "sslSettingsDesc": "ACME 邮箱用于证书颁发机构通知，DNS 服务商用于域名验证。证书到期预警天数控制何时开始提醒。",
+    "pushplusTitle": "推送标题",
+    "pushplusTitleHint": "如：Home Server Panel 通知",
+    "pushplusChannel": "推送渠道"
   },
   "about": {
     "title": "关于",

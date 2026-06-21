@@ -235,6 +235,16 @@ class SqliteService {
       )
     `);
     this._db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        created_at TEXT,
+        updated_at TEXT
+      )
+    `);
+    this._db.run(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT,
@@ -651,8 +661,50 @@ class SqliteService {
     this._run('UPDATE ssl_config SET notified_at = ? WHERE domain = ?', [timestamp, domain]);
   }
 
-  // ==================== 会话 ====================
+  // ========== 用户管理 ==========
+  getAllUsers() {
+    return this._all('SELECT id, username, role, created_at, updated_at FROM users ORDER BY id');
+  }
+  getUserById(id) {
+    return this._get('SELECT id, username, role, created_at, updated_at FROM users WHERE id = ?', [id]);
+  }
+  getUserByUsername(username) {
+    return this._get('SELECT id, username, password, role FROM users WHERE username = ?', [username]);
+  }
+  createUser(username, passwordHash, role) {
+    const now = new Date().toISOString();
+    this._run('INSERT INTO users (username, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [username, passwordHash, role || 'user', now, now]);
+    return this.getUserByUsername(username);
+  }
+  updateUser(id, { username, password, role }) {
+    const now = new Date().toISOString();
+    const fields = [];
+    const params = [];
+    if (username) { fields.push('username = ?'); params.push(username); }
+    if (password) { fields.push('password = ?'); params.push(password); }
+    if (role) { fields.push('role = ?'); params.push(role); }
+    if (fields.length === 0) return;
+    fields.push('updated_at = ?');
+    params.push(now);
+    params.push(id);
+    this._run(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
+  }
+  deleteUser(id) {
+    this._run('DELETE FROM users WHERE id = ?', [id]);
+  }
+  seedDefaultAdmin() {
+    const existing = this.getUserByUsername('admin');
+    if (!existing) {
+      const bcrypt = require('bcryptjs');
+      const password = process.env.ADMIN_PASS || 'admin123';
+      const hash = bcrypt.hashSync(password, 10);
+      this.createUser('admin', hash, 'admin');
+      console.log('[DB] 默认管理员 admin 已创建');
+    }
+  }
 
+  // ==================== 会话 ====================
   getSession(token) {
     const row = this._get('SELECT * FROM sessions WHERE token = ?', [token]);
     return row ? { username: row.username, createdAt: new Date(row.created_at).getTime() } : null;

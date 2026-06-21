@@ -20,6 +20,7 @@ const router = createRouter({
         { path: 'docker',     name: 'docker',    component: () => import('../pages/Docker.vue') },
         { path: 'ssh',        name: 'ssh',       component: () => import('../pages/Ssh.vue') },
         { path: 'settings',   name: 'settings',  component: () => import('../pages/Settings.vue') },
+        { path: 'users',      name: 'users',     component: () => import('../pages/Users.vue'), meta: { adminOnly: true } },
       ]
     }
   ]

@@ -50,7 +50,8 @@
     "cron": "Cron",
     "docker": "Docker",
     "ssh": "SSH",
-    "settings": "Settings"
+    "settings": "Settings",
+    "users": "User Mgmt"
   },
   "topbar": {
     "cpu": "CPU",
@@ -59,7 +60,8 @@
     "networkUp": "Net↑",
     "load": "Load",
     "uptime": "Uptime",
-    "theme": "Toggle dark/light mode"
+    "theme": "Toggle dark/light mode",
+    "userMgmt": "User Mgmt"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -249,6 +251,28 @@
     "connecting": "Connecting...",
     "subtitle": "Remote terminal access"
   },
+  "users": {
+    "title": "User Management",
+    "subtitle": "Manage panel login accounts and permissions",
+    "addUser": "Add User",
+    "addUserTitle": "New User",
+    "editUserTitle": "Edit User",
+    "username": "Username",
+    "usernameHint": "Enter username",
+    "password": "Password",
+    "passwordHint": "Enter password",
+    "passwordEditHint": "Leave empty to keep current",
+    "role": "Role",
+    "admin": "Admin",
+    "user": "User",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "createSuccess": "User created successfully",
+    "updateSuccess": "User updated",
+    "deleteSuccess": "User deleted",
+    "deleteConfirm": "Delete this user? This cannot be undone."
+  },
+
   "settings": {
     "title": "System Settings",
     "basic": "Basic Settings",
@@ -275,7 +299,12 @@
     "takesEffectHint": "takes effect on save",
     "modules": "Modules",
     "acmeEmail": "ACME Email",
-    "dnsProvider": "DNS Provider"
+    "dnsProvider": "DNS Provider",
+    "sslSettings": "SSL / Certificate",
+    "sslSettingsDesc": "ACME email is for CA notifications. DNS provider is used for domain validation. Expiry warning days control when alerts begin.",
+    "pushplusTitle": "Push Title",
+    "pushplusTitleHint": "e.g. Home Server Panel Alert",
+    "pushplusChannel": "Push Channel"
   },
   "about": {
     "title": "About",

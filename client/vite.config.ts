@@ -3,6 +3,14 @@ import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { readFileSync } from 'fs'
+
+function readVersion(): string {
+  try {
+    const rootPkg = JSON.parse(readFileSync('../package.json', 'utf-8'))
+    return rootPkg.version || '0.0.0'
+  } catch { return '0.0.0' }
+}
 
 export default defineConfig({
   plugins: [
@@ -23,7 +31,7 @@ export default defineConfig({
     assetsDir: 'assets',
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.8.5-beta'),
+    __APP_VERSION__: JSON.stringify(readVersion()),
     __APP_AUTHOR__: JSON.stringify('陈子疯'),
   },
   css: {

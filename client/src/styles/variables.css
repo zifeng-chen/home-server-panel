@@ -324,6 +324,17 @@ html.dark .el-input__wrapper {
   box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 html.dark .el-input__inner { color: var(--text-primary); }
+/* 暗色 el-input-number 加减按钮 */
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  background-color: rgba(255,255,255,0.06) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+html.dark .el-input-number__decrease:hover,
+html.dark .el-input-number__increase:hover {
+  color: var(--brand-gold) !important;
+}
 html.dark .el-select__wrapper {
   background-color: rgba(255,255,255,0.04) !important;
   box-shadow: 0 0 0 1px var(--border-color) inset !important;

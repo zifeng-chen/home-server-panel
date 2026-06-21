@@ -4,6 +4,7 @@ const router = express.Router();
 const _safeErr = (e) => (e?.message || '操作失败').replace(/\b\/(?:[^\s,;:"'{}|\\]+\/?)+/g, '[PATH]');
 
 const auth = require('../services/auth');
+const sqliteService = require('../services/sqlite-service');
 
 // POST /api/auth/login - 登录
 router.post('/login', async (req, res) => {
@@ -24,10 +25,12 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
+    // 查询用户角色
+    const userRec = sqliteService.getUserByUsername(username);
     return res.json({
       success: true,
       message: '登录成功',
-      data: { token: result.token }
+      data: { token: result.token, username, role: userRec?.role || 'user' }
     });
   }
 
@@ -46,10 +49,11 @@ router.post('/logout', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.headers['x-auth-token'] || req.cookies?.hsp_token;
   const loggedIn = token && auth.verifyToken(token);
-  const username = auth.sessions[token]?.username || process.env.ADMIN_USER || 'admin';
+  const username = auth.sessions[token]?.username || '';
+  const userRec = username ? sqliteService.getUserByUsername(username) : null;
   res.json({
     success: true,
-    data: { loggedIn, username: loggedIn ? username : null }
+    data: { loggedIn, username: loggedIn ? username : null, role: userRec?.role || 'user' }
   });
 });
 

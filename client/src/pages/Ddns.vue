@@ -146,9 +146,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Refresh, Delete, Plus, Edit, WarningFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const loading    = ref(false)
 const refreshing = ref(false)
@@ -191,7 +193,7 @@ async function load() {
       ipv4.value = res.data.publicIpv4 || ''
       ipv6.value = res.data.publicIpv6 || ''
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { loading.value = false }
 }
 
@@ -200,9 +202,9 @@ async function refreshAll() {
   refreshing.value = true
   try {
     const res = await api.post('/ddns/refresh') as any
-    ElMessage.success(res.message || $t('common.success'))
+    ElMessage.success(res.message || t('common.success'))
     await load()
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { refreshing.value = false }
 }
 
@@ -215,8 +217,8 @@ async function toggleRecord(row: any) {
       status: row.enabled === false ? 'ENABLE' : 'DISABLE'
     }) as any
     if (res.success) { ElMessage.success(res.message); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 // 删除
@@ -229,16 +231,16 @@ async function doDelete() {
   deleting.value = true
   try {
     const res = await api.delete(`/ddns/record/${delTarget.value.id}`) as any
-    if (res.success) { ElMessage.success($t('common.success')); delVisible.value = false; await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(t('common.success')); delVisible.value = false; await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { deleting.value = false }
 }
 
 // 添加域名
 async function doAdd() {
   if (!addForm.value.domain.trim()) {
-    ElMessage.warning($t('common.error'))
+    ElMessage.warning(t('common.error'))
     return
   }
   adding.value = true
@@ -252,14 +254,14 @@ async function doAdd() {
       ttl: addForm.value.ttl
     }) as any
     if (res.success) {
-      ElMessage.success(res.message || $t('common.success'))
+      ElMessage.success(res.message || t('common.success'))
       showAddDlg.value = false
       addForm.value = { provider: 'aliyun', domain: '', subdomain: '@', recordType: 'A', value: '', ttl: 600 }
       await load()
     } else {
-      ElMessage.error(res.message || $t('common.error'))
+      ElMessage.error(res.message || t('common.error'))
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { adding.value = false }
 }
 
@@ -287,9 +289,9 @@ async function doEdit() {
       ttl: editForm.value.ttl,
       line: editForm.value.line
     }) as any
-    if (res.success) { ElMessage.success(res.message || $t('common.success')); showEditDlg.value = false; await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); showEditDlg.value = false; await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { editing.value = false }
 }
 

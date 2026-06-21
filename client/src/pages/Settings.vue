@@ -145,7 +145,7 @@ async function load() {
       form.aliKeySecret = d.aliKeySecret || ''
       form.tencentSecretId = d.tencentSecretId || ''
       form.tencentSecretKey = d.tencentSecretKey || ''
-      form.pushplusToken = d.pushplusToken === $t('settings.configured') ? '••••••••••' : d.pushplusToken || ''
+      form.pushplusToken = d.pushplusToken === t('settings.configured') ? '••••••••••' : d.pushplusToken || ''
       form.pushplusTitle = d.pushplusTitle || ''
       form.pushplusChannel = d.pushplusChannel || 'wechat'
       form.acmeEmail = d.acmeEmail || ''
@@ -159,10 +159,10 @@ async function testPush() {
   testing.value = true
   try {
     const res = await api.post('/notify/test') as any
-    if (res.success) ElMessage.success(res.message || $t('common.success'))
-    else ElMessage.warning(res.message || $t('common.error'))
+    if (res.success) ElMessage.success(res.message || t('common.success'))
+    else ElMessage.warning(res.message || t('common.error'))
   } catch (e: any) {
-    ElMessage.error(e?.message || $t('common.error'))
+    ElMessage.error(e?.message || t('common.error'))
   } finally {
     testing.value = false
   }

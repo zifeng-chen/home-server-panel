@@ -96,9 +96,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Refresh, Plus } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const loading   = ref(false)
 const installed = ref(false)
@@ -111,9 +113,9 @@ const addingProc  = ref(false)
 const addProc = ref({ name: '', script: '', cwd: '', args: '' })
 
 const statusText = computed(() => {
-  if (!installed.value) return $t('pm2.notInstalled')
+  if (!installed.value) return t('pm2.notInstalled')
   const on = processes.value.filter((p: any) => p.status === 'online').length
-  return `v${version.value} · ${on}/${processes.value.length} ${$t('common.online')}`
+  return `v${version.value} · ${on}/${processes.value.length} ${t('common.online')}`
 })
 
 async function load() {
@@ -145,38 +147,38 @@ async function doInstall() {
   try {
     const res = await api.post('/pm2/install') as any
     if (res?.success) {
-      ElMessage.success($t('common.success'))
+      ElMessage.success(t('common.success'))
       try { await api.post('/pm2/start-daemon') } catch {}
       await load()
     } else {
-      ElMessage.error(res?.message || $t('common.error'))
+      ElMessage.error(res?.message || t('common.error'))
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { installing.value = false }
 }
 
 async function doAction(name: string, action: string) {
   try {
     const res = await api.post(`/pm2/${name}/${action}`) as any
-    if (res?.success) { ElMessage.success(res.message || $t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res?.success) { ElMessage.success(res.message || t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function confirmDelete(name: string) {
   try {
-    await ElMessageBox.confirm($t('common.confirmDelete'), $t('common.delete'), { type: 'warning' })
+    await ElMessageBox.confirm(t('common.confirmDelete'), t('common.delete'), { type: 'warning' })
   } catch { return }
   try {
     const res = await api.delete(`/pm2/${name}`) as any
-    if (res?.success) { ElMessage.success($t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res?.success) { ElMessage.success(t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function doAddProc() {
   if (!addProc.value.name || !addProc.value.script) {
-    ElMessage.warning($t('common.error'))
+    ElMessage.warning(t('common.error'))
     return
   }
   addingProc.value = true
@@ -188,14 +190,14 @@ async function doAddProc() {
       args: addProc.value.args || undefined
     }) as any
     if (res?.success) {
-      ElMessage.success($t('common.success'))
+      ElMessage.success(t('common.success'))
       showAddProc.value = false
       addProc.value = { name: '', script: '', cwd: '', args: '' }
       await load()
     } else {
-      ElMessage.error(res?.message || $t('common.error'))
+      ElMessage.error(res?.message || t('common.error'))
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { addingProc.value = false }
 }
 

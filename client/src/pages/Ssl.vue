@@ -81,9 +81,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Plus, ArrowDown } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const loading = ref(false)
 const certs = ref<any[]>([])
@@ -110,47 +112,47 @@ async function load() {
       certs.value = res.data.certificates || []
       acmeInstalled.value = !!res.data.acmeInstalled
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { loading.value = false }
 }
 
 async function doInstall() {
-  if (!installEmail.value) return ElMessage.warning($t('common.error'))
+  if (!installEmail.value) return ElMessage.warning(t('common.error'))
   installing.value = true
   try {
     const res = await api.post('/cert/acme/install', { email: installEmail.value }) as any
-    if (res.success) { ElMessage.success($t('common.success')); showInstall.value = false; await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(t('common.success')); showInstall.value = false; await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { installing.value = false }
 }
 
 async function doIssue() {
-  if (!issueDomain.value) return ElMessage.warning($t('common.error'))
+  if (!issueDomain.value) return ElMessage.warning(t('common.error'))
   issuing.value = true
   try {
     const res = await api.post('/cert/issue', { domain: issueDomain.value, wildcard: issueWildcard.value, force: issueForce.value, provider: issueProvider.value }) as any
-    if (res.success) { ElMessage.success($t('common.success')); showIssue.value = false; await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(t('common.success')); showIssue.value = false; await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { issuing.value = false }
 }
 
 async function doRenew(row: any) {
   try {
     const res = await api.post('/cert/renew', { domain: row.domain }) as any
-    ElMessage.success(res.message || $t('common.success'))
+    ElMessage.success(res.message || t('common.success'))
     await load()
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function renewAll() {
   renewing.value = true
   try {
     const res = await api.post('/cert/renew-all') as any
-    ElMessage.success(res.message || $t('common.success'))
+    ElMessage.success(res.message || t('common.success'))
     await load()
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { renewing.value = false }
 }
 
@@ -159,12 +161,12 @@ function exportCert(domain: string, format: string) {
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除 ${row.domain} 的证书吗？`, $t('common.confirmDelete'))
+  await ElMessageBox.confirm(`确定删除 ${row.domain} 的证书吗？`, t('common.confirmDelete'))
   try {
     const res = await api.delete(`/cert/domains/${row.domain}`, { params: { deleteFiles: 'true' } }) as any
-    if (res.success) { ElMessage.success($t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 function fmtDate(d: string) { if (!d) return '--'; return new Date(d).toLocaleDateString('zh-CN') }

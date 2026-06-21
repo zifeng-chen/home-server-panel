@@ -62,9 +62,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const loading = ref(false)
 const info    = ref<any>(null)
@@ -79,7 +81,7 @@ const logContent = ref('')
 const hostname = window.location.hostname
 
 const runningCount = computed(() => containers.value.filter((c: any) => c.state === 'running').length)
-const infoText = computed(() => info.value ? `Docker v${info.value.serverVersion || '--'} · ${info.value.containersRunning || 0} ${$t('docker.running')}` : '')
+const infoText = computed(() => info.value ? `Docker v${info.value.serverVersion || '--'} · ${info.value.containersRunning || 0} ${t('docker.running')}` : '')
 
 async function load() {
   loading.value = true
@@ -91,35 +93,35 @@ async function load() {
       images.value     = res.data.images || []
       volumes.value    = res.data.volumes || []
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { loading.value = false }
 }
 
 async function doAction(id: string, action: string) {
   try {
     const res = await api.post(`/docker/containers/${id}/${action}`) as any
-    if (res.success) { ElMessage.success(res.message || $t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function showLogs(row: any) {
   logTitle.value = row.name
-  logContent.value = $t('common.loading')
+  logContent.value = t('common.loading')
   logVisible.value = true
   try {
     const res = await api.get(`/docker/containers/${row.id}/logs`, { params: { lines: 200 } }) as any
     if (res.success) logContent.value = typeof res.data === 'string' ? res.data : res.data?.logs || ''
-    else logContent.value = res.message || $t('common.error')
-  } catch { logContent.value = $t('common.error') }
+    else logContent.value = res.message || t('common.error')
+  } catch { logContent.value = t('common.error') }
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm($t('common.confirmDelete'), $t('common.delete'), { type: 'warning' })
+  await ElMessageBox.confirm(t('common.confirmDelete'), t('common.delete'), { type: 'warning' })
   try {
     const res = await api.delete(`/docker/containers/${row.id}`) as any
-    if (res.success) { ElMessage.success($t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
+    if (res.success) { ElMessage.success(t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancel */ }
 }
 

@@ -48,9 +48,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const loading = ref(false)
 const saving  = ref(false)
@@ -65,7 +67,7 @@ async function load() {
   try {
     const res = await api.get('/cron') as any
     if (res.success) jobs.value = res.data.jobs || []
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { loading.value = false }
 }
 
@@ -73,15 +75,15 @@ function showAdd() { editId.value = ''; form.value = { name: '', schedule: '', c
 function showEdit(row: any) { editId.value = row.id; form.value = { name: row.name, schedule: row.schedule, command: row.command }; dialogVisible.value = true }
 
 async function doSave() {
-  if (!form.value.name || !form.value.schedule) return ElMessage.warning($t('common.error'))
+  if (!form.value.name || !form.value.schedule) return ElMessage.warning(t('common.error'))
   saving.value = true
   try {
     let res: any
     if (editId.value) { res = await api.put(`/cron/${editId.value}`, form.value) }
     else { res = await api.post('/cron', form.value) }
-    if (res.success) { ElMessage.success(res.message || $t('common.success')); dialogVisible.value = false; await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch  { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); dialogVisible.value = false; await load() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch  { ElMessage.error(t('common.error')) }
   finally { saving.value = false }
 }
 
@@ -89,24 +91,24 @@ async function toggle(row: any) {
   try {
     const res = await api.post(`/cron/${row.id}/toggle`) as any
     if (res.success) { ElMessage.success(res.message); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function runNow(row: any) {
   try {
     const res = await api.post(`/cron/${row.id}/run`) as any
-    if (res.success) ElMessage.success($t('common.success'))
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) ElMessage.success(t('common.success'))
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm($t('cron.deleteConfirm'), $t('common.confirmDelete'))
+  await ElMessageBox.confirm(t('cron.deleteConfirm'), t('common.confirmDelete'))
   try {
     const res = await api.delete(`/cron/${row.id}`) as any
-    if (res.success) { ElMessage.success($t('common.success')); await load() }
-    else ElMessage.error(res.message || $t('common.error'))
+    if (res.success) { ElMessage.success(t('common.success')); await load() }
+    else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancel */ }
 }
 

@@ -50,9 +50,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 const ports   = ref<any[]>([])
 const stats   = ref<any>(null)
@@ -63,7 +65,7 @@ const startCommand = ref('')
 
 const statsText = computed(() => {
   if (!stats.value) return ''
-  return $t('port.scan') + ': ' + (stats.value.total || 0)
+  return t('port.scan') + ': ' + (stats.value.total || 0)
 })
 
 function canOpen(row: any) {
@@ -83,18 +85,18 @@ async function scan() {
     if (res.success) {
       ports.value = res.data.ports || []
       stats.value = res.data.stats
-      ElMessage.success(res.message || $t('common.success'))
+      ElMessage.success(res.message || t('common.success'))
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { scanning.value = false }
 }
 
 async function doKill(row: any) {
-  await ElMessageBox.confirm($t('port.confirmKill'), $t('port.kill'))
+  await ElMessageBox.confirm(t('port.confirmKill'), t('port.kill'))
   try {
     const res = await api.post(`/port/kill/${row.port}`) as any
     if (res.success) { ElMessage.success(res.message); await scan() }
-    else ElMessage.error(res.message || $t('common.error'))
+    else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancel */ }
 }
 
@@ -103,12 +105,12 @@ function doStart(row: any) {
   startVisible.value = true
 }
 async function doExecStart() {
-  if (!startCommand.value.trim()) return ElMessage.warning($t('common.error'))
+  if (!startCommand.value.trim()) return ElMessage.warning(t('common.error'))
   try {
     const res = await api.post('/port/start', { command: startCommand.value }) as any
-    if (res.success) { ElMessage.success(res.message || $t('common.success')); startVisible.value = false }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); startVisible.value = false }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 onMounted(scan)

@@ -91,9 +91,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus } from '@element-plus/icons-vue'
 import api from '../api'
+const { t } = useI18n()
 
 // ── Nginx 状态 ──
 const installed = ref(false)
@@ -109,7 +111,7 @@ const guideText = ref('')
 
 const statusText = computed(() => {
   if (!installed.value) return 'Nginx 未安装 / Not installed'
-  return running.value ? $t('dashboard.running') : $t('dashboard.stopped')
+  return running.value ? t('dashboard.running') : t('dashboard.stopped')
 })
 
 async function load() {
@@ -168,7 +170,7 @@ async function loadRules() {
       rules.value = res.data.rules || []
       stats.value = res.data.stats || null
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
   finally { loadingRules.value = false }
 }
 
@@ -192,7 +194,7 @@ function showAddEdit(row: any | null) {
 }
 
 async function doSaveRule() {
-  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning($t('common.error'))
+  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning(t('common.error'))
   saving.value = true
   try {
     let res: any
@@ -201,9 +203,9 @@ async function doSaveRule() {
     } else {
       res = await api.post('/proxy', form.value)
     }
-    if (res.success) { ElMessage.success(res.message || $t('common.success')); dialogVisible.value = false; await loadRules() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); dialogVisible.value = false; await loadRules() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
   finally { saving.value = false }
 }
 
@@ -211,16 +213,16 @@ async function toggle(row: any) {
   try {
     const res = await api.post(`/proxy/${row.id}/toggle`) as any
     if (res.success) { ElMessage.success(res.message); await loadRules() }
-    else ElMessage.error(res.message || $t('common.error'))
-  } catch { ElMessage.error($t('common.error')) }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 async function confirmDelete(row: any) {
-  await ElMessageBox.confirm($t('proxy.deleteConfirm'), $t('common.confirmDelete'))
+  await ElMessageBox.confirm(t('proxy.deleteConfirm'), t('common.confirmDelete'))
   try {
     const res = await api.delete(`/proxy/${row.id}`) as any
     if (res.success) { ElMessage.success(res.message); await loadRules() }
-    else ElMessage.error(res.message || $t('common.error'))
+    else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancelled */ }
 }
 
@@ -231,7 +233,7 @@ async function exportConfig() {
       const blob = new Blob([res.data.config], { type: 'text/plain' })
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proxy-nginx.conf'; a.click()
     }
-  } catch { ElMessage.error($t('common.error')) }
+  } catch { ElMessage.error(t('common.error')) }
 }
 
 onMounted(load)

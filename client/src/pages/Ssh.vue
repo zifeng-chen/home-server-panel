@@ -108,12 +108,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Monitor, Loading, WarningFilled, Link, SwitchButton, Connection, Edit, Delete } from '@element-plus/icons-vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import 'xterm/css/xterm.css'
 import api from '../api'
+const { t } = useI18n()
 
 // ============ 终端相关 ============
 const termWrapper = ref<HTMLElement | null>(null)
@@ -165,7 +167,7 @@ function showEdit(row: any) {
 }
 
 async function doSave() {
-  if (!form.value.host) return ElMessage.warning($t('common.error'))
+  if (!form.value.host) return ElMessage.warning(t('common.error'))
   saving.value = true
   try {
     let res: any
@@ -177,14 +179,14 @@ async function doSave() {
       res = await api.post('/ssh/config', payload)
     }
     if (res.success) {
-      ElMessage.success($t('common.success'))
+      ElMessage.success(t('common.success'))
       dialogVisible.value = false
       await load()
     } else {
-      ElMessage.error(res.message || $t('common.error'))
+      ElMessage.error(res.message || t('common.error'))
     }
   } catch {
-    ElMessage.error($t('common.error'))
+    ElMessage.error(t('common.error'))
   } finally {
     saving.value = false
   }
@@ -192,9 +194,9 @@ async function doSave() {
 
 async function confirmDelete(row: any) {
   try {
-    await ElMessageBox.confirm($t('common.confirmDelete'), $t('common.delete'))
+    await ElMessageBox.confirm(t('common.confirmDelete'), t('common.delete'))
     const res = await api.delete(`/ssh/config/${row.id}`) as any
-    if (res.success) { ElMessage.success($t('common.success')); await load() } else ElMessage.error(res.message || $t('common.error'))
+    if (res.success) { ElMessage.success(t('common.success')); await load() } else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancel */ }
 }
 
@@ -210,7 +212,7 @@ async function doConnect(cfg: any) {
 
   // 先获取完整配置（含密码）
   const detail = await fetchConfigDetail(cfg.id)
-  if (!detail) { ElMessage.error($t('common.error')); return }
+  if (!detail) { ElMessage.error(t('common.error')); return }
 
   pwTarget.value = detail
   if (detail.password && detail.password !== '••••••') {
@@ -359,7 +361,7 @@ function connectWebSocket(detail: any) {
           term?.focus()
           break
         case 'error':
-          wsError.value = msg.message || $t('common.error')
+          wsError.value = msg.message || t('common.error')
           wsReady.value = false
           break
         case 'status':
@@ -368,7 +370,7 @@ function connectWebSocket(detail: any) {
             disconnected.value = true
           } else if (msg.status === 'error') {
             wsReady.value = false
-            wsError.value = $t('common.error')
+            wsError.value = t('common.error')
           }
           break
       }
@@ -379,7 +381,7 @@ function connectWebSocket(detail: any) {
   }
 
   ws.onerror = () => {
-    wsError.value = $t('common.error')
+    wsError.value = t('common.error')
     wsReady.value = false
     connecting.value = null
   }

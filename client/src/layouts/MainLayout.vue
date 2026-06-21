@@ -19,9 +19,11 @@ import { onMounted, onUnmounted } from 'vue'
 import SideBar from '../components/SideBar.vue'
 import TopBar from '../components/TopBar.vue'
 import { useSystemStore } from '../stores/system'
+import { useAuthStore } from '../stores/auth'
 
 const sys = useSystemStore()
-onMounted(() => { sys.fetchInfo(); sys.startPolling(); sys.startUptimeTicking() })
+const auth = useAuthStore()
+onMounted(() => { auth.check(); sys.fetchInfo(); sys.startPolling(); sys.startUptimeTicking() })
 onUnmounted(() => { sys.stopPolling(); sys.stopUptimeTicking() })
 </script>
 

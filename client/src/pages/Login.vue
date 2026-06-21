@@ -45,7 +45,7 @@
           <p v-if="error" class="error-msg">{{ error }}</p>
         </Transition>
 
-        <p class="version-tag">v0.8.4-beta</p>
+        <p class="version-tag">v{{ version }}</p>
       </div>
     </div>
   </div>
@@ -56,6 +56,8 @@ import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+
+const version = __APP_VERSION__
 import Logo from '../components/Logo.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 

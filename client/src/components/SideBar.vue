@@ -30,7 +30,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
-const version = '0.8.5'
+const version = __APP_VERSION__
 const authStore = useAuthStore()
 
 const allNavItems = [

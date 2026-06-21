@@ -1,3 +1,76 @@
+# v0.8.5-beta (2026-06-21)
+
+## [v0.8.5-beta] - 2026-06-21
+
+### 多用户管理 + PushPlus 增强 + 设置页重组 + 构建流水线修复
+
+**多用户管理系统:**
+- ✅ users 表 (id, username UNIQUE, password bcrypt, role admin/user)
+- ✅ 后端 CRUD API + adminRequired 中间件
+- ✅ Users.vue 用户管理页 (adminOnly)
+- ✅ auth 认证重构: 查 users 表优先级 + 自动迁移旧 .env admin
+- ✅ SideBar/TopBar 权限过滤
+
+**PushPlus 推送增强:**
+- ✅ 自定义推送标题 (PUSHPLUS_TITLE)
+- ✅ 渠道选择 (wechat/wxwork/dingtalk/feishu/mail/sms)
+- ✅ Settings.vue 标题输入框 + 渠道下拉
+
+**Settings 页面重组:**
+- ✅ ACME/DNS/证书配置移入独立"SSL/证书设置"卡片
+- ✅ 通知卡片仅保留 PushPlus 字段
+
+**构建流水线根因修复:**
+- ✅ vite.config.ts: `__APP_VERSION__` 硬编码 '0.8.4-beta' → 动态读取 package.json
+- ✅ npm run build: 从仅旧 esbuild → Vue (vite build) + esbuild 双流水线
+- ✅ iStoreOS dist 残留 424 文件清为 65 文件 (3.4MB)
+
+**i18n 国际化全面修复:**
+- ✅ 9 页面 (DDNS/SSL/Nginx/Port/PM2/Cron/Docker/SSH/Settings) 全部 $t() 替换
+- ✅ 暗色模式 el-select 下拉白底修复
+
+**移动端响应式:**
+- ✅ 768px 断点: 侧栏→底部标签栏 + 表单全宽
+- ✅ 480px 断点 (iPhone): 按钮全宽 + 卡片缩小
+
+**Logo 组件:**
+- ✅ Logo.vue: 亮/暗模式 + sm/md/lg/xl 尺寸
+- ✅ SideBar/Login/Settings 应用
+
+**GitHub 文档:**
+- ✅ README.md 完整重写: 技术栈表格 + 全部目录结构 + 74 个 API 端点 + 安全架构
+- ✅ 规则: 每 3 个版本迭代更新 README
+
+
+# v0.8.4-beta (2026-06-20)
+
+## [v0.8.4-beta] - 2026-06-20
+
+### 暗色表格 + Nginx 布局 + SSH 图标 + Settings 掩码
+
+- ✅ 暗色模式 el-table 全链路修复 (加载遮罩/排序/筛选/斑马纹)
+- ✅ Nginx 管理页全行独立展示 (标题状态版本按钮配置PID 单行)
+- ✅ SSH 终端图标按钮 (历史列表操作按钮)
+- ✅ 暗色加载遮罩 rgba(10,14,24,0.75)
+- ✅ Settings 标签 white-space: nowrap 防换行
+
+
+# v0.8.3-beta (2026-06-20)
+
+## [v0.8.3-beta] - 2026-06-20
+
+### 仪表盘修复 + Apple 动画 + 登录页 Canvas + PM2 空状态
+
+- ✅ Dashboard 服务状态: running/online/active 三态兼容
+- ✅ MySQL/acme.sh 独立检测 API
+- ✅ 全局 Apple 风格过渡动画 (CSS 变量系统)
+- ✅ 登录页 Canvas 粒子动画背景
+- ✅ PM2 空状态 + 添加进程表单
+- ✅ DDNS 编辑弹窗 + 解析值自动填入公网IP
+- ✅ CSP unsafe-eval 修复
+- ✅ 部署 tar 排除 .env
+
+
 # v0.8.2-beta (2026-06-20)
 
 ## [v0.8.2-beta] - 2026-06-20

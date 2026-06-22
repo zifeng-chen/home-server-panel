@@ -251,6 +251,7 @@
     "disconnected": "Disconnected",
     "connecting": "Connecting...",
     "subtitle": "Remote terminal access",
+    "newConn": "New Connection",
     "saveAndConnect": "Save & Connect",
     "connectOnly": "Connect Only",
     "namePlaceholder": "Connection name (optional)",

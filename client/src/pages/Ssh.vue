@@ -73,44 +73,31 @@
       </template>
     </div>
 
-    <!-- 添加/编辑对话框 — Apple 风格 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="420" class="apple-dialog">
-      <!-- 名称 -->
-      <div class="af-section">
-        <label class="af-label">{{ $t('common.name') }}</label>
-        <el-input v-model="form.name" :placeholder="$t('ssh.namePlaceholder')" class="af-input" />
-      </div>
-
-      <!-- 服务器 -->
-      <div class="af-section">
-        <label class="af-label">{{ $t('ssh.host') }}</label>
-        <div class="af-hstack">
-          <el-input v-model="form.host" placeholder="192.168.1.1" class="af-flex" />
-          <span class="af-sep">:</span>
-          <el-input v-model.number="form.port" placeholder="22" class="af-port" />
-        </div>
-      </div>
-
-      <!-- 认证 -->
-      <div class="af-section">
-        <label class="af-label">{{ $t('ssh.username') }}</label>
-        <el-input v-model="form.username" placeholder="root" class="af-input" />
-      </div>
-      <div class="af-section">
-        <label class="af-label">{{ $t('ssh.password') }}</label>
-        <el-input v-model="form.password" type="password" show-password :placeholder="editId ? $t('ssh.passwordEditHint') : ''" class="af-input" />
-      </div>
-
+    <!-- 添加/编辑对话框 -->
+    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('ssh.newConn')" width="440">
+      <el-form :model="form" label-width="80px">
+        <el-form-item :label="$t('common.name')">
+          <el-input v-model="form.name" :placeholder="$t('ssh.namePlaceholder')" />
+        </el-form-item>
+        <el-form-item :label="$t('ssh.host')" required>
+          <el-input v-model="form.host" placeholder="192.168.1.1" />
+        </el-form-item>
+        <el-form-item :label="$t('ssh.port')">
+          <el-input-number v-model="form.port" :min="1" :max="65535" controls-position="right" />
+        </el-form-item>
+        <el-form-item :label="$t('ssh.username')">
+          <el-input v-model="form.username" placeholder="root" />
+        </el-form-item>
+        <el-form-item :label="$t('ssh.password')">
+          <el-input v-model="form.password" type="password" show-password :placeholder="editId ? $t('ssh.passwordEditHint') : ''" />
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <div class="af-footer">
-          <el-button class="af-btn-cancel" @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
-          <div class="af-actions">
-            <el-button v-if="!editId" class="af-btn-secondary" @click="doConnectOnly">{{ $t('ssh.connectOnly') }}</el-button>
-            <el-button type="primary" class="af-btn-primary" @click="editId ? doSave() : doSaveAndConnect()" :loading="saving">
-              {{ editId ? $t('common.save') : $t('ssh.saveAndConnect') }}
-            </el-button>
-          </div>
-        </div>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button v-if="!editId" @click="doConnectOnly">{{ $t('ssh.connectOnly') }}</el-button>
+        <el-button type="primary" @click="editId ? doSave() : doSaveAndConnect()" :loading="saving">
+          {{ editId ? $t('common.save') : $t('ssh.saveAndConnect') }}
+        </el-button>
       </template>
     </el-dialog>
 
@@ -697,125 +684,4 @@ onUnmounted(() => {
   to { transform: rotate(360deg) }
 }
 
-/* ===== Apple 风格对话框 ===== */
-
-.apple-dialog :deep(.el-dialog__header) {
-  padding: 24px 28px 0;
-  border-bottom: none;
-}
-.apple-dialog :deep(.el-dialog__title) {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.apple-dialog :deep(.el-dialog__body) {
-  padding: 20px 28px 8px;
-}
-.apple-dialog :deep(.el-dialog__footer) {
-  padding: 16px 28px 24px;
-}
-
-/* 表单项 */
-.af-section {
-  margin-bottom: 18px;
-}
-.af-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-}
-.af-input {
-  --el-input-border-radius: 10px;
-}
-.af-input :deep(.el-input__wrapper) {
-  background: var(--bg-base);
-  box-shadow: 0 0 0 1px var(--border-color) inset;
-  border-radius: 10px;
-  transition: box-shadow .15s;
-}
-.af-input :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px var(--text-tertiary) inset;
-}
-.af-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px var(--accent) inset;
-}
-
-/* host : port 横向排列 */
-.af-hstack {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-.af-flex {
-  flex: 1;
-  --el-input-border-radius: 10px 0 0 10px;
-}
-.af-sep {
-  flex-shrink: 0;
-  width: 36px;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-tertiary);
-  background: var(--bg-base);
-  line-height: 38px;
-  box-shadow: 0 1px 0 var(--border-color) inset, 0 -1px 0 var(--border-color) inset;
-}
-.af-port {
-  width: 96px;
-  flex-shrink: 0;
-  --el-input-border-radius: 0 10px 10px 0;
-}
-.af-port :deep(.el-input__wrapper) {
-  background: var(--bg-base);
-  box-shadow: 0 0 0 1px var(--border-color) inset;
-  border-radius: 0 10px 10px 0;
-}
-
-/* 按钮 */
-.af-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.af-actions {
-  display: flex;
-  gap: 10px;
-}
-.af-btn-cancel {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-weight: 500;
-  border-radius: 10px;
-  padding: 8px 20px;
-  transition: background .15s;
-}
-.af-btn-cancel:hover {
-  background: var(--border-color);
-  color: var(--text-primary);
-}
-.af-btn-secondary {
-  border: none;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  font-weight: 500;
-  border-radius: 10px;
-  padding: 8px 20px;
-}
-.af-btn-primary {
-  border-radius: 10px;
-  padding: 8px 24px;
-  font-weight: 600;
-}
-
-/* dialog overlay 毛玻璃 */
-.apple-dialog :deep(.el-overlay) {
-  backdrop-filter: blur(8px);
-  background: rgba(0,0,0,.25) !important;
-}
 </style>

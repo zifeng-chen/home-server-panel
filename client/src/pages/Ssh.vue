@@ -74,17 +74,18 @@
     </div>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="420">
-      <el-form :model="form" label-width="80px">
-        <el-form-item :label="$t('common.name')"><el-input v-model="form.name" placeholder="" /></el-form-item>
+    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="400" class="ssh-dialog">
+      <el-form :model="form" label-width="72px" label-position="left">
+        <el-form-item :label="$t('common.name')"><el-input v-model="form.name" /></el-form-item>
         <el-form-item :label="$t('ssh.host')"><el-input v-model="form.host" placeholder="192.168.1.1" /></el-form-item>
-        <el-form-item :label="$t('ssh.port')"><el-input-number v-model="form.port" :min="1" :max="65535" /></el-form-item>
+        <el-form-item :label="$t('ssh.port')"><el-input-number v-model="form.port" :min="1" :max="65535" controls-position="right" style="width:100%" /></el-form-item>
         <el-form-item :label="$t('ssh.username')"><el-input v-model="form.username" placeholder="root" /></el-form-item>
-        <el-form-item :label="$t('ssh.password')"><el-input v-model="form.password" type="password" show-password placeholder="" /></el-form-item>
+        <el-form-item :label="$t('ssh.password')"><el-input v-model="form.password" type="password" show-password /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="doSave" :loading="saving">{{ $t('common.save') }}</el-button>
+        <el-button @click="doSaveAndConnect" :loading="saving" v-if="!editId">{{ $t('ssh.saveAndConnect') }}</el-button>
+        <el-button type="primary" @click="doSave" :loading="saving">{{ editId ? $t('common.save') : $t('ssh.connectOnly') }}</el-button>
       </template>
     </el-dialog>
 
@@ -175,13 +176,55 @@ async function doSave() {
     if (!payload.password) delete (payload as any).password
     if (editId.value) {
       res = await api.put(`/ssh/config/${editId.value}`, payload)
+      if (res.success) {
+        ElMessage.success(t('common.success'))
+        dialogVisible.value = false
+        await load()
+      } else {
+        ElMessage.error(res.message || t('common.error'))
+      }
     } else {
+      // 新建模式："仅连接" = 不保存配置，直接连接
+      dialogVisible.value = false
       res = await api.post('/ssh/config', payload)
+      if (res.success) {
+        await load()
+        // 连接刚创建的配置
+        const cfg = configs.value.find(c => c.id === res.data.id)
+        if (cfg) doConnect(cfg)
+      } else {
+        // 如果创建失败，直接用表单数据连接（不持久化）
+        startConnection({ ...form.value, id: Date.now() })
+      }
     }
+  } catch {
+    // 如果 API 不可用，直接用表单数据连接
+    if (!editId.value) {
+      dialogVisible.value = false
+      startConnection({ ...form.value, id: Date.now() })
+    } else {
+      ElMessage.error(t('common.error'))
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+async function doSaveAndConnect() {
+  // "保存并连接"：持久化保存后再连接
+  if (!form.value.host) return ElMessage.warning(t('common.error'))
+  saving.value = true
+  try {
+    const payload: any = { ...form.value }
+    if (!payload.password) delete (payload as any).password
+    const res = await api.post('/ssh/config', payload)
     if (res.success) {
       ElMessage.success(t('common.success'))
       dialogVisible.value = false
       await load()
+      // 找到刚创建的配置并连接
+      const cfg = configs.value.find((c: any) => c.id === res.data.id)
+      if (cfg) doConnect(cfg)
     } else {
       ElMessage.error(res.message || t('common.error'))
     }

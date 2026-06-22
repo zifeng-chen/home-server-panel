@@ -18,6 +18,7 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
+            <el-dropdown-item v-if="auth.isAdmin" command="users" :icon="Setting">{{ $t('topbar.userMgmt') }}</el-dropdown-item>
             <el-dropdown-item command="lang-zh">🇨🇳 中文</el-dropdown-item>
             <el-dropdown-item command="lang-en">🇺🇸 English</el-dropdown-item>
             <el-dropdown-item command="logout" divided>
@@ -26,10 +27,6 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <!-- 点击头像浮窗弹出用户管理 -->
-      <span class="avatar-trigger" v-if="auth.isAdmin" @click="showUsersDialog = true" :title="$t('topbar.userMgmt')">
-        <el-icon :size="16"><UserFilled /></el-icon>
-      </span>
     </div>
     <UsersDialog v-model:visible="showUsersDialog" />
   </header>
@@ -41,7 +38,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSystemStore } from '../stores/system'
 import { useAuthStore } from '../stores/auth'
-import { Cpu, Memo, Download, Upload, TrendCharts, Timer, UserFilled, SwitchButton, Moon, Sunny } from '@element-plus/icons-vue'
+import { Cpu, Memo, Download, Upload, TrendCharts, Timer, UserFilled, SwitchButton, Moon, Sunny, Setting } from '@element-plus/icons-vue'
 import UsersDialog from './UsersDialog.vue'
 
 const sys  = useSystemStore()
@@ -97,6 +94,8 @@ function handleCmd(cmd: string) {
     auth.logout()
     sys.stopPolling()
     router.push('/login')
+  } else if (cmd === 'users') {
+    showUsersDialog.value = true
   } else if (cmd === 'lang-zh') {
     locale.value = 'zh-CN'
     localStorage.setItem('hsp_lang', 'zh-CN')
@@ -175,23 +174,5 @@ function handleCmd(cmd: string) {
 .user-btn:hover {
   background: var(--border-color);
   color: var(--text-primary);
-}
-
-/* 头像触发按钮 */
-.avatar-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--text-secondary);
-  background: var(--border-color);
-  transition: all var(--dur-fast);
-}
-.avatar-trigger:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
 }
 </style>

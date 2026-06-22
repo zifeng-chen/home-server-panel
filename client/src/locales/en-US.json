@@ -250,7 +250,9 @@
     "reconnect": "Reconnect",
     "disconnected": "Disconnected",
     "connecting": "Connecting...",
-    "subtitle": "Remote terminal access"
+    "subtitle": "Remote terminal access",
+    "saveAndConnect": "Save & Connect",
+    "connectOnly": "Connect Only"
   },
   "users": {
     "title": "User Management",

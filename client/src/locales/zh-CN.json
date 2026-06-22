@@ -250,7 +250,9 @@
     "reconnect": "重新连接",
     "disconnected": "连接已断开",
     "connecting": "正在连接...",
-    "subtitle": "远程终端访问"
+    "subtitle": "远程终端访问",
+    "saveAndConnect": "保存并连接",
+    "connectOnly": "仅连接"
   },
   "users": {
     "title": "用户管理",

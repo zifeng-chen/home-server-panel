@@ -60,8 +60,8 @@
         </el-form-item>
         <el-form-item :label="$t('users.role')" prop="role">
           <el-radio-group v-model="form.role" :disabled="editingUser?.username === 'admin'">
-            <el-radio label="admin">{{ $t('users.admin') }}</el-radio>
-            <el-radio label="user">{{ $t('users.user') }}</el-radio>
+            <el-radio value="admin">{{ $t('users.admin') }}</el-radio>
+            <el-radio value="user">{{ $t('users.user') }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>

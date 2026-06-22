@@ -29,7 +29,7 @@
       <el-table-column :label="$t('port.port')" width="160">
         <template #default="{ row }">
           <template v-for="(p,i) in (row.ports || [])" :key="i">
-            <el-link v-if="p.publicPort" :href="`http://${hostname}:${p.publicPort}`" target="_blank" type="primary" :underline="false" size="small">{{ p.publicPort }}→{{ p.privatePort }}</el-link>
+            <el-link v-if="p.publicPort" :href="`http://${hostname}:${p.publicPort}`" target="_blank" type="primary" underline="never" size="small">{{ p.publicPort }}→{{ p.privatePort }}</el-link>
             <span v-else class="dim">{{ p.privatePort }}</span>
             <template v-if="i < row.ports.length - 1">, </template>
           </template>

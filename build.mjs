@@ -34,7 +34,7 @@ writeFileSync('public/js/bundle.js', mainResult.code);
 console.log(`  bundle.js  ${(mainResult.code.length/1024).toFixed(1)} KB`);
 
 // ── 懒加载页面脚本：各自独立压缩 ──
-const pages = ['ddns','cert','nginx','port','cron','pm2','docker','ssh'];
+const pages = ['ddns','cert','nginx','port','cron','pm2','docker','ssh','devices'];
 for (const p of pages) {
   const src = readFileSync(`public/js/pages/${p}.js`, 'utf8');
   const result = await transform(src, {

@@ -31,28 +31,6 @@ const Utils = (window.Utils = {
     if (overlay) overlay.classList.add('hidden');
   },
 
-  escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  },
-
-  storageGet(key, fallback = '') {
-    try {
-      if (window.localStorage) return window.localStorage.getItem(key) || fallback;
-    } catch (err) {}
-    return fallback;
-  },
-
-  storageSet(key, value) {
-    try {
-      if (window.localStorage) window.localStorage.setItem(key, value);
-    } catch (err) {}
-  },
-
   confirm(title, message, onConfirm) {
     const footer = `<button class="btn btn-secondary" onclick="Utils.closeModal()">取消</button>
       <button class="btn btn-danger" id="modalConfirmBtn">确认</button>`;

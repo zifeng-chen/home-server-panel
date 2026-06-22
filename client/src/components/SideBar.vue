@@ -26,7 +26,7 @@ import { useAuthStore } from '../stores/auth'
 import Logo from './Logo.vue'
 import {
   Odometer, Connection, Key, Coin, Switch,
-  Loading, Timer, Box, Monitor, Setting, User
+  Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
@@ -44,7 +44,6 @@ const allNavItems = [
   { label: t('sidebar.docker'),    path: '/docker',    icon: Box },
   { label: t('sidebar.ssh'),       path: '/ssh',       icon: Monitor },
   { label: t('sidebar.settings'),  path: '/settings',  icon: Setting },
-  { label: t('sidebar.users'),     path: '/users',     icon: User, adminOnly: true },
 ]
 
 const navItems = computed(() => allNavItems.filter(item => !item.adminOnly || authStore.isAdmin))

@@ -38,6 +38,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SideBar: typeof import('./src/components/SideBar.vue')['default']
     TopBar: typeof import('./src/components/TopBar.vue')['default']
+    UsersDialog: typeof import('./src/components/UsersDialog.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

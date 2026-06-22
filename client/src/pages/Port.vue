@@ -10,26 +10,26 @@
       </div>
     </div>
 
-    <el-table :data="ports" v-loading="scanning" stripe class="data-table" :cell-style="{ padding: '10px 16px' }">
-      <el-table-column prop="port" :label="$t('port.port')" width="100" sortable />
-      <el-table-column prop="protocol" :label="$t('port.protocol')" width="90">
+    <el-table :data="ports" v-loading="scanning" stripe class="data-table" size="small">
+      <el-table-column prop="port" :label="$t('port.port')" width="70" sortable />
+      <el-table-column prop="protocol" :label="$t('port.protocol')" width="80">
         <template #default="{ row }"><el-tag :type="row.protocol === 'TCP' ? '' : 'warning'" size="small">{{ row.protocol }}</el-tag></template>
       </el-table-column>
-      <el-table-column :label="$t('common.status')" width="110">
+      <el-table-column :label="$t('common.status')" width="100">
         <template #default="{ row }">
           <span class="dot" :style="{ background: row.status === 'LISTEN' ? 'var(--accent-green)' : 'var(--text-tertiary)' }"></span>
           {{ row.status }}
         </template>
       </el-table-column>
-      <el-table-column prop="process" :label="$t('port.process')" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="pid" :label="$t('port.pid')" width="90" />
-      <el-table-column :label="$t('port.accessible')" min-width="150">
+      <el-table-column prop="process" :label="$t('port.process')" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="pid" :label="$t('port.pid')" width="70" />
+      <el-table-column :label="$t('port.accessible')" min-width="145">
         <template #default="{ row }">
-          <el-link v-if="canOpen(row)" :href="openUrl(row)" target="_blank" type="primary" underline="never">{{ openUrl(row) }}</el-link>
+          <el-link v-if="canOpen(row)" :href="openUrl(row)" target="_blank" type="primary" underline="never" class="port-link">{{ openUrl(row) }}</el-link>
           <span v-else class="dim">--</span>
         </template>
       </el-table-column>
-      <el-table-column :label="$t('port.actions')" width="140" fixed="right">
+      <el-table-column :label="$t('port.actions')" width="130" fixed="right">
         <template #default="{ row }">
           <el-button link type="danger" size="small" @click="doKill(row)" :disabled="!canKill(row)">{{ $t('port.kill') }}</el-button>
           <el-button link type="primary" size="small" @click="doStart(row)">{{ $t('port.start') }}</el-button>
@@ -132,4 +132,5 @@ onMounted(scan)
 .data-table { border-radius: var(--radius-md); overflow: hidden; }
 .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .dim { color: var(--text-tertiary); }
+.port-link { font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
 </style>

@@ -74,18 +74,39 @@
     </div>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="400" class="ssh-dialog">
-      <el-form :model="form" label-width="72px" label-position="left">
-        <el-form-item :label="$t('common.name')"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item :label="$t('ssh.host')"><el-input v-model="form.host" placeholder="192.168.1.1" /></el-form-item>
-        <el-form-item :label="$t('ssh.port')"><el-input-number v-model="form.port" :min="1" :max="65535" controls-position="right" style="width:100%" /></el-form-item>
-        <el-form-item :label="$t('ssh.username')"><el-input v-model="form.username" placeholder="root" /></el-form-item>
-        <el-form-item :label="$t('ssh.password')"><el-input v-model="form.password" type="password" show-password /></el-form-item>
-      </el-form>
+    <el-dialog v-model="dialogVisible" :title="editId ? $t('common.edit') : $t('common.add')" width="460" class="ssh-dialog">
+      <div class="ssh-form-body">
+        <div class="ssh-form-row">
+          <el-icon :size="18" class="ssh-form-icon"><Connection /></el-icon>
+          <div class="ssh-form-fields">
+            <el-input v-model="form.name" :placeholder="$t('ssh.namePlaceholder')" size="large" class="name-input" />
+            <div class="input-row">
+              <el-input v-model="form.host" placeholder="192.168.1.1" size="large" class="host-input">
+                <template #prepend>{{ $t('ssh.host') }}</template>
+              </el-input>
+              <el-input-number v-model="form.port" :min="1" :max="65535" controls-position="right" size="large" class="port-input" />
+            </div>
+            <div class="input-row">
+              <el-input v-model="form.username" placeholder="root" size="large">
+                <template #prepend>{{ $t('ssh.username') }}</template>
+              </el-input>
+              <el-input v-model="form.password" type="password" show-password :placeholder="editId ? $t('ssh.passwordEditHint') : ''" size="large">
+                <template #prepend>{{ $t('ssh.password') }}</template>
+              </el-input>
+            </div>
+          </div>
+        </div>
+      </div>
       <template #footer>
-        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button @click="doSaveAndConnect" :loading="saving" v-if="!editId">{{ $t('ssh.saveAndConnect') }}</el-button>
-        <el-button type="primary" @click="doSave" :loading="saving">{{ editId ? $t('common.save') : $t('ssh.connectOnly') }}</el-button>
+        <div class="ssh-dialog-footer">
+          <el-button size="large" @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+          <div class="footer-right">
+            <el-button v-if="!editId" size="large" @click="doConnectOnly" plain>{{ $t('ssh.connectOnly') }}</el-button>
+            <el-button size="large" type="primary" @click="editId ? doSave() : doSaveAndConnect()" :loading="saving">
+              {{ editId ? $t('common.save') : $t('ssh.saveAndConnect') }}
+            </el-button>
+          </div>
+        </div>
       </template>
     </el-dialog>
 
@@ -168,50 +189,36 @@ function showEdit(row: any) {
 }
 
 async function doSave() {
+  // 编辑模式：纯保存
   if (!form.value.host) return ElMessage.warning(t('common.error'))
   saving.value = true
   try {
-    let res: any
     const payload: any = { ...form.value }
     if (!payload.password) delete (payload as any).password
-    if (editId.value) {
-      res = await api.put(`/ssh/config/${editId.value}`, payload)
-      if (res.success) {
-        ElMessage.success(t('common.success'))
-        dialogVisible.value = false
-        await load()
-      } else {
-        ElMessage.error(res.message || t('common.error'))
-      }
-    } else {
-      // 新建模式："仅连接" = 不保存配置，直接连接
+    const res = await api.put(`/ssh/config/${editId.value}`, payload)
+    if (res.success) {
+      ElMessage.success(t('common.success'))
       dialogVisible.value = false
-      res = await api.post('/ssh/config', payload)
-      if (res.success) {
-        await load()
-        // 连接刚创建的配置
-        const cfg = configs.value.find(c => c.id === res.data.id)
-        if (cfg) doConnect(cfg)
-      } else {
-        // 如果创建失败，直接用表单数据连接（不持久化）
-        startConnection({ ...form.value, id: Date.now() })
-      }
+      await load()
+    } else {
+      ElMessage.error(res.message || t('common.error'))
     }
   } catch {
-    // 如果 API 不可用，直接用表单数据连接
-    if (!editId.value) {
-      dialogVisible.value = false
-      startConnection({ ...form.value, id: Date.now() })
-    } else {
-      ElMessage.error(t('common.error'))
-    }
+    ElMessage.error(t('common.error'))
   } finally {
     saving.value = false
   }
 }
 
+async function doConnectOnly() {
+  // 新建模式：不持久化，直接连接
+  if (!form.value.host) return ElMessage.warning(t('common.error'))
+  dialogVisible.value = false
+  startConnection({ ...form.value, id: Date.now() })
+}
+
 async function doSaveAndConnect() {
-  // "保存并连接"：持久化保存后再连接
+  // 新建模式：持久化保存 + 连接
   if (!form.value.host) return ElMessage.warning(t('common.error'))
   saving.value = true
   try {
@@ -222,7 +229,6 @@ async function doSaveAndConnect() {
       ElMessage.success(t('common.success'))
       dialogVisible.value = false
       await load()
-      // 找到刚创建的配置并连接
       const cfg = configs.value.find((c: any) => c.id === res.data.id)
       if (cfg) doConnect(cfg)
     } else {
@@ -686,4 +692,66 @@ onUnmounted(() => {
   from { transform: rotate(0deg) }
   to { transform: rotate(360deg) }
 }
+
+/* SSH 对话框样式 */
+.ssh-form-body {
+  padding: 8px 0;
+}
+
+.ssh-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.ssh-form-icon {
+  margin-top: 6px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.ssh-form-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.name-input {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+}
+
+.host-input {
+  flex: 3;
+}
+
+.port-input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.ssh-dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.footer-right {
+  display: flex;
+  gap: 10px;
+}
+
+:deep(.el-input-number) {
+  width: 100%;
+}
+
+/* 编辑模式隐藏仅连接按钮 */
 </style>

@@ -252,7 +252,9 @@
     "connecting": "正在连接...",
     "subtitle": "远程终端访问",
     "saveAndConnect": "保存并连接",
-    "connectOnly": "仅连接"
+    "connectOnly": "仅连接",
+    "namePlaceholder": "连接名称（可选）",
+    "passwordEditHint": "留空不修改"
   },
   "users": {
     "title": "用户管理",

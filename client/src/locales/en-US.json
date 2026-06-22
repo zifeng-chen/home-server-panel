@@ -252,7 +252,9 @@
     "connecting": "Connecting...",
     "subtitle": "Remote terminal access",
     "saveAndConnect": "Save & Connect",
-    "connectOnly": "Connect Only"
+    "connectOnly": "Connect Only",
+    "namePlaceholder": "Connection name (optional)",
+    "passwordEditHint": "Leave empty to keep current"
   },
   "users": {
     "title": "User Management",

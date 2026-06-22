@@ -61,6 +61,18 @@ router.post('/add', (req, res) => {
   if (!name || !script) {
     return res.status(400).json({ success: false, message: '进程名和启动脚本不能为空' });
   }
+  // 安全：名称仅允许字母数字连字符下划线点（防命令注入）
+  if (!/^[a-zA-Z0-9._-]{1,64}$/.test(name)) {
+    return res.status(400).json({ success: false, message: '进程名包含非法字符（仅允许 字母/数字/._-）' });
+  }
+  // 安全：脚本路径仅允许安全字符
+  if (!/^[a-zA-Z0-9._\/ -]{1,500}$/.test(script)) {
+    return res.status(400).json({ success: false, message: '脚本路径包含非法字符' });
+  }
+  // 安全：工作目录同理
+  if (cwd && !/^[a-zA-Z0-9._\/ -]{1,500}$/.test(cwd)) {
+    return res.status(400).json({ success: false, message: '工作目录路径包含非法字符' });
+  }
   res.json(pm2Service.addProcess(name, script, cwd, args));
 });
 

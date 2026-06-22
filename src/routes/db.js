@@ -103,7 +103,7 @@ router.get('/export', (req, res) => {
 
 // POST /api/db/import - 导入数据（支持 .db / .json）
 const multer = require('multer');
-const upload = multer({ dest: '/tmp/' });
+const upload = multer({ dest: '/tmp/', limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB 上限
 router.post('/import', upload.single('file'), (req, res) => {
   try {
     const fs = require('fs');

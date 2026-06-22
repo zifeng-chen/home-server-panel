@@ -1,6 +1,6 @@
 {
   "name": "home-server-panel",
-  "version": "2.0.0-beta1",
+  "version": "0.8.8-beta",
   "description": "家庭服务器运维管理面板 - DDNS/SSL/Nginx/反向代理/端口管理",
   "main": "src/server.js",
   "scripts": {
@@ -8,7 +8,8 @@
     "dev": "node --watch src/server.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop home-server-panel",
-    "pm2:restart": "pm2 restart home-server-panel"
+    "pm2:restart": "pm2 restart home-server-panel",
+    "build": "cd client && npm run build && cd .. && node build.mjs"
   },
   "keywords": [
     "ddns",
@@ -22,10 +23,18 @@
     "@alicloud/alidns20150109": "^4.4.1",
     "@alicloud/openapi-client": "^0.4.15",
     "@alicloud/pop-core": "^1.8.0",
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "mysql2": "^3.22.5"
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.4",
+    "sql.js": "^1.14.1",
+    "ssh2": "^1.17.0",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }

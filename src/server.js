@@ -51,6 +51,15 @@ if (dbMode === 'mysql') {
       saveDbPreference('mysql');
       dbServicePreInit.setPreferred('mysql');
       setImmediate(() => dbServicePreInit.syncFromSQLite().catch(() => {}));
+      // V2 设备管理：初始化本地设备 + 定时离线检测
+      setImmediate(async () => {
+        try {
+          const deviceService = require('./services/v2/device-service');
+          await deviceService.ensureLocalDevice();
+          // 每 2 分钟检测离线设备
+          setInterval(() => deviceService.detectOffline(5).catch(() => {}), 120000);
+        } catch (e) { console.warn('[V2] 设备管理初始化失败:', e.message); }
+      });
     } else {
       dbFallbackReason = mysqlRes.message;
       console.log('[DB] ⚠️  MySQL 不可达 (' + mysqlRes.message + ')，已回退到 SQLite');
@@ -295,6 +304,7 @@ app.use('/api/ssh', require('./routes/ssh'));
 app.use('/api/db', require('./routes/db'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/monitor', require('./routes/monitor'));
+app.use('/api/v2/device', require('./routes/v2/device'));
 
 // SPA fallback
 app.use((req, res, next) => {

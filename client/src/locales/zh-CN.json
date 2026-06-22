@@ -50,6 +50,7 @@
     "cron": "定时任务",
     "docker": "Docker",
     "ssh": "SSH终端",
+    "devices": "设备中心",
     "settings": "系统设置",
     "users": "用户管理"
   },
@@ -277,6 +278,36 @@
     "updateSuccess": "用户已更新",
     "deleteSuccess": "用户已删除",
     "deleteConfirm": "确定删除该用户？此操作不可恢复。"
+  },
+
+  "devices": {
+    "title": "设备中心",
+    "subtitle": "家庭网络设备管理与监控",
+    "online": "在线",
+    "offline": "离线",
+    "hostname": "主机名",
+    "ip": "IP 地址",
+    "os": "操作系统",
+    "cpu": "CPU 使用率",
+    "memory": "内存",
+    "disk": "磁盘",
+    "network": "网络",
+    "rx": "下载",
+    "tx": "上传",
+    "uptime": "运行时长",
+    "version": "Agent 版本",
+    "lastSeen": "最后心跳",
+    "metrics": "指标历史",
+    "noMetrics": "暂无指标数据",
+    "commands": "命令历史",
+    "noCommands": "暂无命令记录",
+    "sendCommand": "下发命令",
+    "commandPlaceholder": "输入要执行的命令",
+    "commandSent": "命令已下发",
+    "registerAgent": "注册 Agent",
+    "statsOnline": "在线设备",
+    "statsOffline": "离线设备",
+    "statsTotal": "设备总数"
   },
 
   "settings": {

@@ -43,6 +43,7 @@ const allNavItems = [
   { label: t('sidebar.cron'),      path: '/cron',      icon: Timer },
   { label: t('sidebar.docker'),    path: '/docker',    icon: Box },
   { label: t('sidebar.ssh'),       path: '/ssh',       icon: Monitor },
+  { label: t('sidebar.devices'),   path: '/devices',   icon: Monitor },
   { label: t('sidebar.settings'),  path: '/settings',  icon: Setting },
 ]
 

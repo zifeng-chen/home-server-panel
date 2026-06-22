@@ -50,6 +50,7 @@
     "cron": "Cron",
     "docker": "Docker",
     "ssh": "SSH",
+    "devices": "Devices",
     "settings": "Settings",
     "users": "User Mgmt"
   },
@@ -277,6 +278,36 @@
     "updateSuccess": "User updated",
     "deleteSuccess": "User deleted",
     "deleteConfirm": "Delete this user? This cannot be undone."
+  },
+
+  "devices": {
+    "title": "Devices",
+    "subtitle": "Home network device management & monitoring",
+    "online": "Online",
+    "offline": "Offline",
+    "hostname": "Hostname",
+    "ip": "IP Address",
+    "os": "OS",
+    "cpu": "CPU Usage",
+    "memory": "Memory",
+    "disk": "Disk",
+    "network": "Network",
+    "rx": "Download",
+    "tx": "Upload",
+    "uptime": "Uptime",
+    "version": "Agent Version",
+    "lastSeen": "Last Seen",
+    "metrics": "Metrics",
+    "noMetrics": "No metrics",
+    "commands": "Commands",
+    "noCommands": "No command records",
+    "sendCommand": "Send Command",
+    "commandPlaceholder": "Enter command to execute",
+    "commandSent": "Command sent",
+    "registerAgent": "Register Agent",
+    "statsOnline": "Online",
+    "statsOffline": "Offline",
+    "statsTotal": "Total"
   },
 
   "settings": {

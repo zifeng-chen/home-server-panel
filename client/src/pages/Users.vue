@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
@@ -169,7 +169,14 @@ async function doDelete(id: number) {
 }
 
 onMounted(() => {
-  if (auth.isAdmin) fetchUsers()
+  // 监听 auth.user 变化，等待异步 check() 完成后再加载
+  if (auth.isAdmin) {
+    fetchUsers()
+  } else {
+    const unwatch = watch(() => auth.user, (u) => {
+      if (u?.role === 'admin') { fetchUsers(); unwatch() }
+    })
+  }
 })
 </script>
 

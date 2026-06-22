@@ -163,7 +163,8 @@
     "sslDisable": "Off",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "exportConfig": "Export Config"
+    "exportConfig": "Export Config",
+    "deployProxy": "Deploy to Nginx"
   },
   "proxy": {
     "title": "Reverse Proxy",

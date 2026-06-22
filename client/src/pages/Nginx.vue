@@ -38,6 +38,7 @@
       <span class="proxy-count" v-if="stats">{{ stats.total }} / {{ stats.enabled }} {{ $t('proxy.enabled') }}</span>
       <div class="proxy-actions">
         <el-button type="primary" @click="showAddEdit(null)" :icon="Plus">{{ $t('nginx.addRule') }}</el-button>
+        <el-button type="success" @click="doDeployProxy" :loading="deploying" :icon="Upload">{{ $t('nginx.deployProxy') }}</el-button>
         <el-button @click="exportConfig">{{ $t('nginx.exportConfig') }}</el-button>
       </div>
     </div>
@@ -93,7 +94,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus } from '@element-plus/icons-vue'
+import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus, Upload } from '@element-plus/icons-vue'
 import api from '../api'
 const { t } = useI18n()
 
@@ -157,6 +158,8 @@ const rules   = ref<any[]>([])
 const stats   = ref<any>(null)
 
 const dialogVisible = ref(false)
+const deploying = ref(false)
+const deployStatus = ref<string>('')
 const saving   = ref(false)
 const editId   = ref('')
 const form     = ref<any>({ sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' })
@@ -224,6 +227,22 @@ async function confirmDelete(row: any) {
     if (res.success) { ElMessage.success(res.message); await loadRules() }
     else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancelled */ }
+}
+
+async function doDeployProxy() {
+  deploying.value = true
+  deployStatus.value = ''
+  try {
+    const res = await api.post('/proxy/deploy') as any
+    if (res.success) {
+      deployStatus.value = res.data?.configOk !== false ? 'active' : 'warn'
+      ElMessage.success(res.message || '代理配置已部署')
+    } else {
+      deployStatus.value = 'fail'
+      ElMessage.error(res.message || '部署失败')
+    }
+  } catch { deployStatus.value = 'fail'; ElMessage.error('部署请求失败') }
+  finally { deploying.value = false }
 }
 
 async function exportConfig() {

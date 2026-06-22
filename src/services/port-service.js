@@ -25,7 +25,22 @@ class PortService {
     for (const r of results) {
       r.serviceType = this.classifyServiceType(r);
     }
-    return this._sortPorts(results);
+    // 最终去重：同端口同协议只保留一个（优先保留有进程名的）
+    const deduped = [];
+    const seen = new Map();
+    for (const r of this._sortPorts(results)) {
+      const key = `${r.port}:${r.protocol}`;
+      const prev = seen.get(key);
+      if (!prev) {
+        seen.set(key, r);
+        deduped.push(r);
+      } else if ((r.process && r.process !== 'kernel' && r.process !== 'unknown') && (!prev.process || prev.process === 'kernel' || prev.process === 'unknown')) {
+        // 替换为有更好进程名的条目
+        deduped[deduped.indexOf(prev)] = r;
+        seen.set(key, r);
+      }
+    }
+    return deduped;
   }
 
   // 分类服务类型：docker | system | local

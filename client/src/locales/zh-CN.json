@@ -163,7 +163,8 @@
     "sslDisable": "关闭",
     "enabled": "已启用",
     "disabled": "已禁用",
-    "exportConfig": "导出配置"
+    "exportConfig": "导出配置",
+    "deployProxy": "部署到Nginx"
   },
   "proxy": {
     "title": "反向代理",

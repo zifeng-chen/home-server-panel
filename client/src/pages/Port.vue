@@ -83,7 +83,15 @@ async function scan() {
   try {
     const res = await api.get('/port/scan') as any
     if (res.success) {
-      ports.value = res.data.ports || []
+      // 客户端去重：同端口号+同协议只保留第一条
+      const raw = res.data.ports || []
+      const seen = new Map()
+      const deduped: any[] = []
+      for (const p of raw) {
+        const key = `${p.port}:${p.protocol}`
+        if (!seen.has(key)) { seen.set(key, true); deduped.push(p) }
+      }
+      ports.value = deduped
       stats.value = res.data.stats
       ElMessage.success(res.message || t('common.success'))
     }

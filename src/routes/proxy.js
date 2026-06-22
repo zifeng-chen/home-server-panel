@@ -27,6 +27,26 @@ router.get('/stats', (req, res) => {
   res.json({ success: true, data: proxyService.getStats() });
 });
 
+// 辅助：部署 Nginx 并返回带状态的统一结果
+async function _autoDeploy(res, okMsg, failMsg) {
+  try {
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig());
+    res.json({ success: true, message: deployResult.success ? okMsg : failMsg, data: { configOk: deployResult.success, deployMessage: deployResult.message } });
+  } catch (e) {
+    res.json({ success: true, message: failMsg + ': ' + (e.message || '未知错误'), data: { configOk: false, deployMessage: e.message } });
+  }
+}
+
+// POST /api/proxy/deploy - 手动部署所有规则到 Nginx
+router.post('/deploy', async (req, res) => {
+  try {
+    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig());
+    res.json({ success: true, message: deployResult.success ? '代理配置已成功部署到 Nginx' : '部署失败: ' + deployResult.message, data: { configOk: deployResult.success, deployMessage: deployResult.message } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '部署失败: ' + _safeErr(err) });
+  }
+});
+
 // POST /api/proxy - 添加规则
 router.post('/', async (req, res) => {
   try {
@@ -49,7 +69,7 @@ router.post('/', async (req, res) => {
     const rule = proxyService.addRule(body);
     // 立即部署 Nginx 配置
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
-    res.json({ success: true, message: deployResult.success ? '代理规则已添加并部署' : '规则已保存，但部署失败: ' + deployResult.message, data: { rule } });
+    res.json({ success: true, message: deployResult.success ? '代理规则已添加并部署' : '规则已保存，但部署失败: ' + deployResult.message, data: { rule, configOk: deployResult.success } });
     _tryNotify('create', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: _safeErr(err) });
@@ -62,7 +82,7 @@ router.put('/:id', async (req, res) => {
     const rule = proxyService.updateRule(req.params.id, req.body);
     // 立即部署
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
-    res.json({ success: true, message: deployResult.success ? '代理规则已更新并部署' : '规则已更新，但部署失败: ' + deployResult.message, data: { rule } });
+    res.json({ success: true, message: deployResult.success ? '代理规则已更新并部署' : '规则已更新，但部署失败: ' + deployResult.message, data: { rule, configOk: deployResult.success } });
     _tryNotify('update', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: _safeErr(err) });
@@ -76,7 +96,7 @@ router.delete('/:id', async (req, res) => {
     proxyService.deleteRule(req.params.id);
     // 立即部署
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
-    res.json({ success: true, message: deployResult.success ? '代理规则已删除并部署' : '规则已删除，但部署失败: ' + deployResult.message });
+    res.json({ success: true, message: deployResult.success ? '代理规则已删除并部署' : '规则已删除，但部署失败: ' + deployResult.message, data: { configOk: deployResult.success } });
     _tryNotify('delete', { sourceHost: req.params.id, targetHost: '' });
   } catch (err) {
     res.status(500).json({success: false, message: _safeErr(err) });
@@ -89,7 +109,7 @@ router.post('/:id/toggle', async (req, res) => {
     const rule = proxyService.toggleRule(req.params.id);
     // 立即部署
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig()).catch(e => ({ success: false, message: e.message }));
-    res.json({ success: true, message: deployResult.success ? (rule.enabled ? '已启用并部署' : '已停用并部署') : '状态已切换，但部署失败: ' + deployResult.message, data: { rule } });
+    res.json({ success: true, message: deployResult.success ? (rule.enabled ? '已启用并部署' : '已停用并部署') : '状态已切换，但部署失败: ' + deployResult.message, data: { rule, configOk: deployResult.success } });
     _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: _safeErr(err) });

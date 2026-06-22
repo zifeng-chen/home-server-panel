@@ -17,7 +17,7 @@
       <el-table-column prop="domain" :label="$t('ssl.domain')" min-width="180" />
       <el-table-column :label="$t('ssl.status')" width="100">
         <template #default="{ row }">
-          <el-tag :type="row.status === 'valid' ? 'success' : 'danger'" size="small">{{ row.status === 'valid' ? '有效' : '无效' }}</el-tag>
+          <el-tag :type="certTag(row.status)" size="small">{{ certLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="expiresAt" :label="$t('ssl.expiry')" min-width="170">
@@ -90,6 +90,18 @@ const { t } = useI18n()
 const loading = ref(false)
 const certs = ref<any[]>([])
 const acmeInstalled = ref(false)
+
+function isCertValid(status: string) { return status === 'valid' || status === 'warning' }
+function certTag(status: string) {
+  if (status === 'valid') return 'success'
+  if (status === 'warning') return 'warning'
+  return 'danger'
+}
+function certLabel(status: string) {
+  if (isCertValid(status)) return '有效'
+  if (status === 'expiring') return '即将过期'
+  return '已过期'
+}
 
 const showInstall = ref(false)
 const installing = ref(false)

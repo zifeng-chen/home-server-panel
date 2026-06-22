@@ -615,6 +615,18 @@ class NginxService {
   // 部署反向代理配置到 Nginx 并重载
   async deployProxyConfig(proxyConfigContent) {
     const confdDir = this.configDir ? path.join(this.configDir, 'conf.d') : '/etc/nginx/conf.d';
+    
+    // 确保 conf.d 目录存在
+    if (!fs.existsSync(confdDir)) {
+      try {
+        fs.mkdirSync(confdDir, { recursive: true });
+        console.log('[Nginx] 创建 conf.d 目录:', confdDir);
+      } catch (e) {
+        console.warn('[Nginx] 无法创建 conf.d 目录:', e.message);
+        return { success: false, message: '无法创建 Nginx conf.d 目录: ' + e.message };
+      }
+    }
+    
     const configFile = path.join(confdDir, 'proxy-panel.conf');
 
     // 写入配置文件

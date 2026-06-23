@@ -6,15 +6,16 @@ const { execSync } = require('child_process');
 
 function getDiskInfo() {
   try {
+    // df -k 输出 KB 块，BusyBox/iStoreOS 兼容；macOS 兼容（POSIX 标准）
     const out = execSync(
-      "df -B1 / | tail -1 | awk '{print $2,$3,$5}'",
+      "df -k / | awk 'NR==2 {print $2,$3,$5}'",
       { encoding: 'utf8', timeout: 3000 }
     ).trim();
     const parts = out.split(/\s+/);
     if (parts.length < 3) return { total: 0, used: 0, pct: 0 };
     return {
-      total: Math.round(parseInt(parts[0]) / 1024 / 1024),
-      used: Math.round(parseInt(parts[1]) / 1024 / 1024),
+      total: Math.round(parseInt(parts[0]) / 1024),
+      used: Math.round(parseInt(parts[1]) / 1024),
       pct: parseFloat(parts[2].replace('%', '')) || 0
     };
   } catch (_) { return { total: 0, used: 0, pct: 0 }; }

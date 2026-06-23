@@ -103,14 +103,32 @@ func generateSecret(base string) string {
 }
 
 func getLocalIP() string {
+	// 遍历网络接口，优先取非回环 IPv4
+	ifaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range ifaces {
+			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+				continue
+			}
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+			for _, addr := range addrs {
+				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil && !ipnet.IP.IsLoopback() {
+					return ipnet.IP.String()
+				}
+			}
+		}
+	}
+	// Fallback: hostname lookup
 	hostname, _ := os.Hostname()
 	addrs, err := net.LookupHost(hostname)
 	if err != nil || len(addrs) == 0 {
 		return "0.0.0.0"
 	}
 	for _, addr := range addrs {
-		// 优先非回环 IPv4
-		if !strings.Contains(addr, ":") && addr != "127.0.0.1" {
+		if !strings.Contains(addr, ":") && addr != "127.0.0.1" && !strings.HasPrefix(addr, "127.") {
 			return addr
 		}
 	}

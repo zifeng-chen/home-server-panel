@@ -214,6 +214,17 @@ class DeviceService {
   }
 
   /**
+   * 删除设备
+   */
+  async deleteDevice(deviceId) {
+    const pool = this._pool();
+    await pool.query('DELETE FROM device_metrics WHERE device_id = ?', [deviceId]);
+    await pool.query('DELETE FROM device_commands WHERE device_id = ?', [deviceId]);
+    await pool.query('DELETE FROM devices WHERE id = ?', [deviceId]);
+    return { ok: true };
+  }
+
+  /**
    * 初始化本地设备（iStoreOS 自身作为第一台设备）
    */
   async ensureLocalDevice() {

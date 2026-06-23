@@ -110,6 +110,16 @@ router.put('/command/:id/result', async (req, res) => {
   }
 });
 
+// DELETE /api/v2/device/:id — 删除设备
+router.delete('/:id', async (req, res) => {
+  try {
+    await deviceService.deleteDevice(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/v2/device/:id/metrics/local — 获取本地设备实时指标
 router.get('/:id/metrics/local', async (req, res) => {
   if (req.params.id !== 'dev_local') {

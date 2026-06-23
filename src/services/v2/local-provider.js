@@ -2,6 +2,23 @@
 // 复用现有 system/docker/nginx 服务，不重复实现
 
 const os = require('os');
+const { execSync } = require('child_process');
+
+function getDiskInfo() {
+  try {
+    const out = execSync(
+      "df -B1 / | tail -1 | awk '{print $2,$3,$5}'",
+      { encoding: 'utf8', timeout: 3000 }
+    ).trim();
+    const parts = out.split(/\s+/);
+    if (parts.length < 3) return { total: 0, used: 0, pct: 0 };
+    return {
+      total: Math.round(parseInt(parts[0]) / 1024 / 1024),
+      used: Math.round(parseInt(parts[1]) / 1024 / 1024),
+      pct: parseFloat(parts[2].replace('%', '')) || 0
+    };
+  } catch (_) { return { total: 0, used: 0, pct: 0 }; }
+}
 
 class LocalProvider {
   /** 获取实时指标 */
@@ -28,7 +45,7 @@ class LocalProvider {
         used: Math.round(usedMem / 1024 / 1024),
         pct: Math.round((usedMem / totalMem) * 10000) / 100
       },
-      disk: { total: 0, used: 0, pct: 0 }, // 后续通过 df 命令获取
+      disk: getDiskInfo(),
       net: { rx: netRx, tx: netTx },
       uptime: Math.floor(os.uptime()),
       load: os.loadavg()

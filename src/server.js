@@ -56,6 +56,8 @@ if (dbMode === 'mysql') {
         try {
           const deviceService = require('./services/v2/device-service');
           await deviceService.ensureLocalDevice();
+          // 启动本地指标采集（每 60s）
+          require('./services/v2/metrics-collector').start(60000);
           // 每 2 分钟检测离线设备
           setInterval(() => deviceService.detectOffline(5).catch(() => {}), 120000);
         } catch (e) { console.warn('[V2] 设备管理初始化失败:', e.message); }

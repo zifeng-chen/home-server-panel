@@ -182,12 +182,15 @@ app.use('/api/auth', (req, res, next) => {
 // Setup 路由（无需认证）
 app.use('/api/setup', require('./routes/setup'));
 
+// V2 设备路由（Agent 注册/心跳/上报无需 JWT，用 deviceId+secret 认证）
+app.use('/api/v2/device', require('./routes/v2/device'));
+
 // ===== 以下所有路由都需要认证 =====
 
 // 安装检查中间件：未安装则跳转到安装页面
 app.use((req, res, next) => {
   const skipPaths = ['/install.html', '/login.html'];
-  const skipPrefixes = ['/api/setup', '/api/auth', '/css/', '/js/', '/favicon'];
+  const skipPrefixes = ['/api/setup', '/api/v2/device', '/api/auth', '/css/', '/js/', '/favicon'];
   const path = req.path;
 
   if (skipPaths.includes(path) || skipPrefixes.some(p => path.startsWith(p))) {
@@ -306,7 +309,6 @@ app.use('/api/ssh', require('./routes/ssh'));
 app.use('/api/db', require('./routes/db'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/monitor', require('./routes/monitor'));
-app.use('/api/v2/device', require('./routes/v2/device'));
 
 // SPA fallback
 app.use((req, res, next) => {

@@ -17,6 +17,17 @@ class DeviceService {
   }
 
   /**
+   * 验证设备身份（WS 连接用）
+   */
+  async verifyDevice(deviceId, secret) {
+    const pool = this._pool();
+    try {
+      const [rows] = await pool.query('SELECT id FROM devices WHERE id = ? AND secret = ?', [deviceId, secret]);
+      return rows.length > 0;
+    } catch { return false; }
+  }
+
+  /**
    * 获取 MySQL 连接池（确保已连接）
    */
   _pool() {

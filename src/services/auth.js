@@ -171,7 +171,7 @@ class Auth {
       if (!req.path.startsWith('/api/')) return next();
 
       const publicPaths = ['/api/auth/login', '/api/db/status'];
-      const publicPrefixes = ['/api/setup', '/css/', '/js/', '/favicon'];
+      const publicPrefixes = ['/api/setup', '/api/v2/device', '/css/', '/js/', '/favicon'];
 
       if (publicPaths.includes(req.path) || publicPrefixes.some(p => req.path.startsWith(p))) return next();
 

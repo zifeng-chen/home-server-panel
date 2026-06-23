@@ -208,23 +208,51 @@ class DeviceService {
   async ensureLocalDevice() {
     const pool = this._pool();
     const [rows] = await pool.query(`SELECT id FROM devices WHERE id='dev_local'`);
+    
+    // 获取本机信息
+    const os = require('os');
+    const hostname = os.hostname();
+    const platform = os.platform();
+    const arch = os.arch();
+    
+    // 获取本机 IP（优先非回环 IPv4）
+    let ip = '127.0.0.1';
+    try {
+      const nets = os.networkInterfaces();
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+          if (net.family === 'IPv4' && !net.internal) {
+            ip = net.address;
+            break;
+          }
+        }
+        if (ip !== '127.0.0.1') break;
+      }
+    } catch (_) { /* keep 127.0.0.1 */ }
+    
+    // 版本号
+    let version = '0.0.0';
+    try { version = require('../../../package.json').version; } catch (_) {}
+    
     if (rows.length > 0) {
-      // 更新心跳
-      await pool.query(`UPDATE devices SET status='online', last_seen=NOW() WHERE id='dev_local'`);
+      // 更新心跳 + 刷新信息
+      await pool.query(
+        `UPDATE devices SET hostname=?, ip=?, os=?, arch=?, version=?, status='online', last_seen=NOW() WHERE id='dev_local'`,
+        [hostname, ip, platform, arch, version]
+      );
       return;
     }
     // 首次注册
-    const os = require('os');
     await pool.query(
       `INSERT INTO devices (id, name, hostname, ip, os, arch, version, secret, status, last_seen)
        VALUES ('dev_local', ?, ?, ?, ?, ?, ?, '', 'online', NOW())`,
       [
-        os.hostname() + ' (主路由)',
-        os.hostname(),
-        '127.0.0.1',
-        os.platform(),
-        os.arch(),
-        process.env.npm_package_version || '0.0.0'
+        hostname + ' (主路由)',
+        hostname,
+        ip,
+        platform,
+        arch,
+        version
       ]
     );
   }

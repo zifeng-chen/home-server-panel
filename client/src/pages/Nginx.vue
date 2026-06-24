@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <!-- ========== Nginx 状态 & 控制（全部同一行） ========== -->
+    <!-- ========== Nginx 状态 & 控制 ========== -->
     <div class="card" v-if="installed">
       <div class="nginx-status-row">
         <h2 class="status-title">Nginx</h2>
@@ -32,27 +32,40 @@
       <pre class="guide">{{ guideText }}</pre>
     </div>
 
-    <!-- ========== 反向代理规则 → 标题与统计并行 ========== -->
+    <!-- ========== 反向代理规则 ========== -->
     <div class="proxy-header" v-if="installed">
       <h3 class="section-title">{{ $t('proxy.title') }}</h3>
-      <span class="proxy-count" v-if="stats">{{ stats.total }} / {{ stats.enabled }} {{ $t('proxy.enabled') }}</span>
+      <span class="proxy-count" v-if="stats">{{ stats.total }} {{ $t('nginx.rules') }} · {{ stats.enabled }} {{ $t('proxy.enabled') }}</span>
       <div class="proxy-actions">
         <el-button type="primary" @click="showAddEdit(null)" :icon="Plus">{{ $t('nginx.addRule') }}</el-button>
-        <el-button type="success" @click="doDeployProxy" :loading="deploying" :icon="Upload">{{ $t('nginx.deployProxy') }}</el-button>
         <el-button @click="exportConfig">{{ $t('nginx.exportConfig') }}</el-button>
       </div>
     </div>
 
     <!-- 规则表格 -->
     <el-table v-if="installed" :data="rules" v-loading="loadingRules" stripe class="data-table no-white-mask">
-      <el-table-column prop="sourceHost" :label="$t('nginx.domain')" min-width="160" />
+      <el-table-column prop="sourceHost" :label="$t('nginx.domain')" min-width="150" />
       <el-table-column :label="$t('nginx.target')" min-width="200">
         <template #default="{ row }">{{ row.targetProtocol || 'http' }}://{{ row.targetHost }}:{{ row.targetPort || 80 }}</template>
       </el-table-column>
-      <el-table-column :label="$t('nginx.ssl')" width="70">
-        <template #default="{ row }"><el-tag :type="row.ssl ? 'success' : 'info'" size="small">{{ row.ssl ? $t('nginx.sslEnable') : $t('nginx.sslDisable') }}</el-tag></template>
+      <el-table-column prop="note" :label="$t('cron.desc')" min-width="140" show-overflow-tooltip />
+      <el-table-column :label="$t('nginx.ssl')" width="80">
+        <template #default="{ row }">
+          <el-tag v-if="row.ssl" type="success" size="small">{{ $t('nginx.sslEnable') }}</el-tag>
+          <el-tag v-else type="info" size="small">{{ $t('nginx.sslDisable') }}</el-tag>
+        </template>
       </el-table-column>
-      <el-table-column prop="sslCert" :label="$t('ssl.certificate')" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="sslCert" :label="$t('ssl.certificate')" min-width="140" show-overflow-tooltip />
+      <el-table-column :label="$t('nginx.accessible')" width="80" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row._checkMsg || $t('nginx.checking')" placement="top">
+            <el-icon v-if="row._checking" class="is-loading" :size="16"><Loading /></el-icon>
+            <el-tag v-else-if="row._checkOk" type="success" size="small" effect="plain">OK</el-tag>
+            <el-tag v-else-if="row._checkError" type="danger" size="small" effect="plain">✗</el-tag>
+            <span v-else class="check-dash">—</span>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column :label="$t('common.status')" width="80">
         <template #default="{ row }">
           <el-switch :model-value="row.enabled" @change="() => toggle(row)" size="small" />
@@ -67,21 +80,69 @@
     </el-table>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? $t('nginx.editRule') : $t('nginx.addRule')" width="520">
-      <el-form :model="form" label-width="100px">
-        <el-form-item :label="$t('nginx.domain')"><el-input v-model="form.sourceHost" placeholder="example.com" /></el-form-item>
-        <el-form-item :label="$t('nginx.targetHost')"><el-input v-model="form.targetHost" placeholder="localhost" />
-          <el-select v-model="form.targetProtocol" style="width:90px;margin-left:8px"><el-option label="http" value="http" /><el-option label="https" value="https" /></el-select>
-          <el-input-number v-model="form.targetPort" :min="1" :max="65535" style="width:100px;margin-left:4px" />
-        </el-form-item>
-        <el-form-item :label="$t('nginx.ssl')"><el-switch v-model="form.ssl" /></el-form-item>
-        <el-form-item :label="$t('ssl.certificate')" v-if="form.ssl">
-          <el-select v-model="form.sslCert" filterable clearable :placeholder="$t('ssl.certificate')">
-            <el-option v-for="c in sslCerts" :key="c.domain" :value="c.domain" :label="c.domain" />
+    <el-dialog v-model="dialogVisible" :title="editId ? $t('nginx.editRule') : $t('nginx.addRule')" width="560" destroy-on-close>
+      <div class="dialog-body">
+        <!-- 域名 -->
+        <div class="form-row">
+          <label class="form-label">{{ $t('nginx.domain') }}</label>
+          <el-input v-model="form.sourceHost" placeholder="example.com" @change="onDomainChange" />
+        </div>
+        <!-- 目标 -->
+        <div class="form-row">
+          <label class="form-label">{{ $t('nginx.target') }}</label>
+          <div class="target-group">
+            <el-select v-model="form.targetProtocol" style="width:90px">
+              <el-option label="http://" value="http" />
+              <el-option label="https://" value="https" />
+            </el-select>
+            <span class="target-sep">{{ form.targetProtocol }}://</span>
+            <el-input v-model="form.targetHost" placeholder="localhost" style="flex:1" />
+            <span class="target-sep">:</span>
+            <el-input-number v-model="form.targetPort" :min="1" :max="65535" style="width:100px" />
+          </div>
+        </div>
+        <!-- 备注 -->
+        <div class="form-row">
+          <label class="form-label">{{ $t('cron.desc') }}</label>
+          <el-input v-model="form.note" placeholder="面板代理 / API 服务 / …" />
+        </div>
+        <!-- SSL -->
+        <div class="form-row">
+          <label class="form-label">{{ $t('nginx.ssl') }}</label>
+          <div class="ssl-toggle-row">
+            <el-switch v-model="form.ssl" />
+            <span class="ssl-hint" v-if="!form.ssl">{{ $t('nginx.sslHint') }}</span>
+          </div>
+        </div>
+        <!-- 证书选择（开启 SSL 后显示）-->
+        <div class="form-row" v-if="form.ssl">
+          <label class="form-label">{{ $t('ssl.certificate') }}</label>
+          <el-select v-model="form.sslCert" filterable clearable :placeholder="$t('ssl.selectCert')" style="width:100%">
+            <el-option-group v-if="matchedCerts.length" :label="$t('ssl.matchedCerts')">
+              <el-option v-for="c in matchedCerts" :key="c.domain" :value="c.domain" :label="c.domain">
+                <div class="cert-option">
+                  <span>{{ c.domain }}</span>
+                  <el-tag size="small" effect="plain" :type="c.daysRemaining < 30 ? 'warning' : ''">{{ c.daysRemaining }}d</el-tag>
+                </div>
+              </el-option>
+            </el-option-group>
+            <el-option-group v-if="otherCerts.length" :label="$t('ssl.otherCerts')">
+              <el-option v-for="c in otherCerts" :key="c.domain" :value="c.domain" :label="c.domain">
+                <div class="cert-option">
+                  <span>{{ c.domain }}</span>
+                  <el-tag size="small" effect="plain" :type="c.daysRemaining < 30 ? 'warning' : ''">{{ c.daysRemaining }}d</el-tag>
+                </div>
+              </el-option>
+            </el-option-group>
+            <template v-if="!matchedCerts.length && !otherCerts.length">
+              <el-option v-for="c in allCerts" :key="c.domain" :value="c.domain" :label="c.domain" />
+            </template>
           </el-select>
-        </el-form-item>
-        <el-form-item :label="$t('cron.desc')"><el-input v-model="form.note" placeholder="" /></el-form-item>
-      </el-form>
+          <p class="cert-no-match" v-if="form.sourceHost && !matchedCerts.length && allCerts.length">
+            {{ $t('ssl.noMatchFor') }} <strong>{{ form.sourceHost }}</strong>，{{ $t('ssl.showAllCerts') }}
+          </p>
+        </div>
+      </div>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" @click="doSaveRule" :loading="saving">{{ editId ? $t('common.save') : $t('common.add') }}</el-button>
@@ -91,10 +152,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus, Upload } from '@element-plus/icons-vue'
+import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus, Loading } from '@element-plus/icons-vue'
 import api from '../api'
 const { t } = useI18n()
 
@@ -126,7 +187,7 @@ async function load() {
       confPath.value  = d.confPath || '--'
       pid.value       = d.pid || '--'
     }
-    if (installed.value) await loadRules()
+    if (installed.value) { await loadRules(); await nextTick(checkAllAccessible) }
   } catch { /* ignore */ }
 }
 
@@ -158,30 +219,37 @@ const rules   = ref<any[]>([])
 const stats   = ref<any>(null)
 
 const dialogVisible = ref(false)
-const deploying = ref(false)
-const deployStatus = ref<string>('')
 const saving   = ref(false)
 const editId   = ref('')
 const form     = ref<any>({ sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' })
-const sslCerts = ref<any[]>([])
 
-async function loadRules() {
-  loadingRules.value = true
-  try {
-    const res = await api.get('/proxy') as any
-    if (res.success) {
-      rules.value = res.data.rules || []
-      stats.value = res.data.stats || null
-    }
-  } catch { ElMessage.error(t('common.error')) }
-  finally { loadingRules.value = false }
+// 证书列表（按匹配分组）
+const allCerts      = ref<any[]>([])
+const matchedCerts  = ref<any[]>([])
+const otherCerts    = ref<any[]>([])
+
+function _groupCerts(certs: any[], domain: string) {
+  const matched: any[] = [], other: any[] = []
+  certs.forEach((c: any) => (c.matched ? matched : other).push(c))
+  matchedCerts.value = matched
+  otherCerts.value = other
+  allCerts.value = certs
 }
 
-async function loadCerts() {
+async function loadCerts(domain?: string) {
   try {
-    const res = await api.get('/cert') as any
-    if (res.success) sslCerts.value = (res.data.certificates || []).filter((c: any) => c.status === 'valid')
-  } catch { /* ignore */ }
+    const url = domain ? `/proxy/cert-match?domain=${encodeURIComponent(domain)}` : '/proxy/cert-match'
+    const res = await api.get(url) as any
+    if (res.success) {
+      const certs = (res.data.certificates || []).filter((c: any) => c.status === 'valid' || !c.status)
+      _groupCerts(certs, domain || '')
+    }
+  } catch { allCerts.value = []; matchedCerts.value = []; otherCerts.value = [] }
+}
+
+function onDomainChange(val: string) {
+  if (val) loadCerts(val)
+  else { matchedCerts.value = []; otherCerts.value = [] }
 }
 
 function showAddEdit(row: any | null) {
@@ -193,11 +261,12 @@ function showAddEdit(row: any | null) {
     form.value = { sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' }
   }
   dialogVisible.value = true
-  loadCerts()
+  // 载入所有证书 + 按域名匹配
+  loadCerts(form.value.sourceHost)
 }
 
 async function doSaveRule() {
-  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning(t('common.error'))
+  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning('请填写域名和目标')
   saving.value = true
   try {
     let res: any
@@ -206,7 +275,7 @@ async function doSaveRule() {
     } else {
       res = await api.post('/proxy', form.value)
     }
-    if (res.success) { ElMessage.success(res.message || t('common.success')); dialogVisible.value = false; await loadRules() }
+    if (res.success) { ElMessage.success(res.message || t('common.success')); dialogVisible.value = false; await loadRules(); await nextTick(checkAllAccessible) }
     else ElMessage.error(res.message || t('common.error'))
   } catch { ElMessage.error(t('common.error')) }
   finally { saving.value = false }
@@ -215,7 +284,7 @@ async function doSaveRule() {
 async function toggle(row: any) {
   try {
     const res = await api.post(`/proxy/${row.id}/toggle`) as any
-    if (res.success) { ElMessage.success(res.message); await loadRules() }
+    if (res.success) { ElMessage.success(res.message); await loadRules(); await nextTick(checkAllAccessible) }
     else ElMessage.error(res.message || t('common.error'))
   } catch { ElMessage.error(t('common.error')) }
 }
@@ -224,25 +293,9 @@ async function confirmDelete(row: any) {
   await ElMessageBox.confirm(t('proxy.deleteConfirm'), t('common.confirmDelete'))
   try {
     const res = await api.delete(`/proxy/${row.id}`) as any
-    if (res.success) { ElMessage.success(res.message); await loadRules() }
+    if (res.success) { ElMessage.success(res.message); await loadRules(); await nextTick(checkAllAccessible) }
     else ElMessage.error(res.message || t('common.error'))
   } catch { /* cancelled */ }
-}
-
-async function doDeployProxy() {
-  deploying.value = true
-  deployStatus.value = ''
-  try {
-    const res = await api.post('/proxy/deploy') as any
-    if (res.success) {
-      deployStatus.value = res.data?.configOk !== false ? 'active' : 'warn'
-      ElMessage.success(res.message || '代理配置已部署')
-    } else {
-      deployStatus.value = 'fail'
-      ElMessage.error(res.message || '部署失败')
-    }
-  } catch { deployStatus.value = 'fail'; ElMessage.error('部署请求失败') }
-  finally { deploying.value = false }
 }
 
 async function exportConfig() {
@@ -253,6 +306,38 @@ async function exportConfig() {
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proxy-nginx.conf'; a.click()
     }
   } catch { ElMessage.error(t('common.error')) }
+}
+
+// ── 可访问性检测 ──
+async function checkAllAccessible() {
+  for (const r of rules.value) {
+    if (!r.enabled) continue
+    r._checking = true
+    checkOneRule(r)
+  }
+}
+async function checkOneRule(row: any) {
+  row._checking = true
+  row._checkOk = false
+  row._checkError = false
+  row._checkMsg = t('nginx.checking')
+  const proto = row.ssl && row.targetProtocol === 'https' ? 'https' : 'http'
+  const url = `${proto}://${row.targetHost}:${row.targetPort || 80}/`
+  try {
+    const res = await api.get(`/proxy/check?url=${encodeURIComponent(url)}`) as any
+    if (res.success && res.data?.accessible) {
+      row._checkOk = true
+      row._checkMsg = `HTTP ${res.data.statusCode || 200}`
+    } else {
+      row._checkError = true
+      row._checkMsg = res.data?.error || res.message || '无法访问'
+    }
+  } catch (e: any) {
+    row._checkError = true
+    row._checkMsg = e?.message || '检测失败'
+  } finally {
+    row._checking = false
+  }
 }
 
 onMounted(load)
@@ -266,64 +351,77 @@ onMounted(load)
 .card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 
-/* ── Nginx 状态区（单行全排列）── */
-.nginx-status-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* ── Nginx 状态区 ── */
+.nginx-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .status-title { font-size: 20px; font-weight: 700; margin: 0; flex-shrink: 0; }
-.status-badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 10px;
-  background: rgba(239,68,68,0.12);
-  color: #ef4444;
-  flex-shrink: 0;
-}
-.status-badge.running {
-  background: rgba(34,197,94,0.12);
-  color: #22c55e;
-}
+.status-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: rgba(239,68,68,0.12); color: #ef4444; flex-shrink: 0; }
+.status-badge.running { background: rgba(34,197,94,0.12); color: #22c55e; }
 .status-ver { font-size: 13px; color: var(--text-tertiary); flex-shrink: 0; }
 .nginx-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.info-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-.info-chip .lbl {
-  color: var(--text-tertiary);
-  font-size: 11px;
-}
-.info-chip .val {
-  color: var(--text-secondary);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.info-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); flex-shrink: 0; }
+.info-chip .lbl { color: var(--text-tertiary); font-size: 11px; }
+.info-chip .val { color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .info-chip .val.mono { font-family: var(--font-mono); font-size: 11px; }
 
-/* ── 安装指南 ── */
 .guide { background: var(--bg-base); padding: 16px; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; max-height: 400px; }
 
-/* ── 反向代理标题行（标题+数量+按钮并行）── */
-.proxy-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+/* ── 反向代理标题行 ── */
+.proxy-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .proxy-header .section-title { font-size: 17px; font-weight: 600; margin: 0; white-space: nowrap; }
 .proxy-count { font-size: 13px; color: var(--text-tertiary); }
 .proxy-actions { margin-left: auto; display: flex; gap: 8px; }
 
-/* ── 表格 ── */
 .data-table { border-radius: var(--radius-md); overflow: hidden; }
+.check-dash { color: var(--text-tertiary); font-size: 14px; }
+
+/* ── 对话框表单（新布局）── */
+.dialog-body { display: flex; flex-direction: column; gap: 18px; }
+.form-row { display: flex; align-items: flex-start; gap: 14px; }
+.form-label {
+  flex-shrink: 0;
+  width: 72px;
+  padding-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.form-row .el-input,
+.form-row .el-select,
+.form-row .el-input-number { flex: 1; }
+
+.target-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.target-sep {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+.ssl-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+.ssl-hint { font-size: 12px; color: var(--text-tertiary); }
+
+/* ── 证书选项 ── */
+.cert-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.cert-no-match {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+.cert-no-match strong { color: var(--accent-orange); }
 </style>

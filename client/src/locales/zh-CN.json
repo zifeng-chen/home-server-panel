@@ -134,7 +134,12 @@
     "noCerts": "暂未申请证书",
     "manualDns": "手动 DNS 验证",
     "subtitle": "管理 HTTPS 证书",
-    "certificate": "证书"
+    "certificate": "证书",
+    "selectCert": "选择证书",
+    "matchedCerts": "匹配的证书",
+    "otherCerts": "其他证书",
+    "noMatchFor": "未找到匹配",
+    "showAllCerts": "已显示全部可用证书"
   },
   "nginx": {
     "title": "Nginx 管理",
@@ -165,7 +170,10 @@
     "enabled": "已启用",
     "disabled": "已禁用",
     "exportConfig": "导出配置",
-    "deployProxy": "部署到Nginx"
+    "rules": "条规则",
+    "accessible": "可访问",
+    "checking": "检测中...",
+    "sslHint": "关闭 SSL 时使用 HTTP 访问"
   },
   "proxy": {
     "title": "反向代理",

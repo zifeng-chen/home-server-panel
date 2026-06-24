@@ -44,7 +44,6 @@
     "ddns": "DDNS",
     "ssl": "SSL Cert",
     "nginx": "Nginx",
-
     "port": "Ports",
     "pm2": "PM2",
     "cron": "Cron",
@@ -134,7 +133,12 @@
     "noCerts": "No certificates",
     "manualDns": "Manual DNS Verification",
     "subtitle": "Manage HTTPS certificates",
-    "certificate": "Certificate"
+    "certificate": "Certificate",
+    "selectCert": "Select cert",
+    "matchedCerts": "Matched certs",
+    "otherCerts": "Other certs",
+    "noMatchFor": "No match for",
+    "showAllCerts": ". Showing all available."
   },
   "nginx": {
     "title": "Nginx Management",
@@ -165,7 +169,10 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "exportConfig": "Export Config",
-    "deployProxy": "Deploy to Nginx"
+    "rules": "rules",
+    "accessible": "Accessible",
+    "checking": "Checking...",
+    "sslHint": "Use HTTP when SSL is off"
   },
   "proxy": {
     "title": "Reverse Proxy",
@@ -279,7 +286,6 @@
     "deleteSuccess": "User deleted",
     "deleteConfirm": "Delete this user? This cannot be undone."
   },
-
   "devices": {
     "title": "Devices",
     "subtitle": "Home network device management & monitoring",
@@ -309,7 +315,6 @@
     "statsOffline": "Offline",
     "statsTotal": "Total"
   },
-
   "settings": {
     "title": "System Settings",
     "basic": "Basic Settings",

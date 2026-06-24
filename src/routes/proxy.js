@@ -27,20 +27,6 @@ router.get('/stats', (req, res) => {
   res.json({ success: true, data: proxyService.getStats() });
 });
 
-// 辅助：部署 Nginx 并返回带状态的统一结果
-async function _autoDeploy(res, okMsg, failMsg) {
-  try {
-    const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig());
-    if (deployResult.success) {
-      res.json({ success: true, message: okMsg, data: { configOk: true, deployMessage: deployResult.message } });
-    } else {
-      res.json({ success: true, message: failMsg, data: { configOk: false, deployMessage: deployResult.message } });
-    }
-  } catch (e) {
-    res.json({ success: true, message: failMsg + ': ' + (e.message || '未知错误'), data: { configOk: false, deployMessage: e.message } });
-  }
-}
-
 // POST /api/proxy/deploy - 手动部署所有规则到 Nginx
 router.post('/deploy', async (req, res) => {
   try {
@@ -121,6 +107,31 @@ router.post('/:id/toggle', async (req, res) => {
     _tryNotify('toggle', { sourceHost: rule.sourceHost, targetHost: rule.targetHost, targetPort: rule.targetPort, ssl: rule.ssl });
   } catch (err) {
     res.status(500).json({success: false, message: _safeErr(err) });
+  }
+});
+
+// GET /api/proxy/check?url=... - 检测目标可访问性
+router.get('/check', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ success: false, message: '缺少 url 参数' });
+    // 安全：只允许 http/https
+    if (!/^https?:\/\//.test(url)) return res.status(400).json({ success: false, message: '仅支持 http/https' });
+    const http = require('http');
+    const https = require('https');
+    const client = url.startsWith('https') ? https : http;
+    const result = await new Promise((resolve) => {
+      const req = client.get(url, { timeout: 5000, rejectUnauthorized: false }, (resp) => {
+        let body = '';
+        resp.on('data', (chunk) => { body += chunk; if (body.length > 1024) resp.destroy(); });
+        resp.on('end', () => resolve({ accessible: true, statusCode: resp.statusCode }));
+      });
+      req.on('error', (e) => resolve({ accessible: false, error: e.code || e.message }));
+      req.on('timeout', () => { req.destroy(); resolve({ accessible: false, error: 'timeout' }); });
+    });
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.json({ success: true, data: { accessible: false, error: _safeErr(err) } });
   }
 });
 

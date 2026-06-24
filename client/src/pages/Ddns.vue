@@ -12,6 +12,13 @@
       </div>
     </div>
 
+    <!-- 密钥缺失提示 -->
+    <el-alert v-if="credMissingAliyun" :title="$t('ddns.credMissing', { provider: '阿里云 (Aliyun)' })" type="warning" show-icon :closable="false" style="margin-bottom: 12px">
+      <template #default>
+        <span>{{ $t('ddns.credMissingHint') }} <el-button link type="primary" @click="goSettings">{{ $t('common.settings') }}</el-button></span>
+      </template>
+    </el-alert>
+
     <!-- 公网 IP -->
     <div class="ip-row">
       <div class="ip-card"><span class="ip-label">IPv4</span><code>{{ ipv4 || '--' }}</code></div>
@@ -150,7 +157,9 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Refresh, Delete, Plus, Edit, WarningFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import api from '../api'
+import { useRouter } from 'vue-router'
 const { t } = useI18n()
+const router = useRouter()
 
 const loading    = ref(false)
 const refreshing = ref(false)
@@ -172,6 +181,24 @@ const addForm = ref({ provider: 'aliyun', domain: '', subdomain: '@', recordType
 const showEditDlg = ref(false)
 const editTarget  = ref<any>(null)
 const editForm    = ref({ rr: '', recordType: '', ip: '', ttl: 600, line: '' })
+
+// 根据记录类型自动填入公网 IP
+const credMissingAliyun = ref(false)
+const credMissingTencent = ref(false)
+
+async function checkCredentials() {
+  try {
+    const res = await api.get('/ddns/credentials-status') as any
+    if (res.success) {
+      credMissingAliyun.value = !res.data.aliyun
+      credMissingTencent.value = !res.data.tencent
+    }
+  } catch { /* ignore */ }
+}
+
+function goSettings() {
+  router.push('/settings')
+}
 
 // 根据记录类型自动填入公网 IP
 function onAddTypeChange() {
@@ -295,7 +322,7 @@ async function doEdit() {
   finally { editing.value = false }
 }
 
-onMounted(load)
+onMounted(() => { load(); checkCredentials() })
 </script>
 
 <style scoped>

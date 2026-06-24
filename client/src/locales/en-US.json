@@ -107,7 +107,9 @@
     "rr": "Host Record",
     "line": "Line",
     "status": "Status",
-    "deleteDialog": "Delete DNS record {{name}}?"
+    "deleteDialog": "Delete DNS record {{name}}?",
+    "credMissing": "{{provider}} credentials not configured",
+    "credMissingHint": "Please configure API credentials in System Settings to enable DDNS sync."
   },
   "ssl": {
     "title": "SSL Certificates",

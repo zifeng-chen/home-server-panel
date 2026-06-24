@@ -49,7 +49,7 @@
       <el-table-column :label="$t('nginx.target')" min-width="200">
         <template #default="{ row }">{{ row.targetProtocol || 'http' }}://{{ row.targetHost }}:{{ row.targetPort || 80 }}</template>
       </el-table-column>
-      <el-table-column prop="note" :label="$t('cron.desc')" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="description" :label="$t('cron.desc')" min-width="140" show-overflow-tooltip />
       <el-table-column :label="$t('nginx.ssl')" width="80">
         <template #default="{ row }">
           <el-tag v-if="row.ssl" type="success" size="small">{{ $t('nginx.sslEnable') }}</el-tag>
@@ -104,7 +104,7 @@
         <!-- 备注 -->
         <div class="form-row">
           <label class="form-label">{{ $t('cron.desc') }}</label>
-          <el-input v-model="form.note" placeholder="面板代理 / API 服务 / …" />
+          <el-input v-model="form.description" placeholder="面板代理 / API 服务 / …" />
         </div>
         <!-- SSL -->
         <div class="form-row">
@@ -234,7 +234,7 @@ const stats   = ref<any>(null)
 const dialogVisible = ref(false)
 const saving   = ref(false)
 const editId   = ref('')
-const form     = ref<any>({ sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' })
+const form     = ref<any>({ sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', description: '' })
 
 // 证书列表（按匹配分组）
 const allCerts      = ref<any[]>([])
@@ -308,7 +308,7 @@ function showAddEdit(row: any | null) {
     selectedCertMatched.value = true // 编辑时默认匹配
   } else {
     editId.value = ''
-    form.value = { sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' }
+    form.value = { sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', description: '' }
     selectedCertMatched.value = true
   }
   dialogVisible.value = true

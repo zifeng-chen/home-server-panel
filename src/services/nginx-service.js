@@ -661,17 +661,98 @@ class NginxService {
 
     // 重载或启动
     try {
-      const running = await this._isRunning();
-      if (running) {
-        await this._exec(`${this.nginxBin} -s reload`);
-        console.log('[Nginx] 配置已重载');
+      // 检测 nginx 是否在运行（含 Docker 容器内）
+      let realRunning = false;
+      let runningPid = null;
+      try {
+        const pgrepOut = await this._exec('pgrep -f "nginx: master" 2>/dev/null || pgrep nginx 2>/dev/null || echo ""', { timeout: 3000 });
+        if (pgrepOut.trim()) {
+          const pids = pgrepOut.trim().split('\n').filter(Boolean);
+          for (const pidStr of pids) {
+            const pid = parseInt(pidStr);
+            if (pid > 0 && await this._pidAlive(pid)) {
+              try {
+                const cmdline = await this._exec(`cat /proc/${pid}/cmdline 2>/dev/null | tr "\\0" " "`, { timeout: 2000 });
+                if (cmdline.includes('nginx') && !cmdline.includes('pgrep') && !cmdline.includes('grep')) {
+                  // 检查是否在 Docker 容器内
+                  try {
+                    const cgroup = await this._exec(`cat /proc/${pid}/cgroup 2>/dev/null`, { timeout: 2000 });
+                    if (cgroup.includes('docker')) {
+                      // Docker 内 nginx：配置已写入宿主磁盘，但需容器内 reload
+                      // 尝试通过 docker exec 重载
+                      try {
+                        const containerId = cgroup.split('/docker/')[1]?.split('\n')[0]?.substring(0,12);
+                        if (containerId) {
+                          await this._exec(`docker exec ${containerId} nginx -s reload 2>&1`, { timeout: 5000 });
+                          console.log('[Nginx] Docker 容器内 nginx 已重载');
+                          realRunning = true;
+                          runningPid = pid;
+                          break;
+                        }
+                      } catch (dexecErr) {
+                        console.warn('[Nginx] Docker 容器内重载失败，尝试宿主机 nginx:', dexecErr.message);
+                      }
+                    } else {
+                      realRunning = true;
+                      runningPid = pid;
+                      break;
+                    }
+                  } catch {
+                    realRunning = true;
+                    runningPid = pid;
+                    break;
+                  }
+                }
+              } catch { realRunning = true; runningPid = pid; break; }
+            }
+          }
+        }
+      } catch { /* pgrep not available */ }
+
+      // 清理空/过期 PID 文件
+      const stalePidPaths = [
+        '/run/nginx.pid', '/var/run/nginx.pid',
+        '/opt/homebrew/var/run/nginx.pid', '/usr/local/var/run/nginx.pid'
+      ];
+      for (const pp of stalePidPaths) {
+        try {
+          const raw = require('fs').readFileSync(pp, 'utf-8').trim();
+          if (!raw) { require('fs').unlinkSync(pp); console.log('[Nginx] 清理空PID文件:', pp); continue; }
+          const p = parseInt(raw);
+          if (!p || !(await this._pidAlive(p))) { require('fs').unlinkSync(pp); console.log('[Nginx] 清理过期PID文件:', pp); }
+        } catch (e) { /* 文件不存在或无权限 */ }
+      }
+
+      // 根据实际运行状态决定操作
+      if (realRunning && runningPid) {
+        // 在 Docker 内重载已在上方完成；宿主机 nginx 直接用 binary reload
+        const cgroup = await this._exec(`cat /proc/${runningPid}/cgroup 2>/dev/null`, { timeout: 2000, ignoreError: true }).catch(() => '');
+        if (!cgroup.includes('docker')) {
+          await this._exec(`${this.nginxBin} -s reload`);
+          console.log('[Nginx] 配置已重载');
+        }
       } else {
+        // 没有运行中的 nginx → 尝试启动宿主机 nginx
         await this._exec(this.nginxBin);
         console.log('[Nginx] 已启动');
       }
     } catch (e) {
       console.warn('[Nginx] 重载/启动失败:', e.message);
-      return { success: false, message: 'Nginx 操作失败: ' + e.message, path: configFile };
+      let extraMsg = '';
+      const errText = e.message || '';
+      
+      // 检测端口冲突
+      if (errText.includes('Address in use') || errText.includes('Address already in use')) {
+        try {
+          const portCheck = await this._exec("netstat -tlnp 2>/dev/null | grep -E ':(80|443) ' | awk '{print $4, $7}' | head -5", { timeout: 3000, ignoreError: true });
+          if (portCheck.trim()) {
+            const cleaned = portCheck.trim().replace(/\n/g, ', ');
+            extraMsg = ' | ⚠️ 端口 80/443 已被占用: ' + cleaned;
+          }
+        } catch { /* ignore */ }
+      }
+      
+      return { success: false, message: 'Nginx 部署失败: ' + e.message + extraMsg, path: configFile };
     }
 
     return { success: true, message: 'Nginx 配置已部署并生效', path: configFile };

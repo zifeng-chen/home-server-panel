@@ -31,7 +31,11 @@ router.get('/stats', (req, res) => {
 async function _autoDeploy(res, okMsg, failMsg) {
   try {
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig());
-    res.json({ success: true, message: deployResult.success ? okMsg : failMsg, data: { configOk: deployResult.success, deployMessage: deployResult.message } });
+    if (deployResult.success) {
+      res.json({ success: true, message: okMsg, data: { configOk: true, deployMessage: deployResult.message } });
+    } else {
+      res.json({ success: true, message: failMsg, data: { configOk: false, deployMessage: deployResult.message } });
+    }
   } catch (e) {
     res.json({ success: true, message: failMsg + ': ' + (e.message || '未知错误'), data: { configOk: false, deployMessage: e.message } });
   }
@@ -41,7 +45,11 @@ async function _autoDeploy(res, okMsg, failMsg) {
 router.post('/deploy', async (req, res) => {
   try {
     const deployResult = await nginxService.deployProxyConfig(proxyService.generateAllConfig());
-    res.json({ success: true, message: deployResult.success ? '代理配置已成功部署到 Nginx' : '部署失败: ' + deployResult.message, data: { configOk: deployResult.success, deployMessage: deployResult.message } });
+    if (deployResult.success) {
+      res.json({ success: true, message: '代理配置已成功部署到 Nginx', data: { configOk: true } });
+    } else {
+      res.status(500).json({ success: false, message: '部署失败: ' + deployResult.message, data: { configOk: false, deployMessage: deployResult.message } });
+    }
   } catch (err) {
     res.status(500).json({ success: false, message: '部署失败: ' + _safeErr(err) });
   }

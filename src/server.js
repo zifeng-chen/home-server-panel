@@ -197,10 +197,11 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // 检查 .env 是否存在
+  // 检查 .env 是否存在（无 .env 时检查 panel.db，有数据库说明已安装）
   const envPath = require('path').join(__dirname, '..', '.env');
+  const dbPath = require('path').join(__dirname, '..', 'data', 'panel.db');
   const fs = require('fs');
-  if (!fs.existsSync(envPath)) {
+  if (!fs.existsSync(envPath) && !fs.existsSync(dbPath)) {
     return res.redirect('/install.html');
   }
   next();

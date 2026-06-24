@@ -28,9 +28,9 @@
     <div class="card services">
       <h3 class="card-title">{{ $t('dashboard.serviceOverview') }}</h3>
       <div class="service-grid">
-        <div class="service-item" v-for="s in services" :key="s.name" :class="{ online: s.online }">
+        <div class="service-item" v-for="s in servicesDisplay" :key="s.name" :class="{ online: s.online }">
           <div class="s-icon-wrap" :style="{ background: s.online ? s.color + '18' : 'var(--bg-base)' }">
-            <component :is="s.icon" :size="28" :style="{ color: s.online ? s.color : 'var(--text-tertiary)' }" />
+            <img :src="s.icon" :alt="s.name" class="s-icon-img" />
           </div>
           <div class="s-info">
             <span class="s-name">{{ s.name }}</span>
@@ -47,7 +47,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useSystemStore } from '../stores/system'
 import api from '../api'
-import { Monitor, Coin, Box, Connection, SetUp, Key } from '@element-plus/icons-vue'
+import nginxPng from '../assets/nginx.png'
+import mysqlPng from '../assets/mysql.png'
+import dockerPng from '../assets/docker.png'
+import sshPng from '../assets/ssh.png'
+import pm2Png from '../assets/pm2.png'
+import pm2DarkPng from '../assets/pm2-dark.png'
+import acmePng from '../assets/acme.png'
 
 const sys = useSystemStore()
 
@@ -72,15 +78,30 @@ async function fetchLogs() {
   } catch { /* ignore */ }
 }
 
+// 图标：白天用浅色版，暗黑用深色版
+const isDark = ref(false)
+function updateTheme() {
+  const root = document.documentElement
+  isDark.value = root.classList.contains('dark') || root.getAttribute('data-theme') === 'dark'
+}
+
 // 服务状态
 const services = ref([
-  { name: 'Nginx',    online: false, icon: Monitor, color: '#4F7CFF' },
-  { name: 'MySQL',    online: false, icon: Coin, color: '#FF9A3D' },
-  { name: 'Docker',   online: false, icon: Box, color: '#15C39A' },
-  { name: 'SSH',      online: false, icon: Connection, color: '#A78BFA' },
-  { name: 'PM2',      online: false, icon: SetUp, color: '#F59E0B' },
-  { name: 'acme.sh',  online: false, icon: Key, color: '#EC4899' },
+  { name: 'Nginx',    online: false, icon: nginxPng, color: '#4F7CFF' },
+  { name: 'MySQL',    online: false, icon: mysqlPng, color: '#FF9A3D' },
+  { name: 'Docker',   online: false, icon: dockerPng, color: '#15C39A' },
+  { name: 'SSH',      online: false, icon: sshPng, color: '#A78BFA' },
+  { name: 'PM2',      online: false, icon: pm2Png, color: '#F59E0B' },
+  { name: 'acme.sh',  online: false, icon: acmePng, color: '#EC4899' },
 ])
+
+// 暗色模式下 PM2 换成深色图标
+const servicesDisplay = computed(() =>
+  services.value.map(s => ({
+    ...s,
+    icon: s.name === 'PM2' && isDark.value ? pm2DarkPng : s.icon
+  }))
+)
 async function fetchServices() {
   try {
     const res = await api.get('/process') as any
@@ -118,6 +139,9 @@ function fmtUptime(s: number) {
 }
 
 onMounted(async () => {
+  updateTheme()
+  const observer = new MutationObserver(updateTheme)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
   await Promise.all([fetchLogs(), fetchServices()])
 })
 </script>
@@ -160,6 +184,11 @@ onMounted(async () => {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   transition: background var(--dur-fast);
+  padding: 8px;
+}
+.s-icon-img {
+  width: 32px; height: 32px;
+  object-fit: contain;
 }
 .s-info { display: flex; flex-direction: column; gap: 2px; }
 .s-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }

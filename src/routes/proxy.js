@@ -189,9 +189,14 @@ router.get('/cert-match', async (req, res) => {
     if (domain) {
       const matchDomain = (certDomain, target) => {
         if (certDomain === target) return true;
+        // 泛域名: *.iosun.cn → www.iosun.cn
         if (certDomain.startsWith('*.')) {
           const suffix = certDomain.slice(2);
-          if (target.endsWith(suffix)) return true;
+          if (target.endsWith('.' + suffix)) return true;
+        }
+        // 反向匹配: iosun.cn → www.iosun.cn, api.iosun.cn
+        if (!certDomain.startsWith('*.')) {
+          if (target.endsWith('.' + certDomain)) return true;
         }
         return false;
       };

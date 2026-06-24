@@ -179,6 +179,7 @@
     "title": "反向代理",
     "addRule": "添加规则",
     "editRule": "编辑规则",
+    "sourceAddr": "来源地址",
     "domain": "域名",
     "target": "目标地址",
     "port": "端口",

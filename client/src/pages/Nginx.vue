@@ -11,6 +11,7 @@
           <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
           <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
           <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
+          <el-button @click="doUninstall" size="small" type="danger" :loading="uninstalling">卸载</el-button>
         </div>
         <span class="info-chip"><span class="lbl">{{ $t('nginx.configPath') }}</span><span class="val mono">{{ confPath }}</span></span>
         <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
@@ -44,7 +45,7 @@
 
     <!-- 规则表格 -->
     <el-table v-if="installed" :data="rules" v-loading="loadingRules" stripe class="data-table no-white-mask">
-      <el-table-column prop="sourceHost" :label="$t('nginx.domain')" min-width="150" />
+      <el-table-column prop="sourceHost" :label="$t('proxy.sourceAddr')" min-width="150" />
       <el-table-column :label="$t('nginx.target')" min-width="200">
         <template #default="{ row }">{{ row.targetProtocol || 'http' }}://{{ row.targetHost }}:{{ row.targetPort || 80 }}</template>
       </el-table-column>
@@ -82,23 +83,22 @@
     <!-- 添加/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="editId ? $t('nginx.editRule') : $t('nginx.addRule')" width="560" destroy-on-close>
       <div class="dialog-body">
-        <!-- 域名 -->
+        <!-- 来源地址 -->
         <div class="form-row">
-          <label class="form-label">{{ $t('nginx.domain') }}</label>
+          <label class="form-label">{{ $t('proxy.sourceAddr') }}</label>
           <el-input v-model="form.sourceHost" placeholder="example.com" @change="onDomainChange" />
         </div>
-        <!-- 目标 -->
+        <!-- 目标地址 + 端口 -->
         <div class="form-row">
           <label class="form-label">{{ $t('nginx.target') }}</label>
           <div class="target-group">
-            <el-select v-model="form.targetProtocol" style="width:90px">
-              <el-option label="http://" value="http" />
-              <el-option label="https://" value="https" />
+            <el-select v-model="form.targetProtocol" style="width:82px">
+              <el-option label="HTTP" value="http" />
+              <el-option label="HTTPS" value="https" />
             </el-select>
-            <span class="target-sep">{{ form.targetProtocol }}://</span>
             <el-input v-model="form.targetHost" placeholder="localhost" style="flex:1" />
             <span class="target-sep">:</span>
-            <el-input-number v-model="form.targetPort" :min="1" :max="65535" style="width:100px" />
+            <el-input v-model.number="form.targetPort" placeholder="80" style="width:80px" />
           </div>
         </div>
         <!-- 备注 -->
@@ -110,14 +110,14 @@
         <div class="form-row">
           <label class="form-label">{{ $t('nginx.ssl') }}</label>
           <div class="ssl-toggle-row">
-            <el-switch v-model="form.ssl" />
+            <el-switch v-model="form.ssl" @change="onSslChange" />
             <span class="ssl-hint" v-if="!form.ssl">{{ $t('nginx.sslHint') }}</span>
           </div>
         </div>
         <!-- 证书选择（开启 SSL 后显示）-->
         <div class="form-row" v-if="form.ssl">
           <label class="form-label">{{ $t('ssl.certificate') }}</label>
-          <el-select v-model="form.sslCert" filterable clearable :placeholder="$t('ssl.selectCert')" style="width:100%">
+          <el-select v-model="form.sslCert" filterable clearable :placeholder="$t('ssl.selectCert')" style="width:100%" @change="onCertChange">
             <el-option-group v-if="matchedCerts.length" :label="$t('ssl.matchedCerts')">
               <el-option v-for="c in matchedCerts" :key="c.domain" :value="c.domain" :label="c.domain">
                 <div class="cert-option">
@@ -127,7 +127,7 @@
               </el-option>
             </el-option-group>
             <el-option-group v-if="otherCerts.length" :label="$t('ssl.otherCerts')">
-              <el-option v-for="c in otherCerts" :key="c.domain" :value="c.domain" :label="c.domain">
+              <el-option v-for="c in otherCerts" :key="c.domain" :value="c.domain" :label="c.domain" :disabled="true">
                 <div class="cert-option">
                   <span>{{ c.domain }}</span>
                   <el-tag size="small" effect="plain" :type="c.daysRemaining < 30 ? 'warning' : ''">{{ c.daysRemaining }}d</el-tag>
@@ -139,20 +139,20 @@
             </template>
           </el-select>
           <p class="cert-no-match" v-if="form.sourceHost && !matchedCerts.length && allCerts.length">
-            {{ $t('ssl.noMatchFor') }} <strong>{{ form.sourceHost }}</strong>，{{ $t('ssl.showAllCerts') }}
+            未找到匹配 <strong>{{ form.sourceHost }}</strong> 的泛域名证书
           </p>
         </div>
       </div>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="doSaveRule" :loading="saving">{{ editId ? $t('common.save') : $t('common.add') }}</el-button>
+        <el-button type="primary" @click="doSaveRule" :loading="saving" :disabled="!canSave">{{ editId ? $t('common.save') : $t('common.add') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoPlay, VideoPause, Refresh, RefreshRight, Plus, Loading } from '@element-plus/icons-vue'
@@ -167,6 +167,7 @@ const confPath  = ref('')
 const pid       = ref<string | number>('')
 const acting    = ref('')
 const loadingInst = ref(false)
+const uninstalling = ref(false)
 
 const showGuide = ref(false)
 const guideText = ref('')
@@ -191,6 +192,7 @@ async function load() {
   } catch { /* ignore */ }
 }
 
+// ── Nginx 操作 ──
 async function doAction(action: string) {
   acting.value = action
   try {
@@ -213,6 +215,17 @@ async function installGuide() {
   finally { loadingInst.value = false }
 }
 
+async function doUninstall() {
+  await ElMessageBox.confirm('确定要卸载 Nginx 吗？已有反向代理规则会失效。', '卸载 Nginx', { confirmButtonText: '确认卸载', type: 'warning' })
+  uninstalling.value = true
+  try {
+    const res = await api.post('/nginx/uninstall') as any
+    if (res.success) { ElMessage.success(res.message); await load() }
+    else ElMessage.error(res.message || '卸载失败')
+  } catch { ElMessage.error('卸载失败') }
+  finally { uninstalling.value = false }
+}
+
 // ── 反向代理规则 ──
 const loadingRules = ref(false)
 const rules   = ref<any[]>([])
@@ -228,7 +241,10 @@ const allCerts      = ref<any[]>([])
 const matchedCerts  = ref<any[]>([])
 const otherCerts    = ref<any[]>([])
 
-function _groupCerts(certs: any[], domain: string) {
+// 是否已选中匹配的证书
+const selectedCertMatched = ref(true)
+
+function _groupCerts(certs: any[] /* domain param unused kept for call sig */) {
   const matched: any[] = [], other: any[] = []
   certs.forEach((c: any) => (c.matched ? matched : other).push(c))
   matchedCerts.value = matched
@@ -236,37 +252,70 @@ function _groupCerts(certs: any[], domain: string) {
   allCerts.value = certs
 }
 
+async function loadRules() {
+  loadingRules.value = true
+  try {
+    const res = await api.get('/proxy') as any
+    if (res.success) {
+      rules.value = res.data.rules || []
+      stats.value = res.data.stats
+    }
+  } catch { /* ignore */ }
+  finally { loadingRules.value = false }
+}
+
 async function loadCerts(domain?: string) {
   try {
     const url = domain ? `/proxy/cert-match?domain=${encodeURIComponent(domain)}` : '/proxy/cert-match'
     const res = await api.get(url) as any
     if (res.success) {
-      const certs = (res.data.certificates || []).filter((c: any) => c.status === 'valid' || !c.status)
+      const certs = (res.data.certificates || []).filter((c: any) => c.status !== 'expired' && c.status !== 'revoked')
       _groupCerts(certs, domain || '')
     }
   } catch { allCerts.value = []; matchedCerts.value = []; otherCerts.value = [] }
 }
 
 function onDomainChange(val: string) {
+  form.sslCert = '' // 清空之前选的证书
   if (val) loadCerts(val)
   else { matchedCerts.value = []; otherCerts.value = [] }
 }
+
+function onSslChange(enabled: boolean) {
+  if (!enabled) form.sslCert = ''
+}
+
+function onCertChange(cert: string) {
+  // 检查选中的是否在匹配列表中
+  selectedCertMatched.value = matchedCerts.value.some((c: any) => c.domain === cert)
+}
+
+// 是否可以提交
+const canSave = computed(() => {
+  if (!form.value.sourceHost || !form.value.targetHost) return false
+  if (form.value.ssl) {
+    // 开启 SSL 时必须选证书，且证书必须匹配
+    if (!form.value.sslCert) return false
+    return selectedCertMatched.value
+  }
+  return true
+})
 
 function showAddEdit(row: any | null) {
   if (row) {
     editId.value = row.id
     form.value = { ...row }
+    selectedCertMatched.value = true // 编辑时默认匹配
   } else {
     editId.value = ''
     form.value = { sourceHost: '', targetHost: '', targetProtocol: 'http', targetPort: 80, ssl: false, sslCert: '', note: '' }
+    selectedCertMatched.value = true
   }
   dialogVisible.value = true
-  // 载入所有证书 + 按域名匹配
   loadCerts(form.value.sourceHost)
 }
 
 async function doSaveRule() {
-  if (!form.value.sourceHost || !form.value.targetHost) return ElMessage.warning('请填写域名和目标')
   saving.value = true
   try {
     let res: any
@@ -374,7 +423,7 @@ onMounted(load)
 .data-table { border-radius: var(--radius-md); overflow: hidden; }
 .check-dash { color: var(--text-tertiary); font-size: 14px; }
 
-/* ── 对话框表单（新布局）── */
+/* ── 对话框表单 ── */
 .dialog-body { display: flex; flex-direction: column; gap: 18px; }
 .form-row { display: flex; align-items: flex-start; gap: 14px; }
 .form-label {
@@ -387,8 +436,7 @@ onMounted(load)
   text-align: right;
 }
 .form-row .el-input,
-.form-row .el-select,
-.form-row .el-input-number { flex: 1; }
+.form-row .el-select { flex: 1; }
 
 .target-group {
   display: flex;

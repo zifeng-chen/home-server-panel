@@ -178,6 +178,7 @@
     "title": "Reverse Proxy",
     "addRule": "Add Rule",
     "editRule": "Edit Rule",
+    "sourceAddr": "Source",
     "domain": "Domain",
     "target": "Target",
     "port": "Port",

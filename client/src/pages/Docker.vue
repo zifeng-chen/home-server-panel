@@ -42,7 +42,7 @@
       <el-table-column :label="$t('dashboard.memory')" width="100">
         <template #default="{ row }">{{ row.memUsage || '--' }}</template>
       </el-table-column>
-      <el-table-column :label="$t('common.actions')" width="220" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="230" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="doAction(row.id, 'start')" v-if="row.state !== 'running'" size="small">{{ $t('docker.start') }}</el-button>
           <el-button link type="warning" @click="doAction(row.id, 'stop')" v-if="row.state === 'running'" size="small">{{ $t('docker.stop') }}</el-button>

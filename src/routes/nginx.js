@@ -375,4 +375,14 @@ router.post('/manual-deploy', async (req, res) => {
   }
 });
 
+// POST /api/nginx/uninstall - 卸载 Nginx
+router.post('/uninstall', async (req, res) => {
+  try {
+    const result = await nginxService.uninstall();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: _safeErr(err) });
+  }
+});
+
 module.exports = router;

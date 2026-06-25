@@ -44,7 +44,6 @@
     "ddns": "DDNS",
     "ssl": "SSL Cert",
     "nginx": "Nginx",
-
     "port": "Ports",
     "pm2": "PM2",
     "cron": "Cron",
@@ -108,7 +107,9 @@
     "rr": "Host Record",
     "line": "Line",
     "status": "Status",
-    "deleteDialog": "Delete DNS record {{name}}?"
+    "deleteDialog": "Delete DNS record {{name}}?",
+    "credMissing": "{{provider}} credentials not configured",
+    "credMissingHint": "Please configure API credentials in System Settings to enable DDNS sync."
   },
   "ssl": {
     "title": "SSL Certificates",
@@ -124,6 +125,9 @@
     "dnsProvider": "DNS Provider",
     "status": "Status",
     "expiry": "Expiry",
+    "valid": "Valid",
+    "expiring": "Expiring",
+    "expired": "Expired",
     "exportFormat": "Export Format",
     "nginx": "Nginx",
     "apache": "Apache",
@@ -134,7 +138,12 @@
     "noCerts": "No certificates",
     "manualDns": "Manual DNS Verification",
     "subtitle": "Manage HTTPS certificates",
-    "certificate": "Certificate"
+    "certificate": "Certificate",
+    "selectCert": "Select cert",
+    "matchedCerts": "Matched certs",
+    "otherCerts": "Other certs",
+    "noMatchFor": "No match for",
+    "showAllCerts": ". Showing all available."
   },
   "nginx": {
     "title": "Nginx Management",
@@ -155,6 +164,8 @@
     "addRule": "Add Rule",
     "editRule": "Edit Rule",
     "deleteRule": "Delete Rule",
+    "uninstallConfirm": "Uninstall Nginx? All proxy rules will become invalid.",
+    "uninstallFailed": "Uninstall failed",
     "domain": "Domain",
     "target": "Target",
     "targetHost": "Target Host",
@@ -165,12 +176,16 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "exportConfig": "Export Config",
-    "deployProxy": "Deploy to Nginx"
+    "rules": "rules",
+    "accessible": "Accessible",
+    "checking": "Checking...",
+    "sslHint": "Use HTTP when SSL is off"
   },
   "proxy": {
     "title": "Reverse Proxy",
     "addRule": "Add Rule",
     "editRule": "Edit Rule",
+    "sourceAddr": "Source",
     "domain": "Domain",
     "target": "Target",
     "port": "Port",
@@ -279,7 +294,6 @@
     "deleteSuccess": "User deleted",
     "deleteConfirm": "Delete this user? This cannot be undone."
   },
-
   "devices": {
     "title": "Devices",
     "subtitle": "Home network device management & monitoring",
@@ -309,7 +323,6 @@
     "statsOffline": "Offline",
     "statsTotal": "Total"
   },
-
   "settings": {
     "title": "System Settings",
     "basic": "Basic Settings",
@@ -334,6 +347,10 @@
     "configured": "Configured",
     "leaveEmptyHint": "leave empty = no change",
     "takesEffectHint": "takes effect on save",
+    "getIt": "Get →",
+    "getAliAk": "Get Aliyun ID",
+    "getTencentId": "Get Tencent ID",
+    "getToken": "Get Token",
     "modules": "Modules",
     "acmeEmail": "ACME Email",
     "dnsProvider": "DNS Provider",
@@ -341,7 +358,34 @@
     "sslSettingsDesc": "ACME email is for CA notifications. DNS provider is used for domain validation. Expiry warning days control when alerts begin.",
     "pushplusTitle": "Push Title",
     "pushplusTitleHint": "e.g. Home Server Panel Alert",
-    "pushplusChannel": "Push Channel"
+    "pushplusChannel": "Push Channel",
+    "testPush": "Test Push",
+    "dbManagement": "Database Management",
+    "dbManagementDesc": "Manage SQLite local storage and MySQL remote sync. Export backups, import restores, connect MySQL, etc.",
+    "exportDb": "Export Backup",
+    "importDb": "Import Database",
+    "exportSuccess": "Database backup downloaded",
+    "importSuccess": "Database imported. Please restart service to apply.",
+    "syncToMysql": "Sync to MySQL",
+    "syncSuccess": "SQLite → MySQL sync complete",
+    "connectMysql": "Connect MySQL",
+    "connectMysqlOk": "MySQL connected, dual-write sync enabled",
+    "disconnectMysql": "Disconnect MySQL",
+    "disconnectMysqlConfirm": "Disconnect MySQL? Data will be stored only in local SQLite.",
+    "disconnectMysqlOk": "MySQL disconnected, using local SQLite only",
+    "testConnection": "Test Connection",
+    "testConnectionOk": "MySQL connection test passed",
+    "testConnectionFail": "MySQL connection failed",
+    "dbHost": "Host",
+    "dbPort": "Port",
+    "dbUser": "Username",
+    "dbPassword": "Password",
+    "dbDatabase": "Database",
+    "dbConnected": "Connected",
+    "dbDdns": "DDNS Records",
+    "dbProxy": "Proxy Rules",
+    "dbSsl": "SSL Certs",
+    "dbCron": "Cron Jobs"
   },
   "about": {
     "title": "About",

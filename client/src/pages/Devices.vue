@@ -37,7 +37,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="hostname" :label="$t('devices.hostname')" width="130" />
-      <el-table-column prop="ip" :label="$t('devices.ip')" width="140">
+      <el-table-column prop="ip" :label="$t('devices.ip')" width="150">
         <template #default="{ row }"><code class="mono">{{ row.ip }}</code></template>
       </el-table-column>
       <el-table-column prop="os" :label="$t('devices.os')" width="110">
@@ -47,7 +47,7 @@
       <el-table-column :label="$t('devices.lastSeen')" width="170">
         <template #default="{ row }">{{ fmtTime(row.last_seen) }}</template>
       </el-table-column>
-      <el-table-column :label="$t('common.actions')" width="120" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="showCommand(row)" size="small">
             {{ $t('devices.sendCommand') }}

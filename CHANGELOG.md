@@ -1,6 +1,58 @@
-# v0.8.5-beta (2026-06-21)
+# Changelog
 
-## [v0.8.5-beta] - 2026-06-21
+## [v0.9.2-beta] - 2026-06-25
+
+### 🔐 全局安全审计 + Go Agent 抽离 + 文档重构 + 数据库管理
+
+#### 系统设置新增数据库管理
+- Settings 页面新增「数据库管理」卡片：
+  - 状态栏显示当前模式（SQLite/MySQL）、连接状态
+  - 数据统计：DDNS 记录数 / 代理规则数 / SSL 证书数 / 定时任务数
+  - 导出备份：一键下载 panel.db
+  - 导入恢复：上传 .db 或 .json 文件（SQLite 头魔术字校验）
+  - 同步到 MySQL：手动触发 SQLite → MySQL 全量同步
+  - 连接 MySQL：弹出对话框填写主机/端口/用户/密码/库名，测试连接后连接
+  - 断开 MySQL：确认后断开，自动回退到 SQLite
+- 新增 24 个 i18n 词条（中/英），覆盖数据库管理全部 UI
+
+#### 安装文档补全
+- INSTALL.md 新增「方式一：引导安装」章节 — 说明首次部署自动跳转 install.html，三步完成
+- README.md 新增「首次使用？」提示
+
+#### 文档重构
+- README.md 精简为菜单式导航页（功能列表 + 5 篇文档链接）
+- 新增 `docs/` 目录，5 篇独立文档：
+  - `docs/INSTALL.md` — 安装部署（服务端 + Agent 三步启动 + 自启动 + FAQ）
+  - `docs/AGENT.md` — Agent 完整说明书（是什么/怎么用/参数含义/自启动/故障排查）
+  - `docs/API.md` — 74 个端点完整参考
+  - `docs/ARCHITECTURE.md` — 技术架构、目录结构、设计决策
+  - `docs/SECURITY.md` — 安全架构与防护措施
+- `agent/README.md` 精简为快速参考，指向 `docs/AGENT.md`
+- Agent 使用说明重写：用通俗语言解释参数（不填会怎样）+ 分场景给脚本（路由器/Mac 一条命令完成）
+
+#### 安全修复 (6项)
+- **Cron 定时任务添加管理员权限检查** — 自定义脚本存在任意命令执行风险,5个写端点(POST/PUT/DELETE/toggle/run)全部加 `adminRequired` 中间件
+- **Cron 黑名单加强** — 新增 base64/hex 编码绕过检测 + 反引号/$(命令替换)拦截
+- **cert.js 修复 `domain` 未定义变量** — `DELETE /api/cert/domains/:domain` 之前因 `domain` 变量未声明导致 `_tryNotify` 传入 undefined
+- **所有路由错误消息脱敏** — 统一 `_safeErr()` 过滤文件路径/内网IP
+- **`/api/ddns/credentials-status` 端点** — 新增密钥状态检测,前端 DDNS 页面黄色 alert 提示（之前已修复）
+- **cert.js 导出端点 `..` 路径穿越检测** — 3层安全确认: `path.resolve` + `path.normalize` + `.startsWith(acmeHome)`
+
+#### Go Agent 抽离
+- Agent 独立于面板项目，支持三架构 (linux-amd64/linux-arm64/darwin-arm64)
+- 新增 `agent/README.md` 完整安装文档（systemd / launchd）
+- 修复 `getLocalIP()` 使用 `net.Interfaces()` 遍历替代 `net.LookupHost()`
+- 修复指标采集 `df -B1` → `df -k` (BusyBox 兼容)
+- WebSocket URL 统一为 `/api/v2/device/ws`
+
+#### 项目版本
+- 版本升至 `v0.9.2-beta`（package.json + README.md）
+- HSP bundle: `mqsuhb9x`
+
+#### 文档组织
+- README.md 更新: 版本号同步 v0.9.2-beta, 技术栈/目录结构/API 端点/安全架构已完备
+
+## [v0.9.1-beta] - 2026-06-24
 
 ### 多用户管理 + PushPlus 增强 + 设置页重组 + 构建流水线修复
 

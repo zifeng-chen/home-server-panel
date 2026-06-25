@@ -93,6 +93,77 @@
       </el-form>
     </div>
 
+    <!-- 数据库管理 -->
+    <div class="card">
+      <h3>{{ $t('settings.dbManagement') }}</h3>
+      <p class="card-desc">{{ $t('settings.dbManagementDesc') }}</p>
+      <div class="db-status-bar">
+        <span class="db-status-item"><span class="db-label">{{ $t('settings.dbMode') }}:</span>
+          <el-tag :type="dbStatus.mode === 'mysql' ? 'success' : 'info'" size="small">{{ dbStatus.mode === 'mysql' ? 'MySQL' : 'SQLite' }}</el-tag>
+        </span>
+        <span v-if="dbStatus.mode === 'mysql'" class="db-status-item">
+          <span class="db-label">{{ $t('settings.dbHost') }}:</span> {{ dbStatus.host }}
+        </span>
+        <span v-if="dbStatus.mode === 'mysql'" class="db-status-item">
+          <span class="db-label">{{ $t('settings.dbConnected') }}:</span>
+          <el-tag :type="dbStatus.connected ? 'success' : 'danger'" size="small">
+            {{ dbStatus.connected ? $t('common.yes') : $t('common.no') }}
+          </el-tag>
+        </span>
+      </div>
+      <div class="db-actions">
+        <el-button :icon="Download" @click="exportDb" size="small">{{ $t('settings.exportDb') }}</el-button>
+        <el-upload
+          :show-file-list="false"
+          :http-request="importDb"
+          accept=".db,.json"
+          style="display:inline-block;margin-left:8px"
+        >
+          <el-button :icon="Upload" size="small">{{ $t('settings.importDb') }}</el-button>
+        </el-upload>
+        <el-button v-if="dbStatus.mode === 'mysql'" :icon="Connection" @click="syncDbToMysql" size="small" style="margin-left:8px" :loading="syncing">
+          {{ $t('settings.syncToMysql') }}
+        </el-button>
+        <el-button v-if="dbStatus.mode === 'local'" :icon="Link" @click="showMysqlDialog = true" size="small" style="margin-left:8px">
+          {{ $t('settings.connectMysql') }}
+        </el-button>
+        <el-button v-if="dbStatus.mode === 'mysql'" :icon="Link" @click="disconnectMysql" type="danger" size="small" style="margin-left:8px" plain>
+          {{ $t('settings.disconnectMysql') }}
+        </el-button>
+      </div>
+      <div class="db-info-grid" v-if="dbInfo">
+        <div class="db-info-item"><span class="db-label">{{ $t('settings.dbDdns') }}:</span> {{ dbInfo.ddnsDomains }}</div>
+        <div class="db-info-item"><span class="db-label">{{ $t('settings.dbProxy') }}:</span> {{ dbInfo.proxyRules }}</div>
+        <div class="db-info-item"><span class="db-label">{{ $t('settings.dbSsl') }}:</span> {{ dbInfo.sslDomains }}</div>
+        <div class="db-info-item"><span class="db-label">{{ $t('settings.dbCron') }}:</span> {{ dbInfo.cronJobs }}</div>
+      </div>
+    </div>
+
+    <!-- 连接 MySQL 弹窗 -->
+    <el-dialog v-model="showMysqlDialog" :title="$t('settings.connectMysql')" width="480px" destroy-on-close>
+      <el-form :model="mysqlForm" label-width="100px">
+        <el-form-item :label="$t('settings.dbHost')">
+          <el-input v-model="mysqlForm.host" placeholder="192.168.100.110" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.dbPort')">
+          <el-input-number v-model="mysqlForm.port" :min="1" :max="65535" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.dbUser')">
+          <el-input v-model="mysqlForm.user" placeholder="root" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.dbPassword')">
+          <el-input v-model="mysqlForm.password" type="password" placeholder="********" />
+        </el-form-item>
+        <el-form-item :label="$t('settings.dbDatabase')">
+          <el-input v-model="mysqlForm.database" placeholder="home_server_panel" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="testMysqlConnection" :loading="testingMysql">{{ $t('settings.testConnection') }}</el-button>
+        <el-button type="primary" @click="connectMysql" :loading="connecting">{{ $t('common.confirm') }}</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 关于 -->
     <div class="card about-card">
       <div class="about-content">
@@ -112,10 +183,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { Check, RefreshRight, Promotion } from '@element-plus/icons-vue'
+import { Check, RefreshRight, Promotion, Upload, Download, Connection, Link } from '@element-plus/icons-vue'
 import api from '../api'
 import Logo from '../components/Logo.vue'
 
@@ -127,6 +198,39 @@ const author = __APP_AUTHOR__
 const { t } = useI18n()
 const saving = ref(false)
 const testing = ref(false)
+const syncing = ref(false)
+const testingMysql = ref(false)
+const connecting = ref(false)
+const showMysqlDialog = ref(false)
+const dbStatus = reactive({ mode: 'local', connected: false, host: '' })
+const dbInfo = ref<any>(null)
+const mysqlForm = reactive({ host: '192.168.100.110', port: 3306, user: 'root', password: '', database: 'home_server_panel' })
+
+async function loadDbStatus() {
+  try {
+    const [statusRes, infoRes] = await Promise.all([
+      api.get('/db/status') as any,
+      api.get('/db/info') as any
+    ])
+    if (statusRes.success) {
+      dbStatus.mode = statusRes.data.mode || 'local'
+      dbStatus.connected = statusRes.data.connected || false
+      dbStatus.host = statusRes.data.host || ''
+      if (dbStatus.mode === 'mysql') {
+        mysqlForm.host = statusRes.data.host || '192.168.100.110'
+        mysqlForm.database = statusRes.data.database || 'home_server_panel'
+      }
+    }
+    if (infoRes.success) {
+      dbInfo.value = {
+        ddnsDomains: infoRes.data.sqlite?.ddnsDomains || 0,
+        proxyRules: infoRes.data.sqlite?.proxyRules || 0,
+        sslDomains: infoRes.data.sqlite?.sslDomains || 0,
+        cronJobs: infoRes.data.sqlite?.cronJobs || 0
+      }
+    }
+  } catch { /*silent*/ }
+}
 
 const form = reactive<any>({
   aliKeyId: '',
@@ -200,7 +304,70 @@ async function confirmRestart() {
   try { await api.post('/system/restart') } catch { /* unreachable after restart */ }
 }
 
-onMounted(load)
+async function exportDb() {
+  try {
+    // 通过 axios blob 下载（带认证）
+    const res = await api.get('/db/export', { responseType: 'blob' }) as any
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data || res], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'home-server-panel.db'; a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(t('settings.exportSuccess'))
+  } catch { ElMessage.error(t('common.error')) }
+}
+
+async function importDb(opts: any) {
+  try {
+    const fd = new FormData()
+    fd.append('file', opts.file)
+    const res = await api.post('/db/import', fd) as any
+    if (res.success) { ElMessage.success(res.message || t('settings.importSuccess')); loadDbStatus() }
+    else ElMessage.error(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
+}
+
+async function syncDbToMysql() {
+  syncing.value = true
+  try {
+    const res = await api.post('/db/sync') as any
+    if (res.success) ElMessage.success(t('settings.syncSuccess'))
+    else ElMessage.warning(res.message || t('common.error'))
+    await loadDbStatus()
+  } catch { ElMessage.error(t('common.error')) }
+  finally { syncing.value = false }
+}
+
+async function testMysqlConnection() {
+  testingMysql.value = true
+  try {
+    const res = await api.post('/db/test', mysqlForm) as any
+    if (res.success) ElMessage.success(t('settings.testConnectionOk'))
+    else ElMessage.warning(res.message || t('settings.testConnectionFail'))
+  } catch { ElMessage.error(t('common.error')) }
+  finally { testingMysql.value = false }
+}
+
+async function connectMysql() {
+  connecting.value = true
+  try {
+    const res = await api.post('/db/connect', mysqlForm) as any
+    if (res.success) { ElMessage.success(t('settings.connectMysqlOk')); showMysqlDialog.value = false; loadDbStatus() }
+    else ElMessage.warning(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
+  finally { connecting.value = false }
+}
+
+async function disconnectMysql() {
+  await ElMessageBox.confirm(t('settings.disconnectMysqlConfirm'), t('common.confirm'), { type: 'warning' })
+  try {
+    const res = await api.post('/db/disconnect') as any
+    if (res.success) { ElMessage.success(t('settings.disconnectMysqlOk')); loadDbStatus() }
+    else ElMessage.warning(res.message || t('common.error'))
+  } catch { ElMessage.error(t('common.error')) }
+}
+
+onMounted(() => { load(); loadDbStatus() })
 </script>
 
 <style scoped>
@@ -225,6 +392,14 @@ onMounted(load)
 .about-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .about-label { color: var(--text-tertiary); }
 .about-tech { font-size: 12px; color: var(--text-tertiary); margin: 0; }
+
+/* ── 数据库管理 ── */
+.db-status-bar { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; padding: 12px 16px; background: var(--bg-base); border-radius: var(--radius-sm); }
+.db-status-item { font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.db-label { color: var(--text-tertiary); font-size: 12px; }
+.db-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.db-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.db-info-item { font-size: 13px; padding: 8px 12px; background: var(--bg-base); border-radius: var(--radius-sm); }
 
 /* ── Mobile ── */
 @media (max-width: 768px) {

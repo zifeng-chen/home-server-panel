@@ -44,7 +44,6 @@
     "ddns": "DDNS",
     "ssl": "SSL证书",
     "nginx": "Nginx管理",
-
     "port": "端口管理",
     "pm2": "PM2进程",
     "cron": "定时任务",
@@ -295,7 +294,6 @@
     "deleteSuccess": "用户已删除",
     "deleteConfirm": "确定删除该用户？此操作不可恢复。"
   },
-
   "devices": {
     "title": "设备中心",
     "subtitle": "家庭网络设备管理与监控",
@@ -325,7 +323,6 @@
     "statsOffline": "离线设备",
     "statsTotal": "设备总数"
   },
-
   "settings": {
     "title": "系统设置",
     "basic": "基础设置",
@@ -396,5 +393,48 @@
     "version": "当前版本",
     "author": "作者",
     "techStack": "技术栈: Vue 3 + Element Plus + Node.js"
+  },
+  "install": {
+    "welcome": "Home Server Panel",
+    "subtitle": "服务器管理面板 · 引导安装",
+    "dbModeHint": "💡 选择数据存储方式。本地模式无需额外配置，即可开箱使用。",
+    "sqliteDesc": "本地数据库\n开箱即用 · 零配置",
+    "mysqlDesc": "外部数据库\n高性能 · 集中管理",
+    "next": "下一步 →",
+    "prev": "← 上一步",
+    "mysqlConfigHint": "🔗 配置 MySQL 数据库连接信息",
+    "dbHost": "主机地址",
+    "dbPort": "端口",
+    "dbName": "数据库名",
+    "dbUser": "用户名",
+    "dbPassword": "密码",
+    "testConn": "🔍 测试连接",
+    "testing": "测试中...",
+    "connecting": "连接中...",
+    "connOk": "✅ 连接成功！数据库 {db} 将在安装时自动创建",
+    "connOkDbExists": "✅ 连接成功！数据库 {db} 已存在",
+    "connFailed": "无法连接安装服务，请确认服务已启动",
+    "fillHostUser": "请输入主机地址和用户名",
+    "testConnFirst": "⚠️ 请先测试数据库连接",
+    "adminHint": "👤 设置管理员账号",
+    "adminUser": "管理员用户名",
+    "adminPass": "管理员密码",
+    "adminPassHint": "至少6位密码",
+    "adminPass2": "确认密码",
+    "adminPass2Hint": "再次输入密码",
+    "emptyUser": "请输入管理员用户名",
+    "passMin": "密码至少6位",
+    "passMismatch": "两次密码输入不一致",
+    "finish": "🚀 完成安装",
+    "installing": "安装中...",
+    "installFailed": "安装请求失败，请检查网络连接",
+    "success": "安装完成！",
+    "successDesc": "服务器管理面板已就绪",
+    "enter": "🚀 进入管理面板",
+    "dbHasData": "数据库已有数据",
+    "dbHasDataDesc": "数据库 {db} 已有完整表结构",
+    "dbHasDataHint": "⚠️ 说明系统之前已经安装配置过，无需重复操作",
+    "goToLogin": "🔑 前往登录页",
+    "reset": "🔄 重新选择"
   }
 }

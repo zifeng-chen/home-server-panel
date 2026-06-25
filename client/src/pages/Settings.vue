@@ -14,8 +14,8 @@
     <!-- 云服务凭据 -->
     <div class="card">
       <h3>{{ $t('settings.cloudCredentials') }}
-        <el-link href="https://ram.console.aliyun.com/manage/ak" target="_blank" type="primary" :underline="false" style="font-size:12px;margin-left:8px">{{ $t('settings.getAliAk') }}</el-link>
-        <el-link href="https://console.cloud.tencent.com/cam/capi" target="_blank" type="primary" :underline="false" style="font-size:12px;margin-left:8px">{{ $t('settings.getTencentId') }}</el-link>
+        <el-link href="https://ram.console.aliyun.com/manage/ak" target="_blank" type="primary" underline="never" style="font-size:12px;margin-left:8px">{{ $t('settings.getAliAk') }}</el-link>
+        <el-link href="https://console.cloud.tencent.com/cam/capi" target="_blank" type="primary" underline="never" style="font-size:12px;margin-left:8px">{{ $t('settings.getTencentId') }}</el-link>
       </h3>
       <el-form :model="form" label-width="170px">
         <el-form-item :label="$t('settings.aliAkId')">
@@ -68,7 +68,7 @@
     <!-- 通知推送 -->
     <div class="card">
       <h3>{{ $t('settings.notification') }}
-        <el-link href="https://www.pushplus.plus/" target="_blank" type="primary" :underline="false" style="font-size:12px;margin-left:8px">{{ $t('settings.getToken') }}</el-link>
+        <el-link href="https://www.pushplus.plus/" target="_blank" type="primary" underline="never" style="font-size:12px;margin-left:8px">{{ $t('settings.getToken') }}</el-link>
       </h3>
       <el-form :model="form" label-width="140px">
         <el-form-item :label="$t('settings.pushplusToken')">

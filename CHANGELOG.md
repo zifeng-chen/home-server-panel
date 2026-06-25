@@ -2,7 +2,18 @@
 
 ## [v0.9.2-beta] - 2026-06-25
 
-### 🔐 全局安全审计 + Go Agent 抽离 + 文档完善
+### 🔐 全局安全审计 + Go Agent 抽离 + 文档重构
+
+#### 文档重构
+- README.md 精简为菜单式导航页（功能列表 + 5 篇文档链接）
+- 新增 `docs/` 目录，5 篇独立文档：
+  - `docs/INSTALL.md` — 安装部署（服务端 + Agent 三步启动 + 自启动 + FAQ）
+  - `docs/AGENT.md` — Agent 完整说明书（是什么/怎么用/参数含义/自启动/故障排查）
+  - `docs/API.md` — 74 个端点完整参考
+  - `docs/ARCHITECTURE.md` — 技术架构、目录结构、设计决策
+  - `docs/SECURITY.md` — 安全架构与防护措施
+- `agent/README.md` 精简为快速参考，指向 `docs/AGENT.md`
+- Agent 使用说明重写：用通俗语言解释参数（不填会怎样）+ 分场景给脚本（路由器/Mac 一条命令完成）
 
 #### 安全修复 (6项)
 - **Cron 定时任务添加管理员权限检查** — 自定义脚本存在任意命令执行风险,5个写端点(POST/PUT/DELETE/toggle/run)全部加 `adminRequired` 中间件

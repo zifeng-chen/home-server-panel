@@ -19,13 +19,13 @@
           <el-input v-model="form.aliKeyId" :placeholder="$t('settings.takesEffectHint')" clearable />
         </el-form-item>
         <el-form-item :label="$t('settings.aliAkSecret')">
-          <el-input v-model="form.aliKeySecret" type="password" show-password :placeholder="$t('settings.takesEffectHint')" />
+          <el-input v-model="form.aliKeySecret" type="password" :placeholder="$t('settings.takesEffectHint')" />
         </el-form-item>
         <el-form-item :label="$t('settings.tencentSecretId')">
           <el-input v-model="form.tencentSecretId" :placeholder="$t('settings.takesEffectHint')" clearable />
         </el-form-item>
         <el-form-item :label="$t('settings.tencentSecretKey')">
-          <el-input v-model="form.tencentSecretKey" type="password" show-password :placeholder="$t('settings.takesEffectHint')" />
+          <el-input v-model="form.tencentSecretKey" type="password" :placeholder="$t('settings.takesEffectHint')" />
         </el-form-item>
       </el-form>
     </div>
@@ -69,7 +69,7 @@
         <el-form-item :label="$t('settings.pushplusToken')">
           <div style="display:flex;gap:8px;width:100%">
             <el-input v-model="form.pushplusToken" :placeholder="$t('settings.pushplusToken')" style="flex:1" />
-            <el-button @click="testPush" :loading="testing" :icon="Message">{{ testing ? $t('common.loading') : $t('common.submit') }}</el-button>
+            <el-button @click="testPush" :loading="testing" :icon="Promotion">{{ testing ? $t('common.loading') : $t('settings.testPush') }}</el-button>
           </div>
         </el-form-item>
         <el-form-item :label="$t('settings.pushplusTitle')">
@@ -110,7 +110,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { Check, RefreshRight, Message } from '@element-plus/icons-vue'
+import { Check, RefreshRight, Promotion } from '@element-plus/icons-vue'
 import api from '../api'
 import Logo from '../components/Logo.vue'
 

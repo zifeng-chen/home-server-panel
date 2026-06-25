@@ -349,7 +349,8 @@
     "sslSettingsDesc": "ACME email is for CA notifications. DNS provider is used for domain validation. Expiry warning days control when alerts begin.",
     "pushplusTitle": "Push Title",
     "pushplusTitleHint": "e.g. Home Server Panel Alert",
-    "pushplusChannel": "Push Channel"
+    "pushplusChannel": "Push Channel",
+    "testPush": "Test Push"
   },
   "about": {
     "title": "About",

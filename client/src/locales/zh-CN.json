@@ -352,7 +352,8 @@
     "sslSettingsDesc": "ACME 邮箱用于证书颁发机构通知，DNS 服务商用于域名验证。证书到期预警天数控制何时开始提醒。",
     "pushplusTitle": "推送标题",
     "pushplusTitleHint": "如：Home Server Panel 通知",
-    "pushplusChannel": "推送渠道"
+    "pushplusChannel": "推送渠道",
+    "testPush": "测试推送"
   },
   "about": {
     "title": "关于",

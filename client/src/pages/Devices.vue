@@ -37,7 +37,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="hostname" :label="$t('devices.hostname')" width="130" />
-      <el-table-column prop="ip" :label="$t('devices.ip')" width="140">
+      <el-table-column prop="ip" :label="$t('devices.ip')" width="150">
         <template #default="{ row }"><code class="mono">{{ row.ip }}</code></template>
       </el-table-column>
       <el-table-column prop="os" :label="$t('devices.os')" width="110">

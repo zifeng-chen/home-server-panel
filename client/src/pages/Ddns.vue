@@ -32,7 +32,7 @@
       </el-table-column>
       <el-table-column prop="domain" :label="$t('ddns.domain')" min-width="160" />
       <el-table-column prop="rr" :label="$t('ddns.rr')" width="100" />
-      <el-table-column prop="recordType" :label="$t('ddns.type')" width="70" />
+      <el-table-column prop="recordType" :label="$t('ddns.type')" width="90" />
       <el-table-column prop="ip" :label="$t('ddns.value')" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <code class="ip-code">{{ row.ip || row.value || '--' }}</code>

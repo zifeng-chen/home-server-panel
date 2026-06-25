@@ -11,7 +11,7 @@
           <el-button @click="doAction('stop')" size="small" :icon="VideoPause" :disabled="!running" :loading="acting === 'stop'">{{ $t('nginx.stop') }}</el-button>
           <el-button @click="doAction('reload')" size="small" :icon="Refresh" :loading="acting === 'reload'">{{ $t('nginx.reload') }}</el-button>
           <el-button @click="doAction('restart')" size="small" :icon="RefreshRight" :loading="acting === 'restart'">{{ $t('nginx.restart') }}</el-button>
-          <el-button @click="doUninstall" size="small" type="danger" :loading="uninstalling">卸载</el-button>
+          <el-button @click="doUninstall" size="small" type="danger" :loading="uninstalling">{{ $t('nginx.uninstall') }}</el-button>
         </div>
         <span class="info-chip"><span class="lbl">{{ $t('nginx.configPath') }}</span><span class="val mono">{{ confPath }}</span></span>
         <span class="info-chip"><span class="lbl">PID</span><span class="val mono">{{ pid || '--' }}</span></span>
@@ -216,13 +216,13 @@ async function installGuide() {
 }
 
 async function doUninstall() {
-  await ElMessageBox.confirm('确定要卸载 Nginx 吗？已有反向代理规则会失效。', '卸载 Nginx', { confirmButtonText: '确认卸载', type: 'warning' })
+  await ElMessageBox.confirm(t('nginx.uninstallConfirm'), t('nginx.uninstall'), { confirmButtonText: t('nginx.uninstall'), type: 'warning' })
   uninstalling.value = true
   try {
     const res = await api.post('/nginx/uninstall') as any
     if (res.success) { ElMessage.success(res.message); await load() }
-    else ElMessage.error(res.message || '卸载失败')
-  } catch { ElMessage.error('卸载失败') }
+    else ElMessage.error(res.message || t('nginx.uninstallFailed'))
+  } catch { ElMessage.error(t('nginx.uninstallFailed')) }
   finally { uninstalling.value = false }
 }
 

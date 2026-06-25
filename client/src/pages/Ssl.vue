@@ -98,9 +98,9 @@ function certTag(status: string) {
   return 'danger'
 }
 function certLabel(status: string) {
-  if (isCertValid(status)) return '有效'
-  if (status === 'expiring') return '即将过期'
-  return '已过期'
+  if (isCertValid(status)) return t('ssl.valid')
+  if (status === 'expiring') return t('ssl.expiring')
+  return t('ssl.expired')
 }
 
 const showInstall = ref(false)

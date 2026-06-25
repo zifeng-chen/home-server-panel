@@ -1,6 +1,6 @@
 # Home Server Panel — 家庭服务器运维管理面板
 
-**版本**: v0.8.5-beta | **许可**: MIT
+**版本**: v0.9.2-beta | **许可**: MIT
 
 轻量级家庭服务器运维管理面板，支持 iStoreOS/OpenWRT、群晖 DSM、Debian/Ubuntu、macOS 等 Linux 发行版。
 

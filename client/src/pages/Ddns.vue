@@ -30,8 +30,8 @@
       <el-table-column :label="$t('ddns.provider')" width="80">
         <template #default="{ row }"><el-tag :type="row.provider === 'tencent' ? 'warning' : 'primary'" size="small">{{ row.provider === 'tencent' ? $t('ddns.tencent') : $t('ddns.aliyun') }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="domain" :label="$t('ddns.domain')" min-width="160" />
-      <el-table-column prop="rr" :label="$t('ddns.rr')" width="100" />
+      <el-table-column :label="$t('ddns.domain')" min-width="140" />
+      <el-table-column prop="rr" :label="$t('ddns.rr')" width="110" />
       <el-table-column prop="recordType" :label="$t('ddns.type')" width="90" />
       <el-table-column prop="ip" :label="$t('ddns.value')" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
@@ -55,7 +55,7 @@
           <el-switch :model-value="row.enabled !== false" @change="() => toggleRecord(row)" size="small" />
         </template>
       </el-table-column>
-      <el-table-column :label="$t('ddns.actions')" width="130" fixed="right">
+      <el-table-column :label="$t('ddns.actions')" width="140" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)" :icon="Edit" size="small">{{ $t('common.edit') }}</el-button>
           <el-button link type="danger" @click="confirmDelete(row)" :icon="Delete" size="small">{{ $t('common.delete') }}</el-button>

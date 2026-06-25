@@ -1,6 +1,32 @@
-# v0.8.5-beta (2026-06-21)
+# Changelog
 
-## [v0.8.5-beta] - 2026-06-21
+## [v0.9.2-beta] - 2026-06-25
+
+### 🔐 全局安全审计 + Go Agent 抽离 + 文档完善
+
+#### 安全修复 (6项)
+- **Cron 定时任务添加管理员权限检查** — 自定义脚本存在任意命令执行风险,5个写端点(POST/PUT/DELETE/toggle/run)全部加 `adminRequired` 中间件
+- **Cron 黑名单加强** — 新增 base64/hex 编码绕过检测 + 反引号/$(命令替换)拦截
+- **cert.js 修复 `domain` 未定义变量** — `DELETE /api/cert/domains/:domain` 之前因 `domain` 变量未声明导致 `_tryNotify` 传入 undefined
+- **所有路由错误消息脱敏** — 统一 `_safeErr()` 过滤文件路径/内网IP
+- **`/api/ddns/credentials-status` 端点** — 新增密钥状态检测,前端 DDNS 页面黄色 alert 提示（之前已修复）
+- **cert.js 导出端点 `..` 路径穿越检测** — 3层安全确认: `path.resolve` + `path.normalize` + `.startsWith(acmeHome)`
+
+#### Go Agent 抽离
+- Agent 独立于面板项目，支持三架构 (linux-amd64/linux-arm64/darwin-arm64)
+- 新增 `agent/README.md` 完整安装文档（systemd / launchd）
+- 修复 `getLocalIP()` 使用 `net.Interfaces()` 遍历替代 `net.LookupHost()`
+- 修复指标采集 `df -B1` → `df -k` (BusyBox 兼容)
+- WebSocket URL 统一为 `/api/v2/device/ws`
+
+#### 项目版本
+- 版本升至 `v0.9.2-beta`（package.json + README.md）
+- HSP bundle: `mqsuhb9x`
+
+#### 文档组织
+- README.md 更新: 版本号同步 v0.9.2-beta, 技术栈/目录结构/API 端点/安全架构已完备
+
+## [v0.9.1-beta] - 2026-06-24
 
 ### 多用户管理 + PushPlus 增强 + 设置页重组 + 构建流水线修复
 

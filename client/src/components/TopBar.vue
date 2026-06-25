@@ -44,7 +44,7 @@ import UsersDialog from './UsersDialog.vue'
 const sys  = useSystemStore()
 const auth = useAuthStore()
 const router = useRouter()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const showUsersDialog = ref(false)
 
@@ -73,12 +73,12 @@ function fmtUptime(s: number) {
 }
 
 const metricsList = computed(() => [
-  { key: 'cpu',   icon: Cpu,     color: 'var(--accent)',       value: sys.cpu.toFixed(0) + '%',      label: 'CPU' },
-  { key: 'mem',   icon: Memo,    color: 'var(--accent-green)',  value: sys.memPct.toFixed(0) + '%',    label: '内存' },
-  { key: 'down',  icon: Download,color: 'var(--accent-purple)', value: fmtBytes(sys.netDown) + '/s', label: '下行' },
-  { key: 'up',    icon: Upload,  color: 'var(--accent-teal)',   value: fmtBytes(sys.netUp) + '/s',   label: '上行' },
-  { key: 'load',  icon: TrendCharts, color: loadColor.value,    value: (sys.load[0] || 0).toFixed(2), label: '负载' },
-  { key: 'uptime',icon: Timer,   color: 'var(--text-tertiary)',  value: fmtUptime(sys.uptime),         label: '运行' },
+  { key: 'cpu',   icon: Cpu,     color: 'var(--accent)',       value: sys.cpu.toFixed(0) + '%',      label: t('topbar.cpu') },
+  { key: 'mem',   icon: Memo,    color: 'var(--accent-green)',  value: sys.memPct.toFixed(0) + '%',    label: t('topbar.memory') },
+  { key: 'down',  icon: Download,color: 'var(--accent-purple)', value: fmtBytes(sys.netDown) + '/s', label: t('topbar.networkDown') },
+  { key: 'up',    icon: Upload,  color: 'var(--accent-teal)',   value: fmtBytes(sys.netUp) + '/s',   label: t('topbar.networkUp') },
+  { key: 'load',  icon: TrendCharts, color: loadColor.value,    value: (sys.load[0] || 0).toFixed(2), label: t('topbar.load') },
+  { key: 'uptime',icon: Timer,   color: 'var(--text-tertiary)',  value: fmtUptime(sys.uptime),         label: t('topbar.uptime') },
 ])
 
 const isDark = ref(document.documentElement.classList.contains('dark'))

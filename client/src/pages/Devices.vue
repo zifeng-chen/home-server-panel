@@ -47,7 +47,7 @@
       <el-table-column :label="$t('devices.lastSeen')" width="170">
         <template #default="{ row }">{{ fmtTime(row.last_seen) }}</template>
       </el-table-column>
-      <el-table-column :label="$t('common.actions')" width="120" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="showCommand(row)" size="small">
             {{ $t('devices.sendCommand') }}

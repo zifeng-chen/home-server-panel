@@ -164,6 +164,27 @@ async function load() {
     const res = await api.get('/ssh/config') as any
     if (res.success) configs.value = res.data || []
   } catch { /* */ }
+
+  // 检查是否有设备中心传来的预设参数（Devices.vue → SSH 快捷入口）
+  const preset = sessionStorage.getItem('ssh_preset')
+  if (preset) {
+    sessionStorage.removeItem('ssh_preset')
+    try {
+      const p = JSON.parse(preset)
+      if (p.host) {
+        // 打开新建框并直接连接
+        form.value = {
+          name: p.name || p.host,
+          host: p.host,
+          port: p.port || 22,
+          username: p.username || 'root',
+          password: ''
+        }
+        // 不弹对话框，直接启动连接（无密码时弹出密码输入）
+        nextTick(() => doConnectOnly())
+      }
+    } catch { /* */ }
+  }
 }
 
 // ============ 配置 CRUD ============

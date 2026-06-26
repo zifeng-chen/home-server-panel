@@ -366,6 +366,7 @@ type Msg struct {
 	Action    string `json:"action"`
 	CommandID string `json:"command_id"`
 	Plugin    string `json:"plugin"`
+	Command   string `json:"command"`
 	Data      map[string]any `json:"data"`
 }
 
@@ -377,6 +378,18 @@ func executeCommand(cmd Msg) map[string]any {
 		return forceMetrics()
 	case "run_plugin":
 		return runPlugin(cmd.Plugin, cmd.Data)
+	case "list_plugins":
+		plugins := ListPlugins()
+		result, _ := json.Marshal(plugins)
+		var pluginsList []interface{}
+		json.Unmarshal(result, &pluginsList)
+		return map[string]any{"plugins": pluginsList}
+	case "run_command":
+		return runRawCommand(cmd.Command)
+	case "get_processes":
+		return runPlugin("ps", nil)
+	case "get_connections":
+		return runPlugin("netstat", nil)
 	default:
 		return map[string]any{"error": "unknown action", "action": cmd.Action}
 	}

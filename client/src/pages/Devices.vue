@@ -194,6 +194,7 @@
 
 &lt;script setup lang="ts"&gt;
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDevicesStore } from '../stores/devices'
 import { useI18n } from 'vue-i18n'
@@ -290,6 +291,13 @@ async function saveTag(row: Device) {
 
 // SSH shortcut
 function openSsh(row: Device) {
+  // Preset SSH params via sessionStorage so Ssh.vue can auto-connect
+  sessionStorage.setItem('ssh_preset', JSON.stringify({
+    host: row.ip || row.id,
+    port: 22,
+    username: 'root',
+    name: row.name || row.hostname || row.id
+  }))
   window.location.hash = '#/ssh'
 }
 

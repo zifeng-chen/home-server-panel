@@ -278,6 +278,27 @@ class DeviceService {
       ]
     );
   }
+  async ensureAlertTable() {
+    try {
+      const pool = this._pool();
+      await pool.execute(`CREATE TABLE IF NOT EXISTS alert_rules (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(64) NOT NULL,
+        metric ENUM('cpu','memory','disk') NOT NULL,
+        operator ENUM('gt','lt') NOT NULL,
+        threshold DECIMAL(5,1) NOT NULL,
+        device_id VARCHAR(64) DEFAULT NULL,
+        enabled TINYINT(1) DEFAULT 1,
+        last_triggered TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_alert_device(device_id),
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      console.log('[V2] alert_rules 表已就绪');
+    } catch (err) {
+      console.warn('[V2] alert_rules 自动建表失败:', err.message?.slice(0, 100));
+    }
+  }
 }
 
 // 单例

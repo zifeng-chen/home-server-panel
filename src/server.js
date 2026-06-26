@@ -55,6 +55,7 @@ if (dbMode === 'mysql') {
       setImmediate(async () => {
         try {
           const deviceService = require('./services/v2/device-service');
+          await deviceService.ensureAlertTable();
           await deviceService.ensureLocalDevice();
           // 启动本地指标采集（每 60s）
           require('./services/v2/metrics-collector').start(60000);
@@ -184,13 +185,14 @@ app.use('/api/setup', require('./routes/setup'));
 
 // V2 设备路由（Agent 注册/心跳/上报无需 JWT，用 deviceId+secret 认证）
 app.use('/api/v2/device', require('./routes/v2/device'));
+app.use('/api/v2/alert', require('./routes/v2/alert'));
 
 // ===== 以下所有路由都需要认证 =====
 
 // 安装检查中间件：未安装则跳转到安装页面
 app.use((req, res, next) => {
   const skipPaths = ['/install.html', '/login.html'];
-  const skipPrefixes = ['/api/setup', '/api/v2/device', '/api/auth', '/css/', '/js/', '/favicon'];
+  const skipPrefixes = ['/api/setup', '/api/v2/device', '/api/v2/alert', '/api/auth', '/css/', '/js/', '/favicon'];
   const path = req.path;
 
   if (skipPaths.includes(path) || skipPrefixes.some(p => path.startsWith(p))) {

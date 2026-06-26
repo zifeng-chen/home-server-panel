@@ -111,12 +111,65 @@
           <span class="trend-tabs">
             <el-button size="small" :type="trendRange === 60 ? 'primary' : ''" @click="loadTrend(60)">{{ $t('devices.trend1h') }}</el-button>
             <el-button size="small" :type="trendRange === 360 ? 'primary' : ''" @click="loadTrend(360)">{{ $t('devices.trend6h') }}</el-button>
+            <el-button size="small" :type="trendRange === 720 ? 'primary' : ''" @click="loadTrend(720)">{{ $t('devices.trend12h') }}</el-button>
             <el-button size="small" :type="trendRange === 1440 ? 'primary' : ''" @click="loadTrend(1440)">{{ $t('devices.trend24h') }}</el-button>
+            <el-button size="small" :type="trendRange === 10080 ? 'primary' : ''" @click="loadTrend(10080)">{{ $t('devices.trend7d') }}</el-button>
           </span>
         </h4>
         <div class="chart-wrap">
           <canvas ref="trendCanvas" width="760" height="240" class="trend-canvas"></canvas>
         </div>
+
+        <!-- 进程列表 (仅本地设备) -->
+        <template v-if="detailDevice.id === 'dev_local'">
+          <h4>{{ $t('devices.processes') }}
+            <el-button link size="small" @click="loadProcesses" :loading="processesLoading" style="margin-left:8px">
+              {{ $t('common.refresh') }}
+            </el-button>
+          </h4>
+          <div v-if="processesData.length" style="max-height: 240px; overflow-y: auto">
+            <el-table :data="processesData" size="small" stripe>
+              <el-table-column prop="pid" label="PID" width="70" />
+              <el-table-column prop="user" :label="$t('devices.procUser')" width="80" />
+              <el-table-column :label="'CPU'" width="70">
+                <template #default="{ row }">{{ row.cpu }}%</template>
+              </el-table-column>
+              <el-table-column :label="'MEM'" width="70">
+                <template #default="{ row }">{{ row.mem }}%</template>
+              </el-table-column>
+              <el-table-column prop="command" :label="$t('devices.procCommand')" min-width="200" show-overflow-tooltip>
+                <template #default="{ row }"><code class="mono">{{ row.command }}</code></template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <div v-else-if="!processesLoading" class="empty">{{ $t('devices.noProcesses') }}</div>
+        </template>
+
+        <!-- 网络连接 (仅本地设备) -->
+        <template v-if="detailDevice.id === 'dev_local'">
+          <h4>{{ $t('devices.connections') }}
+            <el-button link size="small" @click="loadConnections" :loading="connsLoading" style="margin-left:8px">
+              {{ $t('common.refresh') }}
+            </el-button>
+          </h4>
+          <div v-if="connsData.length" style="max-height: 240px; overflow-y: auto">
+            <el-table :data="connsData" size="small" stripe>
+              <el-table-column prop="proto" label="Proto" width="65" />
+              <el-table-column prop="local" :label="$t('devices.connLocal')" min-width="180" show-overflow-tooltip>
+                <template #default="{ row }"><code class="mono">{{ row.local }}</code></template>
+              </el-table-column>
+              <el-table-column prop="remote" :label="$t('devices.connRemote')" min-width="180" show-overflow-tooltip>
+                <template #default="{ row }"><code class="mono">{{ row.remote }}</code></template>
+              </el-table-column>
+              <el-table-column prop="state" :label="$t('devices.connState')" width="110">
+                <template #default="{ row }">
+                  <el-tag size="small" :type="row.state === 'LISTEN' ? 'info' : 'success'">{{ row.state }}</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <div v-else-if="!connsLoading" class="empty">{{ $t('devices.noConnections') }}</div>
+        </template>
 
         <!-- 命令历史 -->
         <h4>{{ $t('devices.commands') }}</h4>
@@ -248,6 +301,12 @@ const alertFormVisible = ref(false)
 const alertForm = ref({ name: '', metric: 'cpu', threshold: 90, device_id: '' })
 const alertSaving = ref(false)
 
+// Process & connection (local device only)
+const processesLoading = ref(false)
+const processesData = ref<any[]>([])
+const connsLoading = ref(false)
+const connsData = ref<any[]>([])
+
 onMounted(() => {
   store.load()
   store.loadAlertRules()
@@ -261,11 +320,14 @@ function refresh() {
 async function showDetail(row: Device) {
   detailVisible.value = true
   detailDevice.value = null
+  processesData.value = []
+  connsData.value = []
   await store.loadDetail(row.id)
   detailDevice.value = store.currentDevice
   await nextTick()
   trendRange.value = 60
   drawTrend([], [], [])
+  if (row.id === 'dev_local') { loadProcesses(); loadConnections() }
 }
 
 async function loadTrend(minutes: number) {
@@ -279,13 +341,18 @@ async function loadTrend(minutes: number) {
   const filtered = metrics.filter(m => new Date(m.collected_at).getTime() > cutoff).reverse()
   if (filtered.length === 0) { drawTrend([], [], []); return }
 
-  const labels = filtered.map(m => {
+  // For 7d: decimate to ~100 points
+  const step = minutes >= 10080 ? Math.max(1, Math.floor(filtered.length / 100)) : 1
+  const sampled = step > 1 ? filtered.filter((_, i) => i % step === 0) : filtered
+
+  const labels = sampled.map(m => {
     const d = new Date(m.collected_at)
+    if (minutes >= 10080) return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
     return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
   })
-  const cpu = filtered.map(m => m.cpu ?? 0)
-  const mem = filtered.map(m => m.memory_pct ?? 0)
-  const disk = filtered.map(m => m.disk_pct ?? 0)
+  const cpu = sampled.map(m => m.cpu ?? 0)
+  const mem = sampled.map(m => m.memory_pct ?? 0)
+  const disk = sampled.map(m => m.disk_pct ?? 0)
   drawTrend(labels, cpu, mem, disk)
 }
 
@@ -435,6 +502,30 @@ async function doDeleteAlert(rule: AlertRule) {
     await store.deleteAlertRule(rule.id)
     ElMessage.success(t('common.success'))
   } catch { /* cancelled */ }
+}
+
+// Process & connection loaders
+import axios from 'axios'
+const API_BASE = '/api/v2'
+
+async function loadProcesses() {
+  if (!detailDevice.value || detailDevice.value.id !== 'dev_local') return
+  processesLoading.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/device/${detailDevice.value.id}/processes`)
+    processesData.value = data?.data || []
+  } catch { processesData.value = [] }
+  finally { processesLoading.value = false }
+}
+
+async function loadConnections() {
+  if (!detailDevice.value || detailDevice.value.id !== 'dev_local') return
+  connsLoading.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/device/${detailDevice.value.id}/connections`)
+    connsData.value = data?.data || []
+  } catch { connsData.value = [] }
+  finally { connsLoading.value = false }
 }
 
 // Watch for detail device change → redraw trend

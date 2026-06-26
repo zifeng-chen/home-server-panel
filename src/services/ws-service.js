@@ -2,6 +2,7 @@
 const { WebSocketServer } = require('ws');
 const auth = require('./auth');
 const sshService = require('./ssh-service');
+const commandService = require('./v2/command-service');
 
 let deviceWss = null;
 
@@ -57,6 +58,10 @@ function init(httpServer) {
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log(`[WS] 设备 WS 已连接: ${deviceId}`);
             deviceConns.set(deviceId, ws);
+            // 初始化命令服务（延迟到首次连接）
+            if (!commandService._initialized) {
+              commandService.init(deviceConns);
+            }
 
             ws.on('close', () => {
               console.log(`[WS] 设备 WS 断开: ${deviceId}`);
@@ -66,6 +71,9 @@ function init(httpServer) {
               try {
                 const msg = JSON.parse(raw.toString());
                 if (msg.type === 'cmd_result') {
+                  // 转发给命令服务（Promise 回调）
+                  commandService.handleReply(msg);
+                  // 同时持久化到数据库
                   const { command_id, result } = msg;
                   deviceService.updateCommandResult(command_id, {
                     status: result && result.error ? 'failed' : 'completed',

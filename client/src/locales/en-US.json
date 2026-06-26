@@ -341,7 +341,18 @@
     "trend": "Trend",
     "trend1h": "1h",
     "trend6h": "6h",
-    "trend24h": "24h"
+    "trend12h": "12h",
+    "trend24h": "24h",
+    "trend7d": "7d",
+    "processes": "Processes",
+    "procUser": "User",
+    "procCommand": "Command",
+    "noProcesses": "No process data",
+    "connections": "Connections",
+    "connLocal": "Local",
+    "connRemote": "Remote",
+    "connState": "State",
+    "noConnections": "No connection data"
   },
   "settings": {
     "title": "System Settings",

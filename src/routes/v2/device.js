@@ -134,4 +134,32 @@ router.get('/:id/metrics/local', async (req, res) => {
   }
 });
 
+// GET /api/v2/device/:id/processes — 本地设备进程列表
+router.get('/:id/processes', async (req, res) => {
+  if (req.params.id !== 'dev_local') {
+    return res.status(400).json({ success: false, message: '仅本地设备支持进程查询' });
+  }
+  try {
+    const provider = new LocalProvider();
+    const processes = await provider.getProcessList(15);
+    res.json({ success: true, data: processes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v2/device/:id/connections — 本地设备网络连接
+router.get('/:id/connections', async (req, res) => {
+  if (req.params.id !== 'dev_local') {
+    return res.status(400).json({ success: false, message: '仅本地设备支持连接查询' });
+  }
+  try {
+    const provider = new LocalProvider();
+    const conns = await provider.getNetworkConnections();
+    res.json({ success: true, data: conns });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

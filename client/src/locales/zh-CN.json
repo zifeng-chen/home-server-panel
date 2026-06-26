@@ -341,7 +341,18 @@
     "trend": "历史趋势",
     "trend1h": "1小时",
     "trend6h": "6小时",
-    "trend24h": "24小时"
+    "trend12h": "12小时",
+    "trend24h": "24小时",
+    "trend7d": "7天",
+    "processes": "进程列表",
+    "procUser": "用户",
+    "procCommand": "命令",
+    "noProcesses": "暂无进程数据",
+    "connections": "网络连接",
+    "connLocal": "本地地址",
+    "connRemote": "远程地址",
+    "connState": "状态",
+    "noConnections": "暂无连接数据"
   },
   "settings": {
     "title": "系统设置",

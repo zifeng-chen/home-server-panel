@@ -69,6 +69,48 @@ var defaultPlugins = map[string]PluginManifest{
 		Command: "who 2>/dev/null || w",
 		Timeout: 5,
 	},
+	"ps": {
+		Name:        "ps",
+		Version:     "1.0",
+		Description: "进程列表 (PID/CPU/MEM/CMD)",
+		Command:     "ps -eo pid,pcpu,pmem,args --sort=-pcpu 2>/dev/null | head -16 || ps | head -16",
+		Timeout:     5,
+	},
+	"netstat": {
+		Name:        "netstat",
+		Version:     "1.0",
+		Description: "网络连接列表",
+		Command:     "netstat -an 2>/dev/null | grep -E 'ESTABLISHED|LISTEN' | head -25 || netstat -an -p tcp 2>/dev/null | head -25",
+		Timeout:     5,
+	},
+	"docker": {
+		Name:        "docker",
+		Version:     "1.0",
+		Description: "Docker 容器列表",
+		Command:     "docker ps --format '{{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}' 2>/dev/null | head -20 || echo ''",
+		Timeout:     8,
+	},
+	"file_ls": {
+		Name:        "file_ls",
+		Version:     "1.0",
+		Description: "文件浏览器: 列出目录",
+		Command:     "ls -lhA {path} 2>/dev/null",
+		Timeout:     5,
+	},
+	"file_stat": {
+		Name:        "file_stat",
+		Version:     "1.0",
+		Description: "文件浏览器: 文件详情",
+		Command:     "stat {path} 2>/dev/null || ls -lh {path}",
+		Timeout:     5,
+	},
+	"file_cat": {
+		Name:        "file_cat",
+		Version:     "1.0",
+		Description: "文件浏览器: 查看文本文件",
+		Command:     "head -100 {path} 2>/dev/null",
+		Timeout:     5,
+	},
 }
 
 // ListPlugins returns all available plugins

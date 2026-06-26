@@ -155,7 +155,7 @@ class DeviceService {
     if (status) { where = 'WHERE status=?'; params.push(status); }
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total FROM devices ${where}`, params);
     const [devices] = await pool.query(
-      `SELECT id, name, hostname, ip, os, arch, version, status, last_seen, created_at
+      `SELECT id, name, hostname, ip, os, arch, version, status, tags, last_seen, created_at
        FROM devices ${where} ORDER BY status='online' DESC, last_seen DESC LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
@@ -168,7 +168,7 @@ class DeviceService {
   async getDetail(deviceId) {
     const pool = this._pool();
     const [devices] = await pool.query(
-      `SELECT id, name, hostname, ip, os, arch, version, status, last_seen, created_at, updated_at
+      `SELECT id, name, hostname, ip, os, arch, version, status, tags, last_seen, created_at, updated_at
        FROM devices WHERE id=?`, [deviceId]
     );
     if (devices.length === 0) throw new Error('设备不存在');
@@ -225,10 +225,47 @@ class DeviceService {
   }
 
   /**
+   * 批量下发命令
+   */
+  async batchCommand(deviceIds, command) {
+    const commandService = require('./command-service');
+    return await commandService.broadcast(deviceIds, command);
+  }
+
+  /**
+   * 更新设备标签
+   */
+  async updateTags(deviceId, tags) {
+    const pool = this._pool();
+    await pool.query('UPDATE devices SET tags=? WHERE id=?', [tags || '', deviceId]);
+    return { ok: true };
+  }
+
+  /**
+   * 获取指标历史（用于趋势图）
+   */
+  async getMetricHistory(deviceId, rangeMin = 60) {
+    const pool = this._pool();
+    const [rows] = await pool.query(
+      `SELECT cpu, memory_pct, disk_pct, net_rx, net_tx, collected_at
+       FROM device_metrics WHERE device_id=? AND collected_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       ORDER BY id ASC`,
+      [deviceId, rangeMin]
+    );
+    return rows;
+  }
+
+  /**
    * 初始化本地设备（iStoreOS 自身作为第一台设备）
    */
   async ensureLocalDevice() {
     const pool = this._pool();
+
+    // 兼容旧表：添加 tags 列
+    try {
+      await pool.query(`ALTER TABLE devices ADD COLUMN tags VARCHAR(256) DEFAULT '' AFTER version`);
+    } catch (_) { /* 列已存在 */ }
+
     const [rows] = await pool.query(`SELECT id FROM devices WHERE id='dev_local'`);
     
     // 获取本机信息

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"time"
@@ -399,4 +400,42 @@ func getSystemInfo() map[string]any {
 
 func forceMetrics() map[string]any {
 	return collectMetrics()
+}
+
+func runRawCommand(cmdStr string) map[string]any {
+	if cmdStr == "" {
+		return map[string]any{"error": "empty command"}
+	}
+	start := time.Now()
+	cmd := exec.Command("sh", "-c", cmdStr)
+	stdout, err := cmd.CombinedOutput()
+	duration := time.Since(start).Milliseconds()
+	result := map[string]any{
+		"stdout":      string(stdout),
+		"duration_ms": duration,
+	}
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			result["exit_code"] = exitErr.ExitCode()
+		} else {
+			result["exit_code"] = -1
+		}
+		result["error"] = err.Error()
+	} else {
+		result["exit_code"] = 0
+	}
+	return result
+}
+
+func listPluginsResult() map[string]any {
+	plugins := ListPlugins()
+	pluginList := make([]map[string]any, 0, len(plugins))
+	for _, p := range plugins {
+		pluginList = append(pluginList, map[string]any{
+			"name":        p.Name,
+			"version":     p.Version,
+			"description": p.Description,
+		})
+	}
+	return map[string]any{"plugins": pluginList}
 }

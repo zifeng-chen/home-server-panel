@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const deviceService = require('../../services/v2/device-service');
+const commandService = require('../../services/v2/command-service');
 const LocalProvider = require('../../services/v2/local-provider');
 
 // GET /api/v2/device/stats — 设备统计
@@ -24,6 +25,18 @@ router.get('/', async (req, res) => {
       pageSize: Math.min(parseInt(pageSize) || 20, 100)
     });
     res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/v2/device/commands/batch — 批量命令（在 :id 之前避免路由冲突）
+router.post('/commands/batch', async (req, res) => {
+  try {
+    const { deviceIds, command } = req.body;
+    if (!deviceIds || !command) return res.status(400).json({ success: false, message: '缺少 deviceIds 或 command' });
+    const results = await deviceService.batchCommand(deviceIds, command);
+    res.json({ success: true, data: results });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -110,6 +123,17 @@ router.put('/command/:id/result', async (req, res) => {
   }
 });
 
+// PUT /api/v2/device/:id/tags — 更新设备标签
+router.put('/:id/tags', async (req, res) => {
+  try {
+    const { tags } = req.body;
+    await deviceService.updateTags(req.params.id, tags || '');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // DELETE /api/v2/device/:id — 删除设备
 router.delete('/:id', async (req, res) => {
   try {
@@ -122,13 +146,56 @@ router.delete('/:id', async (req, res) => {
 
 // GET /api/v2/device/:id/metrics/local — 获取本地设备实时指标
 router.get('/:id/metrics/local', async (req, res) => {
-  if (req.params.id !== 'dev_local') {
-    return res.status(400).json({ success: false, message: '仅本地设备支持实时指标' });
-  }
   try {
     const provider = new LocalProvider();
     const metrics = await provider.getMetrics();
     res.json({ success: true, data: metrics });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v2/device/:id/processes — 进程列表（远程 Agent 或本地）
+router.get('/:id/processes', async (req, res) => {
+  try {
+    let processes = [];
+    if (req.params.id === 'dev_local') {
+      processes = await new LocalProvider().getProcessList();
+    } else {
+      try {
+        const reply = await commandService.send(req.params.id, 'get_processes', 8000);
+        processes = reply?.result?.processes || reply?.result || []
+      } catch { processes = [] }
+    }
+    res.json({ success: true, data: processes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v2/device/:id/connections — 网络连接（远程 Agent 或本地）
+router.get('/:id/connections', async (req, res) => {
+  try {
+    let conns = [];
+    if (req.params.id === 'dev_local') {
+      conns = await new LocalProvider().getConnections();
+    } else {
+      try {
+        const reply = await commandService.send(req.params.id, 'get_connections', 8000);
+        conns = reply?.result?.connections || reply?.result || []
+      } catch { conns = [] }
+    }
+    res.json({ success: true, data: conns });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v2/device/:id/plugins — Agent 插件列表
+router.get('/:id/plugins', async (req, res) => {
+  try {
+    const reply = await commandService.send(req.params.id, 'list_plugins', 8000);
+    res.json({ success: true, data: reply?.result?.plugins || reply?.result || [] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

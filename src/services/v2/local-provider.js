@@ -94,6 +94,52 @@ class LocalProvider {
       return [];
     }
   }
+  /** 获取进程列表 */
+  async getProcessList() {
+    try {
+      const out = execSync(
+        "ps -eo pid,user,pcpu,pmem,args --sort=-pcpu 2>/dev/null | head -21 || ps | head -21",
+        { encoding: 'utf8', timeout: 5000 }
+      ).trim();
+      const lines = out.split('\n');
+      if (lines.length < 2) return [];
+      const result = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].trim().split(/\s+/);
+        if (parts.length < 5) continue;
+        result.push({
+          pid: parseInt(parts[0]) || 0,
+          user: parts[1],
+          cpu: parseFloat(parts[2]) || 0,
+          mem: parseFloat(parts[3]) || 0,
+          command: parts.slice(4).join(' ').substring(0, 200)
+        });
+      }
+      return result;
+    } catch (_) { return []; }
+  }
+
+  /** 获取网络连接 */
+  async getConnections() {
+    try {
+      const out = execSync(
+        "netstat -an 2>/dev/null | grep -E 'ESTABLISHED|LISTEN' | head -30 || netstat -an -p tcp 2>/dev/null | head -30",
+        { encoding: 'utf8', timeout: 5000 }
+      ).trim();
+      const result = [];
+      for (const line of out.split('\n')) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 6) continue;
+        result.push({
+          proto: parts[0],
+          local: parts[3] || '',
+          remote: parts[4] || '',
+          state: parts[5] || 'UNKNOWN'
+        });
+      }
+      return result;
+    } catch (_) { return []; }
+  }
 }
 
 module.exports = LocalProvider;

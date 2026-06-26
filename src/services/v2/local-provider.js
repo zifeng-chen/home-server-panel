@@ -97,21 +97,23 @@ class LocalProvider {
   /** 获取进程列表 */
   async getProcessList() {
     try {
+      // BusyBox ps 不支持 -eo，使用 ps ww + 手动解析
       const out = execSync(
-        "ps -eo pid,user,pcpu,pmem,args --sort=-pcpu 2>/dev/null | head -21 || ps | head -21",
+        "ps ww 2>/dev/null | head -25",
         { encoding: 'utf8', timeout: 5000 }
       ).trim();
       const lines = out.split('\n');
       if (lines.length < 2) return [];
+      // BusyBox ps: PID USER VSZ STAT COMMAND
       const result = [];
       for (let i = 1; i < lines.length; i++) {
         const parts = lines[i].trim().split(/\s+/);
-        if (parts.length < 5) continue;
+        if (parts.length < 4) continue;
         result.push({
           pid: parseInt(parts[0]) || 0,
           user: parts[1],
-          cpu: parseFloat(parts[2]) || 0,
-          mem: parseFloat(parts[3]) || 0,
+          cpu: 0,  // BusyBox ps 无 CPU% 列
+          mem: Math.round((parseInt(parts[2]) || 0) / 1024),  // VSZ KB → MB
           command: parts.slice(4).join(' ').substring(0, 200)
         });
       }

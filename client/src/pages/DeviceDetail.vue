@@ -32,7 +32,6 @@
           <div class="info-text">
             <h2 class="device-name">{{ device.name || device.hostname }}</h2>
             <div class="info-meta">
-              <span><span class="meta-label">{{ $t('devices.hostname') }}</span> {{ device.hostname }}</span>
               <span><span class="meta-label">IP</span> <code>{{ device.ip }}</code></span>
               <span><span class="meta-label">OS</span> {{ device.os }} {{ device.arch }}</span>
               <span><span class="meta-label">{{ $t('devices.version') }}</span> {{ device.version }}</span>

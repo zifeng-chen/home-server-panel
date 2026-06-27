@@ -532,7 +532,7 @@ function openSsh() {
     username: 'root',
     name: device.value.name || device.value.hostname || device.value.id
   }))
-  window.location.hash = '#/ssh'
+  router.push('/ssh')
 }
 
 // ===== 命令 =====
@@ -567,7 +567,8 @@ async function doDelete() {
 // ===== 工具函数 =====
 function fmtTime(t: string) {
   if (!t) return '-'
-  const d = new Date(t)
+  // MySQL 返回 UTC 时间
+  const d = new Date(t.slice(-1) === 'Z' ? t : t + 'Z')
   if (isNaN(d.getTime())) return t
   return d.toLocaleString()
 }

@@ -359,6 +359,9 @@
     "batchPlaceholder": "Enter command to run on all selected devices...",
     "clickToTag": "Click to tag",
     "batchCommand": "Batch Execute",
+    "totalDevices": "Total Devices",
+    "tags": "Tags",
+    "hostDevice": "Host Device",
     "commandHistory": "Command History"
   },
   "settings": {

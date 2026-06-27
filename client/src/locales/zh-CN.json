@@ -359,6 +359,9 @@
     "batchPlaceholder": "输入要在所有选中设备上执行的命令...",
     "clickToTag": "点击添加标签",
     "batchCommand": "批量执行",
+    "totalDevices": "设备总数",
+    "tags": "标签",
+    "hostDevice": "主机设备",
     "commandHistory": "命令历史"
   },
   "settings": {

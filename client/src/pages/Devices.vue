@@ -19,7 +19,7 @@
     <!-- 设备列表 -->
     <el-table :data="store.devices" v-loading="store.loading" stripe class="data-table" @row-click="openDetail" ref="tableRef" @selection-change="onSelectionChange">
       <el-table-column type="selection" width="42" :selectable="isSelectable" />
-      <el-table-column prop="name" :label="$t('common.name')" min-width="140">
+      <el-table-column prop="name" :label="$t('devices.hostDevice')" min-width="140">
         <template #default="{ row }">
           <router-link :to="`/devices/${row.id}`" class="device-link" @click.stop>{{ row.name }}</router-link>
         </template>
@@ -233,7 +233,8 @@ function openDetail(row: Device) {
 
 function fmtTime(t: string) {
   if (!t) return '-'
-  const d = new Date(t)
+  // MySQL 返回 UTC 时间（2026-06-27T07:47:00.000Z → 本地 15:47）
+  const d = new Date(t.slice(-1) === 'Z' ? t : t + 'Z')
   if (isNaN(d.getTime())) return t
   return d.toLocaleString()
 }
@@ -264,7 +265,7 @@ function openSsh(row: Device) {
     username: 'root',
     name: row.name || row.hostname || row.id
   }))
-  window.location.hash = '#/ssh'
+  router.push('/ssh')
 }
 
 // 批量

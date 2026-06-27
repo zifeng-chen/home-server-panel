@@ -247,6 +247,16 @@ class MonitorService {
     } catch (e) { /* 静默 */ }
   }
 
+  // 获取最近一次采集数据（供 V2 指标采集器调用）
+  getLatest() {
+    const latest = {};
+    for (const key of ['cpu', 'memory', 'disk', 'network', 'load']) {
+      const arr = this.history[key];
+      latest[key] = arr.length > 0 ? arr[arr.length - 1] : null;
+    }
+    return latest;
+  }
+
   // 获取当前实时 + 历史数据
   snapshot() {
     return {

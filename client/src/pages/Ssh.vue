@@ -172,16 +172,25 @@ async function load() {
     try {
       const p = JSON.parse(preset)
       if (p.host) {
-        // 打开新建框并直接连接
-        form.value = {
-          name: p.name || p.host,
-          host: p.host,
-          port: p.port || 22,
-          username: p.username || 'root',
-          password: ''
+        // 先查是否有已保存的配置（按 host+port 匹配）
+        const saved = (configs.value || []).find(
+          (c: any) => c.host === p.host && (c.port || 22) === (p.port || 22)
+        )
+        if (saved) {
+          // 已有保存的配置 → 直接连接
+          doConnect(saved)
+        } else {
+          // 无已保存配置 → 弹出新建对话框，预填表单
+          form.value = {
+            name: p.name || p.host,
+            host: p.host,
+            port: p.port || 22,
+            username: p.username || 'root',
+            password: ''
+          }
+          editId.value = null
+          nextTick(() => { dialogVisible.value = true })
         }
-        // 不弹对话框，直接启动连接（无密码时弹出密码输入）
-        nextTick(() => doConnectOnly())
       }
     } catch { /* */ }
   }

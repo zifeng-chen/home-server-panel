@@ -57,9 +57,28 @@ router.post('/commands/batch', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const detail = await deviceService.getDetail(req.params.id);
+    fixDeviceTz(detail);
+    (detail.metrics || []).forEach(m => { m.collected_at = toCst(m.collected_at); });
+    (detail.commands || []).forEach(c => { c.created_at = toCst(c.created_at); });
     res.json({ success: true, data: detail });
   } catch (err) {
     res.status(err.message === '设备不存在' ? 404 : 500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v2/device/:id/metrics — 设备历史指标（趋势图数据）
+router.get('/:id/metrics', async (req, res) => {
+  try {
+    const pool = deviceService._pool();
+    const [rows] = await pool.query(
+      `SELECT cpu, memory_pct, disk_pct, net_rx, net_tx, uptime, collected_at
+       FROM device_metrics WHERE device_id=? ORDER BY id DESC LIMIT 180`,
+      [req.params.id]
+    );
+    rows.forEach(m => { m.collected_at = toCst(m.collected_at); });
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

@@ -362,7 +362,12 @@
     "totalDevices": "Total Devices",
     "tags": "Tags",
     "hostDevice": "Host Device",
-    "commandHistory": "Command History"
+    "commandHistory": "Command History",
+    "cpuCores": "Cores",
+    "download": "Download",
+    "upload": "Upload",
+    "noResponse": "No response",
+    "sendCmdSuccess": "Command sent"
   },
   "settings": {
     "title": "System Settings",

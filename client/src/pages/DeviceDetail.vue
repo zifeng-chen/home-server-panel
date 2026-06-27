@@ -74,50 +74,80 @@
         </div>
       </div>
 
-      <!-- ===== 实时指标仪表盘 ===== -->
+      <!-- ===== 实时指标仪表盘（SVG 环形） ===== -->
       <div class="gauges-row">
-        <!-- CPU 仪表 -->
+        <!-- CPU -->
         <div class="gauge-card card">
           <h4 class="gauge-label">CPU</h4>
-          <div class="gauge-body">
-            <canvas ref="cpuGauge" width="160" height="160"></canvas>
-            <div class="gauge-value">{{ fmtNum(metrics?.cpu) }}<span class="gauge-unit">%</span></div>
+          <div class="ring-chart">
+            <svg viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="#f0f1f5" stroke-width="12" />
+              <circle cx="70" cy="70" r="58" fill="none" :stroke="cpuColor" stroke-width="12"
+                stroke-linecap="round" :stroke-dasharray="cpuDash" stroke-dashoffset="0"
+                transform="rotate(-90 70 70)" class="ring-arc" />
+              <text x="70" y="64" text-anchor="middle" class="ring-pct">{{ fmtNum(liveMetrics.cpu) }}<tspan class="ring-unit">%</tspan></text>
+              <text x="70" y="84" text-anchor="middle" class="ring-sub">CPU</text>
+            </svg>
+          </div>
+          <div class="gauge-detail">
+            <span>{{ os.cpus || 1 }} {{ $t('devices.cpuCores') }}</span>
+            <span class="gauge-sub">Load {{ fmtNum(liveMetrics.load0) }}</span>
           </div>
         </div>
-        <!-- 内存仪表 -->
+
+        <!-- 内存 -->
         <div class="gauge-card card">
           <h4 class="gauge-label">{{ $t('devices.memory') }}</h4>
-          <div class="gauge-body">
-            <canvas ref="memGauge" width="160" height="160"></canvas>
-            <div class="gauge-value">{{ fmtNum(metrics?.memory_pct) }}<span class="gauge-unit">%</span></div>
+          <div class="ring-chart">
+            <svg viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="#f0f1f5" stroke-width="12" />
+              <circle cx="70" cy="70" r="58" fill="none" :stroke="memColor" stroke-width="12"
+                stroke-linecap="round" :stroke-dasharray="memDash" stroke-dashoffset="0"
+                transform="rotate(-90 70 70)" class="ring-arc" />
+              <text x="70" y="64" text-anchor="middle" class="ring-pct">{{ fmtNum(liveMetrics.memory_pct) }}<tspan class="ring-unit">%</tspan></text>
+              <text x="70" y="84" text-anchor="middle" class="ring-sub">{{ fmtMem(liveMetrics.memory_used) }} / {{ fmtMem(liveMetrics.memory_total) }}</text>
+            </svg>
           </div>
         </div>
-        <!-- 磁盘仪表 -->
+
+        <!-- 磁盘 -->
         <div class="gauge-card card">
           <h4 class="gauge-label">{{ $t('devices.disk') }}</h4>
-          <div class="gauge-body">
-            <canvas ref="diskGauge" width="160" height="160"></canvas>
-            <div class="gauge-value">{{ fmtNum(metrics?.disk_pct) }}<span class="gauge-unit">%</span></div>
+          <div class="ring-chart">
+            <svg viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="#f0f1f5" stroke-width="12" />
+              <circle cx="70" cy="70" r="58" fill="none" :stroke="diskColor" stroke-width="12"
+                stroke-linecap="round" :stroke-dasharray="diskDash" stroke-dashoffset="0"
+                transform="rotate(-90 70 70)" class="ring-arc" />
+              <text x="70" y="64" text-anchor="middle" class="ring-pct">{{ fmtNum(liveMetrics.disk_pct) }}<tspan class="ring-unit">%</tspan></text>
+              <text x="70" y="84" text-anchor="middle" class="ring-sub">{{ fmtMem(liveMetrics.disk_used) }} / {{ fmtMem(liveMetrics.disk_total) }}</text>
+            </svg>
           </div>
         </div>
-        <!-- 网络流量 -->
+
+        <!-- 网络 + 运行时间 -->
         <div class="gauge-card card net-card">
           <h4 class="gauge-label">{{ $t('devices.network') }}</h4>
           <div class="net-stats">
             <div class="net-item down">
               <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 9l-7 7-7-7" fill="none" stroke="#4F7CFF" stroke-width="2" stroke-linecap="round"/></svg>
-              <span class="net-val">{{ fmtBytes(metrics?.net_rx) }}/s</span>
-              <span class="net-dir">↓</span>
+              <div class="net-info">
+                <span class="net-val">{{ fmtBytes(liveMetrics.net_rx) }}/s</span>
+                <span class="net-dir-label">↓ {{ $t('devices.download') }}</span>
+              </div>
             </div>
+            <div class="net-divider"></div>
             <div class="net-item up">
               <svg viewBox="0 0 24 24" width="20" height="20"><path d="M5 15l7-7 7 7" fill="none" stroke="#15C39A" stroke-width="2" stroke-linecap="round"/></svg>
-              <span class="net-val">{{ fmtBytes(metrics?.net_tx) }}/s</span>
-              <span class="net-dir">↑</span>
+              <div class="net-info">
+                <span class="net-val">{{ fmtBytes(liveMetrics.net_tx) }}/s</span>
+                <span class="net-dir-label">↑ {{ $t('devices.upload') }}</span>
+              </div>
             </div>
           </div>
           <div class="net-uptime">
-            <span class="uptime-label">{{ $t('devices.uptime') }}</span>
-            <span class="uptime-val">{{ fmtUptime(metrics?.uptime) }}</span>
+            <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="uptime-val">{{ fmtUptime(liveMetrics.uptime) }}</span>
           </div>
         </div>
       </div>
@@ -134,17 +164,18 @@
           <el-button-group size="small">
             <el-button :type="range===30?'primary':''" @click="switchRange(30)" size="small">30m</el-button>
             <el-button :type="range===60?'primary':''" @click="switchRange(60)" size="small">1h</el-button>
-            <el-button :type="range===360?'primary':''" @click="switchRange(360)" size="small">6h</el-button>
+            <el-button :type="range===180?'primary':''" @click="switchRange(180)" size="small">3h</el-button>
             <el-button :type="range===720?'primary':''" @click="switchRange(720)" size="small">12h</el-button>
-            <el-button :type="range===10080?'primary':''" @click="switchRange(10080)" size="small">7d</el-button>
+            <el-button :type="range===1440?'primary':''" @click="switchRange(1440)" size="small">24h</el-button>
           </el-button-group>
         </div>
-        <canvas ref="trendCanvas" class="trend-canvas"></canvas>
+        <div class="trend-body">
+          <canvas ref="trendCanvas" class="trend-canvas"></canvas>
+        </div>
       </div>
 
-      <!-- ===== 进程 & 连接 & 命令（三列） ===== -->
+      <!-- ===== 进程 & 连接 & 命令 ===== -->
       <div class="detail-grid">
-        <!-- 进程列表 -->
         <div class="card panel">
           <div class="panel-header">
             <span>{{ $t('devices.processes') }}</span>
@@ -159,15 +190,14 @@
                 <span class="proc-meta">PID {{ p.pid }} · {{ p.user }}</span>
               </div>
               <div class="proc-bars">
-                <span class="proc-cpu" :style="{ width: Math.min(p.cpu || 0, 100) + '%' }"></span>
-                <span class="proc-mem" :style="{ width: Math.min((p.mem || 0) / (maxProcMem || 1) * 100, 100) + '%' }"></span>
+                <span class="proc-bar cpu-bar" :style="{ width: Math.min((p.cpu || 0), 100) + '%' }"></span>
+                <span class="proc-bar mem-bar" :style="{ width: Math.min(((p.mem || 0) / (maxProcMem || 1)) * 100, 100) + '%' }"></span>
               </div>
             </div>
           </div>
           <div v-else class="panel-empty">{{ procsLoading ? '...' : $t('devices.noProcesses') }}</div>
         </div>
 
-        <!-- 网络连接 -->
         <div class="card panel">
           <div class="panel-header">
             <span>{{ $t('devices.connections') }}</span>
@@ -187,7 +217,6 @@
           <div v-else class="panel-empty">{{ connsLoading ? '...' : $t('devices.noConnections') }}</div>
         </div>
 
-        <!-- 命令历史 -->
         <div class="card panel">
           <div class="panel-header">
             <span>{{ $t('devices.commandHistory') }}</span>
@@ -210,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -225,18 +254,49 @@ const store = useDevicesStore()
 const deviceId = computed(() => route.params.id as string)
 const device = computed(() => store.currentDevice)
 const loading = ref(false)
-const metrics = computed(() => device.value?.metrics?.[0] || null)
+
+// 实时指标（独立请求，每 5 秒刷新）
+const liveMetrics = ref({
+  cpu: 0, memory_pct: 0, memory_used: 0, memory_total: 0,
+  disk_pct: 0, disk_used: 0, disk_total: 0,
+  net_rx: 0, net_tx: 0, uptime: 0, load0: 0
+})
+const os = ref({ cpus: 1, hostname: '', platform: '', arch: '' })
+
+// 环形仪表盘 stroke-dasharray
+const RING_CIRCUMFERENCE = 2 * Math.PI * 58 // ~364.42
+const cpuDash = computed(() => {
+  const pct = Math.min(100, Math.max(0, liveMetrics.value.cpu)) / 100
+  return `${(RING_CIRCUMFERENCE * pct).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}`
+})
+const memDash = computed(() => {
+  const pct = Math.min(100, Math.max(0, liveMetrics.value.memory_pct)) / 100
+  return `${(RING_CIRCUMFERENCE * pct).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}`
+})
+const diskDash = computed(() => {
+  const pct = Math.min(100, Math.max(0, liveMetrics.value.disk_pct)) / 100
+  return `${(RING_CIRCUMFERENCE * pct).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}`
+})
+
+// 环形颜色
+const cpuColor = computed(() => {
+  const v = liveMetrics.value.cpu
+  if (v > 80) return '#F56C6C'; if (v > 60) return '#E6A23C'; return '#4F7CFF'
+})
+const memColor = computed(() => {
+  const v = liveMetrics.value.memory_pct
+  if (v > 80) return '#F56C6C'; if (v > 60) return '#E6A23C'; return '#15C39A'
+})
+const diskColor = computed(() => {
+  const v = liveMetrics.value.disk_pct
+  if (v > 80) return '#F56C6C'; if (v > 60) return '#E6A23C'; return '#8B5CF6'
+})
 
 // 命令面板
 const showCommandPanel = ref(false)
 const cmdText = ref('')
 const cmdSending = ref(false)
 const cmdResult = ref<string | null>(null)
-
-// 仪表盘
-const cpuGauge = ref<HTMLCanvasElement>()
-const memGauge = ref<HTMLCanvasElement>()
-const diskGauge = ref<HTMLCanvasElement>()
 
 // 趋势图
 const trendCanvas = ref<HTMLCanvasElement>()
@@ -246,14 +306,56 @@ const range = ref(60)
 // 进程
 const procsList = ref<any[]>([])
 const procsLoading = ref(false)
-const maxProcMem = computed(() => Math.max(1, ...procsList.value.map(p => p.mem || 0)))
+const maxProcMem = computed(() => Math.max(1, ...procsList.value.map((p: any) => p.mem || 0)))
 
 // 连接
 const connsList = ref<any[]>([])
 const connsLoading = ref(false)
 
+let liveTimer: any = null
+let trendTimer: any = null
 let animFrame = 0
-let refreshTimer: any = null
+
+// ===== 实时指标轮询 =====
+async function fetchLiveMetrics() {
+  if (!device.value) return
+  try {
+    // dev_local 用本地端点，远程 Agent 暂用 DB 数据
+    const url = device.value.id === 'dev_local'
+      ? `/v2/device/${device.value.id}/metrics/local`
+      : `/v2/device/${device.value.id}`
+    const { data } = await api.get(url) as any
+    if (device.value.id === 'dev_local') {
+      const m = data
+      liveMetrics.value = {
+        cpu: m.cpu || 0,
+        memory_pct: m.memory?.pct || 0,
+        memory_used: m.memory?.used || 0,
+        memory_total: m.memory?.total || 0,
+        disk_pct: m.disk?.pct || 0,
+        disk_used: m.disk?.used || 0,
+        disk_total: m.disk?.total || 0,
+        net_rx: m.net?.rx || 0,
+        net_tx: m.net?.tx || 0,
+        uptime: m.uptime || 0,
+        load0: m.load?.[0] || 0
+      }
+    } else {
+      const m = data.metrics?.[0] || {}
+      liveMetrics.value = {
+        cpu: parseFloat(m.cpu) || 0,
+        memory_pct: parseFloat(m.memory_pct) || 0,
+        memory_used: 0, memory_total: 0,
+        disk_pct: parseFloat(m.disk_pct) || 0,
+        disk_used: 0, disk_total: 0,
+        net_rx: parseFloat(m.net_rx) || 0,
+        net_tx: parseFloat(m.net_tx) || 0,
+        uptime: parseInt(m.uptime) || 0,
+        load0: 0
+      }
+    }
+  } catch { /* */ }
+}
 
 // ===== 加载 =====
 onMounted(async () => {
@@ -265,105 +367,34 @@ onMounted(async () => {
       router.replace('/devices')
       return
     }
-    await Promise.all([loadTrend(), fetchProcesses(), fetchConnections()])
-    drawGauges()
-    startAutoRefresh()
+    // 获取系统信息
+    if (device.value.id === 'dev_local') {
+      try {
+        const { data } = await api.get(`/v2/device/${device.value.id}/metrics/local`) as any
+        os.value = { cpus: data.cpus || os.cpus().length, hostname: data.hostname, platform: data.platform, arch: data.arch }
+      } catch { /* */ }
+    }
+    await Promise.all([fetchLiveMetrics(), loadTrend(), fetchProcesses(), fetchConnections()])
+    // 定期拉取实时指标
+    if (device.value.status === 'online') {
+      liveTimer = setInterval(fetchLiveMetrics, 5000)
+    }
   } finally {
     loading.value = false
   }
 })
 
 onUnmounted(() => {
+  clearInterval(liveTimer)
+  clearInterval(trendTimer)
   cancelAnimationFrame(animFrame)
-  clearInterval(refreshTimer)
 })
-
-// ===== 自动刷新 =====
-function startAutoRefresh() {
-  refreshTimer = setInterval(async () => {
-    await store.loadDetail(deviceId.value)
-    drawGauges()
-  }, 10000) // 10秒刷新仪表盘
-}
-
-// ===== 仪表盘绘制 =====
-function drawGauges() {
-  const m = metrics.value
-  if (!m) return
-  drawGauge(cpuGauge.value, m.cpu || 0, '#4F7CFF', 'CPU')
-  drawGauge(memGauge.value, m.memory_pct || 0, '#15C39A', 'MEM')
-  drawGauge(diskGauge.value, m.disk_pct || 0, '#F59E0B', 'DISK')
-}
-
-function drawGauge(canvas: HTMLCanvasElement | undefined, value: number, color: string, _label: string) {
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const w = canvas.width, h = canvas.height
-  const cx = w / 2, cy = h * 0.62
-  const outerR = w * 0.38
-  const innerR = outerR * 0.75
-  const startAngle = Math.PI * 0.75
-  const endAngle = Math.PI * 2.25
-  const totalAngle = endAngle - startAngle
-
-  ctx.clearRect(0, 0, w, h)
-
-  // 背景弧
-  ctx.beginPath()
-  ctx.arc(cx, cy, outerR, startAngle, endAngle)
-  ctx.arc(cx, cy, innerR, endAngle, startAngle, true)
-  ctx.closePath()
-  ctx.fillStyle = window.getComputedStyle(canvas).getPropertyValue('--bg-base').trim() || '#f0f1f5'
-  ctx.fill()
-  ctx.strokeStyle = '#e8e8e8'
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  // 数值弧
-  const pct = Math.min(100, Math.max(0, value)) / 100
-  const valAngle = startAngle + totalAngle * pct
-  ctx.beginPath()
-  ctx.arc(cx, cy, outerR, startAngle, valAngle)
-  ctx.arc(cx, cy, innerR, valAngle, startAngle, true)
-  ctx.closePath()
-  ctx.fillStyle = color + '22'
-  ctx.fill()
-  ctx.strokeStyle = color
-  ctx.lineWidth = 2.5
-  ctx.stroke()
-
-  // 刻度标记
-  for (let i = 0; i <= 5; i++) {
-    const a = startAngle + totalAngle * i / 5
-    const x1 = cx + Math.cos(a) * (outerR - 6)
-    const y1 = cy + Math.sin(a) * (outerR - 6)
-    const x2 = cx + Math.cos(a) * outerR
-    const y2 = cy + Math.sin(a) * outerR
-    ctx.beginPath()
-    ctx.moveTo(x1, y1)
-    ctx.lineTo(x2, y2)
-    ctx.strokeStyle = '#ccc'
-    ctx.lineWidth = 1
-    ctx.stroke()
-    // 刻度文字
-    const tx = cx + Math.cos(a) * (outerR + 14)
-    const ty = cy + Math.sin(a) * (outerR + 14)
-    ctx.fillStyle = '#999'
-    ctx.font = '10px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(String(i * 20), tx, ty)
-  }
-}
 
 // ===== 趋势图 =====
 async function loadTrend() {
   if (!device.value) return
   try {
-    const { data } = await api.get(`/v2/device/${device.value.id}/metrics`, {
-      params: { range: range.value }
-    }) as any
+    const { data } = await api.get(`/v2/device/${device.value.id}/metrics`) as any
     trendData.value = data?.data || data || []
     await nextTick()
     drawTrend()
@@ -385,8 +416,9 @@ function drawTrend() {
     const rect = canvas.parentElement?.getBoundingClientRect()
     if (!rect) return
     const dpr = window.devicePixelRatio || 1
-    const w = rect.width - 48 // padding
-    const h = 260
+    const w = rect.width - 4
+    const h = 280
+
     canvas.width = w * dpr
     canvas.height = h * dpr
     canvas.style.width = w + 'px'
@@ -397,7 +429,7 @@ function drawTrend() {
     ctx.scale(dpr, dpr)
 
     const rows = trendData.value
-    const pad = { top: 20, right: 20, bottom: 32, left: 48 }
+    const pad = { top: 16, right: 16, bottom: 28, left: 42 }
     const pw = w - pad.left - pad.right
     const ph = h - pad.top - pad.bottom
 
@@ -405,99 +437,110 @@ function drawTrend() {
 
     if (!rows || rows.length < 2) {
       ctx.fillStyle = '#999'
-      ctx.font = '13px sans-serif'
+      ctx.font = '13px -apple-system, sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(t('devices.noTrendData'), w / 2, h / 2)
       return
     }
 
-    // 网格线
+    // 水平网格线
     const gridLines = 5
-    ctx.strokeStyle = '#eaeaea'
-    ctx.lineWidth = 0.5
     for (let i = 0; i <= gridLines; i++) {
       const y = pad.top + (ph / gridLines) * i
       ctx.beginPath()
       ctx.moveTo(pad.left, y)
       ctx.lineTo(w - pad.right, y)
+      ctx.strokeStyle = i === 0 ? '#e0e0e0' : '#f5f5f5'
+      ctx.lineWidth = 0.5
+      ctx.setLineDash(i === 0 ? [] : [3, 3])
       ctx.stroke()
-      // Y轴标签
+      ctx.setLineDash([])
+
       const label = Math.round(100 - (100 / gridLines) * i)
       ctx.fillStyle = '#999'
-      ctx.font = '11px sans-serif'
+      ctx.font = '10px -apple-system, sans-serif'
       ctx.textAlign = 'right'
       ctx.textBaseline = 'middle'
       ctx.fillText(label + '%', pad.left - 8, y)
     }
 
-    // X轴时间标签
-    const step = Math.max(1, Math.floor(rows.length / 6))
+    // X轴标签
+    const n = rows.length
+    const labelCount = Math.min(6, n)
+    const step = Math.max(1, Math.floor((n - 1) / (labelCount - 1)))
     ctx.fillStyle = '#999'
-    ctx.font = '10px sans-serif'
+    ctx.font = '10px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    for (let i = 0; i < rows.length; i += step) {
-      const x = pad.left + (pw / (rows.length - 1)) * i
-      const t = rows[i].collected_at
-      const timeStr = t ? new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''
-      ctx.fillText(timeStr, x, h - pad.bottom + 16)
+    for (let j = 0; j < labelCount; j++) {
+      const idx = j * step
+      if (idx >= n) continue
+      const x = pad.left + (pw / (n - 1)) * idx
+      const t = rows[idx].collected_at
+      const d = new Date(t)
+      const timeStr = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      ctx.fillText(timeStr, x, h - 4)
     }
 
     // 曲线
-    drawTrendLine(ctx, rows, pad, pw, ph, '#4F7CFF', 'cpu')
-    drawTrendLine(ctx, rows, pad, pw, ph, '#15C39A', 'memory_pct')
-    drawTrendLine(ctx, rows, pad, pw, ph, '#F59E0B', 'disk_pct')
+    const series = [
+      { key: 'cpu', color: '#4F7CFF', label: 'CPU' },
+      { key: 'memory_pct', color: '#15C39A', label: 'MEM' },
+      { key: 'disk_pct', color: '#8B5CF6', label: 'DISK' }
+    ]
+    series.forEach(s => drawTrendLine(ctx, rows, pad, pw, ph, s.color, s.key))
   })
 }
 
 function drawTrendLine(ctx: CanvasRenderingContext2D, rows: any[], pad: any, pw: number, ph: number, color: string, key: string) {
   const n = rows.length
+  if (n < 2) return
   const xStep = pw / (n - 1)
 
-  // 填充渐变
+  // 填充
   ctx.beginPath()
-  let firstX = 0, firstY = 0
-  for (let i = 0; i < n; i++) {
+  const firstX = pad.left
+  const firstVal = Math.min(100, Math.max(0, parseFloat(rows[0][key]) || 0))
+  const firstY = pad.top + ph - (firstVal / 100) * ph
+  ctx.moveTo(firstX, firstY)
+
+  for (let i = 1; i < n; i++) {
     const x = pad.left + i * xStep
     const val = Math.min(100, Math.max(0, parseFloat(rows[i][key]) || 0))
     const y = pad.top + ph - (val / 100) * ph
-    if (i === 0) { ctx.moveTo(x, y); firstX = x; firstY = y }
-    else {
-      // 平滑曲线（二次贝塞尔）
-      const prevX = pad.left + (i - 1) * xStep
-      const prevVal = Math.min(100, Math.max(0, parseFloat(rows[i - 1][key]) || 0))
-      const prevY = pad.top + ph - (prevVal / 100) * ph
-      const cpX = (prevX + x) / 2
-      ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y)
-    }
-    if (i === n - 1) {
-      ctx.lineTo(x, pad.top + ph)
-      ctx.lineTo(firstX, pad.top + ph)
-      ctx.closePath()
-      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph)
-      grad.addColorStop(0, color + '30')
-      grad.addColorStop(1, color + '02')
-      ctx.fillStyle = grad
-      ctx.fill()
-    }
+    const prevX = pad.left + (i - 1) * xStep
+    const prevVal = Math.min(100, Math.max(0, parseFloat(rows[i - 1][key]) || 0))
+    const prevY = pad.top + ph - (prevVal / 100) * ph
+    const cpX = (prevX + x) / 2
+    ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y)
   }
+
+  // 底部闭合
+  ctx.lineTo(pad.left + (n - 1) * xStep, pad.top + ph)
+  ctx.lineTo(pad.left, pad.top + ph)
+  ctx.closePath()
+
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ph)
+  grad.addColorStop(0, color + '25')
+  grad.addColorStop(1, color + '00')
+  ctx.fillStyle = grad
+  ctx.fill()
 
   // 描边
   ctx.beginPath()
-  for (let i = 0; i < n; i++) {
+  ctx.moveTo(pad.left, firstY)
+  for (let i = 1; i < n; i++) {
     const x = pad.left + i * xStep
     const val = Math.min(100, Math.max(0, parseFloat(rows[i][key]) || 0))
     const y = pad.top + ph - (val / 100) * ph
-    if (i === 0) ctx.moveTo(x, y)
-    else {
-      const prevX = pad.left + (i - 1) * xStep
-      const prevVal = Math.min(100, Math.max(0, parseFloat(rows[i - 1][key]) || 0))
-      const prevY = pad.top + ph - (prevVal / 100) * ph
-      const cpX = (prevX + x) / 2
-      ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y)
-    }
+    const prevX = pad.left + (i - 1) * xStep
+    const prevVal = Math.min(100, Math.max(0, parseFloat(rows[i - 1][key]) || 0))
+    const prevY = pad.top + ph - (prevVal / 100) * ph
+    const cpX = (prevX + x) / 2
+    ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y)
   }
   ctx.strokeStyle = color
   ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
   ctx.stroke()
 }
 
@@ -507,7 +550,7 @@ async function fetchProcesses() {
   procsLoading.value = true
   try {
     const { data } = await api.get(`/v2/device/${device.value.id}/processes`) as any
-    procsList.value = (data?.data || []).slice(0, 30)
+    procsList.value = data || []
   } catch { procsList.value = [] }
   finally { procsLoading.value = false }
 }
@@ -518,330 +561,274 @@ async function fetchConnections() {
   connsLoading.value = true
   try {
     const { data } = await api.get(`/v2/device/${device.value.id}/connections`) as any
-    connsList.value = (data?.data || []).slice(0, 40)
+    connsList.value = data || []
   } catch { connsList.value = [] }
   finally { connsLoading.value = false }
+}
+
+// ===== 命令 =====
+async function doSendCmd() {
+  if (!cmdText.value.trim() || !device.value) return
+  cmdSending.value = true
+  cmdResult.value = null
+  try {
+    const res = await store.sendCommand(device.value.id, cmdText.value.trim())
+    cmdResult.value = res?.result || t('devices.noResponse')
+  } catch (e: any) {
+    cmdResult.value = `Error: ${e.message}`
+  } finally {
+    cmdSending.value = false
+  }
+}
+
+// ===== 删除 =====
+async function doDelete() {
+  try {
+    await ElMessageBox.confirm(t('devices.delConfirm'), t('common.delete'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
+      type: 'warning'
+    })
+    await store.deleteDevice(deviceId.value)
+    ElMessage.success(t('common.success'))
+    router.replace('/devices')
+  } catch { /* cancelled */ }
 }
 
 // ===== SSH =====
 function openSsh() {
   if (!device.value) return
   sessionStorage.setItem('ssh_preset', JSON.stringify({
-    host: device.value.ip || device.value.id,
+    host: device.value.ip,
     port: 22,
     username: 'root',
-    name: device.value.name || device.value.hostname || device.value.id
+    name: device.value.name || device.value.hostname
   }))
   router.push('/ssh')
-}
-
-// ===== 命令 =====
-async function doSendCmd() {
-  if (!cmdText.value.trim()) return ElMessage.warning(t('devices.commandPlaceholder'))
-  cmdSending.value = true
-  try {
-    const res = await store.sendCommand(device.value!.id, cmdText.value)
-    cmdResult.value = typeof res === 'string' ? res : JSON.stringify(res, null, 2)
-    // 刷新命令历史
-    await store.loadDetail(deviceId.value)
-  } catch (e: any) {
-    cmdResult.value = e?.message || String(e)
-  } finally { cmdSending.value = false }
-}
-
-// ===== 删除 =====
-async function doDelete() {
-  if (!device.value) return
-  try {
-    await ElMessageBox.confirm(
-      t('devices.delConfirm', { name: device.value.name }),
-      t('devices.delete'),
-      { confirmButtonText: t('common.confirm'), cancelButtonText: t('common.cancel'), type: 'warning' }
-    )
-    await store.deleteDevice(device.value.id)
-    ElMessage.success(t('common.success'))
-    router.replace('/devices')
-  } catch { /* cancelled */ }
 }
 
 // ===== 工具函数 =====
 function fmtTime(t: string) {
   if (!t) return '-'
-  // MySQL 返回 UTC 时间
-  const d = new Date(t.slice(-1) === 'Z' ? t : t + 'Z')
+  const d = new Date(t)
   if (isNaN(d.getTime())) return t
   return d.toLocaleString()
 }
-function fmtNum(v: number) {
-  const n = parseFloat(String(v))
-  return isNaN(n) ? '0.0' : n.toFixed(1)
+function fmtNum(v: number | undefined) {
+  const n = parseFloat(String(v ?? 0))
+  return isNaN(n) ? '0' : Math.round(n * 10) / 10
 }
-function fmtBytes(b: number) {
-  const n = parseFloat(String(b))
+function fmtBytes(b: number | undefined) {
+  const n = parseFloat(String(b ?? 0))
   if (isNaN(n) || n === 0) return '0 B'
   if (n < 1024) return n.toFixed(0) + ' B'
   if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
   return (n / 1024 / 1024).toFixed(1) + ' MB'
 }
-function fmtUptime(s: number) {
-  const sec = parseInt(String(s)) || 0
-  if (sec < 60) return sec + 's'
-  if (sec < 3600) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's'
-  if (sec < 86400) return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm'
-  const d = Math.floor(sec / 86400)
-  const h = Math.floor((sec % 86400) / 3600)
-  return d + 'd ' + h + 'h'
+function fmtMem(mb: number | undefined) {
+  const n = parseFloat(String(mb ?? 0))
+  if (isNaN(n) || n === 0) return '0 MB'
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' GB'
+  return Math.round(n) + ' MB'
+}
+function fmtUptime(sec: number | undefined) {
+  const s = parseInt(String(sec ?? 0)) || 0
+  if (s < 60) return s + 's'
+  if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's'
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  return `${h}h ${m}m`
 }
 </script>
 
 <style scoped>
 .device-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 0 80px;
 }
 
-/* 面包屑 */
+/* === 面包屑 === */
 .breadcrumb {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 0 16px;
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: #999;
 }
-.bc-link {
-  color: var(--text-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-.bc-link:hover { color: var(--accent); }
-.bc-sep { margin: 0 2px; }
-.bc-current { color: var(--text-secondary); }
+.bc-link { color: #4F7CFF; text-decoration: none; }
+.bc-link:hover { text-decoration: underline; }
+.bc-current { color: #333; font-weight: 500; }
 
-/* 骨架屏 */
-.skeleton { display: flex; flex-direction: column; gap: 20px; }
-.sk-row { }
-.sk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.sk-block {
-  height: 160px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  animation: shimmer 1.5s infinite;
-  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-base) 50%, var(--bg-elevated) 75%);
-  background-size: 200% 100%;
-}
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-/* 卡片 */
-.card {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  box-shadow: var(--shadow-sm);
-}
-
-/* 设备信息卡 */
+/* === 信息卡片 === */
 .info-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: 24px 28px;
-  box-shadow: var(--shadow-sm);
-  gap: 20px;
-}
-.info-left { display: flex; gap: 20px; align-items: center; flex: 1; min-width: 0; }
-.device-icon { flex-shrink: 0; }
-.device-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
-.info-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-.meta-label { color: var(--text-tertiary); margin-right: 4px; }
-.info-meta code { font-family: var(--font-mono); font-size: 12px; color: var(--accent); background: var(--bg-base); padding: 1px 5px; border-radius: 3px; }
-.info-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
-
-/* 命令面板 */
-.command-panel { }
-.panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
-.cmd-form { display: flex; flex-direction: column; gap: 10px; }
-.cmd-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
-.cmd-hint { font-size: 11px; color: var(--text-tertiary); }
-.cmd-result { margin-top: 12px; }
-.cmd-result pre {
-  background: var(--bg-base);
-  color: var(--text-secondary);
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 12px;
-  font-family: var(--font-mono);
-  overflow-x: auto;
-  max-height: 260px;
-  line-height: 1.5;
-  margin: 0;
-}
+.info-left { display: flex; align-items: center; gap: 16px; }
+.device-icon { flex-shrink: 0; }
+.device-name { font-size: 20px; font-weight: 600; margin: 0 0 6px; color: #1a1a1a; }
+.info-meta { display: flex; gap: 20px; font-size: 13px; color: #666; flex-wrap: wrap; }
+.info-meta code { background: #f5f6f8; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.meta-label { color: #999; margin-right: 4px; }
+.info-actions { display: flex; gap: 8px; }
 
-/* 仪表盘 */
+/* === 仪表盘行 === */
 .gauges-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  margin-bottom: 20px;
 }
+
 .gauge-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
   padding: 20px 16px 16px;
+  text-align: center;
+  transition: box-shadow 0.2s;
 }
-.gauge-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-.gauge-body { position: relative; display: flex; align-items: center; justify-content: center; }
-.gauge-body canvas { display: block; }
-.gauge-value {
-  position: absolute;
-  bottom: 20px;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-primary);
+.gauge-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.gauge-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* SVG 环形图 */
+.ring-chart { width: 140px; height: 140px; margin: 0 auto 8px; }
+.ring-chart svg { width: 100%; height: 100%; }
+.ring-arc { transition: stroke-dasharray 0.6s ease, stroke 0.6s ease; }
+.ring-pct { font-size: 28px; font-weight: 700; fill: #1a1a1a; }
+.ring-unit { font-size: 14px; font-weight: 400; fill: #999; }
+.ring-sub { font-size: 11px; fill: #999; }
+
+.gauge-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #999;
   display: flex;
-  align-items: baseline;
-  gap: 2px;
+  justify-content: center;
+  gap: 12px;
 }
-.gauge-unit { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+.gauge-sub { color: #bbb; }
 
 /* 网络卡片 */
-.net-card { justify-content: flex-start; }
-.net-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 8px 0;
-  width: 100%;
-}
-.net-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  background: var(--bg-base);
-}
-.net-val { font-size: 15px; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); flex: 1; }
-.net-dir { font-size: 12px; color: var(--text-tertiary); }
+.net-card { display: flex; flex-direction: column; }
+.net-stats { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0; }
+.net-item { display: flex; align-items: center; gap: 8px; }
+.net-divider { width: 1px; height: 36px; background: #e8e8e8; }
+.net-info { display: flex; flex-direction: column; }
+.net-val { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+.net-dir-label { font-size: 11px; color: #999; }
 .net-uptime {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  padding: 8px 14px;
-  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+  color: #999; font-size: 12px; margin-top: auto;
 }
-.uptime-label { color: var(--text-tertiary); }
-.uptime-val { color: var(--text-primary); font-weight: 600; }
+.uptime-val { font-variant-numeric: tabular-nums; }
 
-/* 趋势图 */
-.trend-section { }
+/* === 趋势图 === */
+.trend-section {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
 .trend-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.trend-header h4 { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
-.trend-legend { display: flex; gap: 14px; margin-left: 8px; }
-.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.trend-canvas { width: 100%; display: block; border-radius: var(--radius-md); }
+.trend-header h4 { margin: 0; font-size: 14px; font-weight: 600; color: #333; }
+.trend-legend { display: flex; gap: 12px; margin-left: auto; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #999; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.trend-body { }
+.trend-canvas { width: 100%; display: block; border-radius: 6px; }
 
-/* 三列详情 */
+/* === 三列面板 === */
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
 }
-.panel { padding: 16px 20px; }
-.panel-body { max-height: 340px; overflow-y: auto; }
-.panel-empty { text-align: center; padding: 24px; color: var(--text-tertiary); font-size: 13px; }
 
-/* 进程项 */
-.proc-item {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.proc-item:last-child { border-bottom: none; }
-.proc-main { display: flex; justify-content: space-between; align-items: baseline; }
-.proc-cmd { font-size: 12px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
-.proc-meta { font-size: 10px; color: var(--text-tertiary); flex-shrink: 0; }
-.proc-bars { display: flex; gap: 3px; height: 3px; border-radius: 2px; overflow: hidden; }
-.proc-cpu { background: #4F7CFF; height: 100%; border-radius: 1px; display: block; min-width: 0; }
-.proc-mem { background: #15C39A; height: 100%; border-radius: 1px; display: block; min-width: 0; }
-
-/* 连接项 */
-.conn-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 12px;
-}
-.conn-item:last-child { border-bottom: none; }
-.conn-proto {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--accent);
-  min-width: 38px;
-  font-size: 11px;
-}
-.conn-addr {
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  min-width: 0;
 }
-.conn-arrow { color: var(--text-tertiary); flex-shrink: 0; font-size: 10px; }
-.conn-state { flex-shrink: 0; }
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+  font-size: 13px; font-weight: 600; color: #333;
+}
+.panel-body { padding: 8px; max-height: 400px; overflow-y: auto; }
+.panel-empty { padding: 24px; text-align: center; color: #ccc; font-size: 13px; }
 
-/* 命令历史 */
-.cmd-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color);
+/* 进程 */
+.proc-item { padding: 6px 8px; border-bottom: 1px solid #f9f9f9; }
+.proc-item:last-child { border: none; }
+.proc-main { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.proc-cmd { font-size: 12px; color: #333; font-family: 'SF Mono', 'Menlo', monospace; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proc-meta { font-size: 11px; color: #bbb; white-space: nowrap; }
+.proc-bars { display: flex; gap: 3px; }
+.proc-bar { height: 3px; border-radius: 2px; }
+.cpu-bar { background: #4F7CFF; }
+.mem-bar { background: #15C39A; }
+
+/* 连接 */
+.conn-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-bottom: 1px solid #f9f9f9; font-size: 12px;
 }
-.cmd-item:last-child { border-bottom: none; }
+.conn-item:last-child { border: none; }
+.conn-proto { color: #4F7CFF; font-weight: 600; font-size: 11px; width: 28px; flex-shrink: 0; }
+.conn-addr { font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; color: #555; }
+.conn-arrow { color: #ccc; flex-shrink: 0; }
+.conn-state { margin-left: auto; }
+
+/* 命令 */
+.cmd-item { padding: 8px; border-bottom: 1px solid #f9f9f9; }
+.cmd-item:last-child { border: none; }
 .cmd-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.cmd-cmd { font-size: 12px; color: var(--text-primary); font-family: var(--font-mono); }
-.cmd-time { font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; }
-.cmd-output {
-  background: var(--bg-base);
-  color: var(--text-secondary);
-  padding: 8px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  overflow-x: auto;
-  max-height: 80px;
-  line-height: 1.4;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
+.cmd-cmd { font-size: 12px; font-family: 'SF Mono', 'Menlo', monospace; color: #333; }
+.cmd-time { font-size: 11px; color: #bbb; margin-bottom: 4px; }
+.cmd-output { font-size: 11px; color: #666; font-family: 'SF Mono', 'Menlo', monospace; margin: 0; max-height: 80px; overflow-y: auto; background: #fafafa; padding: 4px 6px; border-radius: 4px; }
+
+/* 命令面板 */
+.command-panel { background: #fff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 20px; }
+.cmd-form { padding: 8px 16px 12px; }
+.cmd-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.cmd-hint { font-size: 12px; color: #ccc; }
+.cmd-result { padding: 0 16px 16px; }
+.cmd-result pre { font-size: 12px; background: #fafafa; padding: 10px; border-radius: 6px; font-family: 'SF Mono', 'Menlo', monospace; margin: 0; max-height: 300px; overflow-y: auto; }
+
+/* 骨架屏 */
+.skeleton { display: flex; flex-direction: column; gap: 16px; }
+.sk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.sk-block { height: 140px; background: linear-gradient(90deg, #f5f6f8 25%, #eef0f3 50%, #f5f6f8 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* 响应式 */
 @media (max-width: 1100px) {
@@ -851,7 +838,8 @@ function fmtUptime(s: number) {
 @media (max-width: 700px) {
   .gauges-row { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
-  .info-card { flex-direction: column; }
-  .info-actions { width: 100%; justify-content: flex-end; }
+  .info-card { flex-direction: column; align-items: flex-start; }
+  .trend-header { flex-direction: column; align-items: flex-start; }
+  .trend-legend { margin-left: 0; }
 }
 </style>

@@ -39,8 +39,11 @@ class LocalProvider {
       }
     } catch (_) { /* monitor-service 可能未初始化 */ }
 
+    const cpuCount = os.cpus().length;
+    const cpuPct = Math.round((os.loadavg()[0] / cpuCount) * 10000) / 100;
+
     return {
-      cpu: os.loadavg()[0],
+      cpu: cpuPct,
       memory: {
         total: Math.round(totalMem / 1024 / 1024),
         used: Math.round(usedMem / 1024 / 1024),

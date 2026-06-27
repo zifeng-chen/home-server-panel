@@ -362,7 +362,12 @@
     "totalDevices": "设备总数",
     "tags": "标签",
     "hostDevice": "主机设备",
-    "commandHistory": "命令历史"
+    "commandHistory": "命令历史",
+    "cpuCores": "核",
+    "download": "下载",
+    "upload": "上传",
+    "noResponse": "无返回",
+    "sendCmdSuccess": "命令已发送"
   },
   "settings": {
     "title": "系统设置",

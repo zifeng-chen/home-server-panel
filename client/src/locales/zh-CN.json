@@ -327,7 +327,20 @@
     "registerAgent": "注册 Agent",
     "statsOnline": "在线设备",
     "statsOffline": "离线设备",
-    "statsTotal": "设备总数"
+    "statsTotal": "设备总数",
+    "alerts": "告警规则",
+    "alertAdd": "添加规则",
+    "alertName": "规则名称",
+    "alertMetric": "监控指标",
+    "alertThreshold": "阈值",
+    "alertDevice": "适用设备",
+    "alertAllDevices": "全部设备",
+    "alertEnabled": "启用",
+    "alertNoRules": "暂无告警规则",
+    "alertDelete": "确定删除此规则？",
+    "trend": "趋势图",
+    "commandHistory": "命令历史",
+    "network": "网络"
   },
 
   "settings": {

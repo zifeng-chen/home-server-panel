@@ -184,6 +184,8 @@ app.use('/api/setup', require('./routes/setup'));
 
 // V2 设备路由（Agent 注册/心跳/上报无需 JWT，用 deviceId+secret 认证）
 app.use('/api/v2/device', require('./routes/v2/device'));
+// V2 告警规则路由
+app.use('/api/v2/alert', require('./routes/v2/alert'));
 
 // ===== 以下所有路由都需要认证 =====
 

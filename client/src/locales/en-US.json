@@ -327,7 +327,20 @@
     "registerAgent": "Register Agent",
     "statsOnline": "Online",
     "statsOffline": "Offline",
-    "statsTotal": "Total"
+    "statsTotal": "Total",
+    "alerts": "Alert Rules",
+    "alertAdd": "Add Rule",
+    "alertName": "Rule Name",
+    "alertMetric": "Metric",
+    "alertThreshold": "Threshold",
+    "alertDevice": "Device",
+    "alertAllDevices": "All Devices",
+    "alertEnabled": "Enabled",
+    "alertNoRules": "No alert rules",
+    "alertDelete": "Delete this rule?",
+    "trend": "Trend",
+    "commandHistory": "Command History",
+    "network": "Network"
   },
 
   "settings": {

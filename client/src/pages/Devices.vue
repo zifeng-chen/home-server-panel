@@ -1,200 +1,310 @@
-&lt;template&gt;
-  &lt;div class="devices-page"&gt;
-    &lt;!-- 统计概览 --&gt;
-    &lt;div class="stats-row"&gt;
-      &lt;div class="stat-card"&gt;
-        &lt;span class="stat-val"&gt;{{ store.stats?.total || 0 }}&lt;/span&gt;
-        &lt;span class="stat-label"&gt;{{ $t('devices.totalDevices') }}&lt;/span&gt;
-      &lt;/div&gt;
-      &lt;div class="stat-card online"&gt;
-        &lt;span class="stat-val"&gt;{{ store.stats?.online || 0 }}&lt;/span&gt;
-        &lt;span class="stat-label"&gt;{{ $t('devices.online') }}&lt;/span&gt;
-      &lt;/div&gt;
-      &lt;div class="stat-card offline"&gt;
-        &lt;span class="stat-val"&gt;{{ store.stats?.offline || 0 }}&lt;/span&gt;
-        &lt;span class="stat-label"&gt;{{ $t('devices.offline') }}&lt;/span&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
+<template>
+  <div class="devices-page">
+    <!-- 统计概览 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-val">{{ store.stats?.total || 0 }}</span>
+        <span class="stat-label">{{ $t('devices.totalDevices') }}</span>
+      </div>
+      <div class="stat-card online">
+        <span class="stat-val">{{ store.stats?.online || 0 }}</span>
+        <span class="stat-label">{{ $t('devices.online') }}</span>
+      </div>
+      <div class="stat-card offline">
+        <span class="stat-val">{{ store.stats?.offline || 0 }}</span>
+        <span class="stat-label">{{ $t('devices.offline') }}</span>
+      </div>
+    </div>
 
-    &lt;!-- 设备列表 --&gt;
-    &lt;el-table :data="store.devices" v-loading="store.loading" stripe class="data-table" @row-click="showDetail" ref="tableRef" @selection-change="onSelectionChange"&gt;
-      &lt;el-table-column type="selection" width="42" :selectable="isSelectable" /&gt;
-      &lt;el-table-column prop="name" :label="$t('common.name')" min-width="140" /&gt;
-      &lt;el-table-column :label="$t('common.status')" width="90"&gt;
-        &lt;template #default="{ row }"&gt;
-          &lt;el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small" effect="dark"&gt;
+    <!-- 设备列表 -->
+    <el-table :data="store.devices" v-loading="store.loading" stripe class="data-table" @row-click="showDetail" ref="tableRef" @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="42" :selectable="isSelectable" />
+      <el-table-column prop="name" :label="$t('common.name')" min-width="140" />
+      <el-table-column :label="$t('common.status')" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small" effect="dark">
             {{ row.status === 'online' ? $t('devices.online') : $t('devices.offline') }}
-          &lt;/el-tag&gt;
-        &lt;/template&gt;
-      &lt;/el-table-column&gt;
-      &lt;el-table-column prop="tags" :label="$t('devices.tags')" width="120"&gt;
-        &lt;template #default="{ row }"&gt;
-          &lt;el-input v-if="editingTag === row.id" v-model="tagInput" size="small" @blur="saveTag(row)" @keyup.enter="saveTag(row)" ref="tagInputRef" /&gt;
-          &lt;span v-else @click.stop="startEditTag(row)" class="tag-cell" :class="{ placeholder: !row.tags }"&gt;
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="tags" :label="$t('devices.tags')" width="120">
+        <template #default="{ row }">
+          <el-input v-if="editingTag === row.id" v-model="tagInput" size="small" @blur="saveTag(row)" @keyup.enter="saveTag(row)" ref="tagInputRef" />
+          <span v-else @click.stop="startEditTag(row)" class="tag-cell" :class="{ placeholder: !row.tags }">
             {{ row.tags || $t('devices.clickToTag') }}
-          &lt;/span&gt;
-        &lt;/template&gt;
-      &lt;/el-table-column&gt;
-      &lt;el-table-column prop="hostname" :label="$t('devices.hostname')" width="130" /&gt;
-      &lt;el-table-column prop="ip" :label="$t('devices.ip')" width="160"&gt;
-        &lt;template #default="{ row }"&gt;&lt;code class="mono"&gt;{{ row.ip }}&lt;/code&gt;&lt;/template&gt;
-      &lt;/el-table-column&gt;
-      &lt;el-table-column prop="os" :label="$t('devices.os')" width="110"&gt;
-        &lt;template #default="{ row }"&gt;{{ row.os }} {{ row.arch }}&lt;/template&gt;
-      &lt;/el-table-column&gt;
-      &lt;el-table-column prop="version" :label="$t('devices.version')" width="100" /&gt;
-      &lt;el-table-column :label="$t('devices.lastSeen')" width="170"&gt;
-        &lt;template #default="{ row }"&gt;{{ fmtTime(row.last_seen) }}&lt;/template&gt;
-      &lt;/el-table-column&gt;
-      &lt;el-table-column :label="$t('common.actions')" width="215" fixed="right"&gt;
-        &lt;template #default="{ row }"&gt;
-          &lt;el-button link type="primary" @click.stop="showCommand(row)" size="small"&gt;
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="hostname" :label="$t('devices.hostname')" width="130" />
+      <el-table-column prop="ip" :label="$t('devices.ip')" width="160">
+        <template #default="{ row }"><code class="mono">{{ row.ip }}</code></template>
+      </el-table-column>
+      <el-table-column prop="os" :label="$t('devices.os')" width="110">
+        <template #default="{ row }">{{ row.os }} {{ row.arch }}</template>
+      </el-table-column>
+      <el-table-column prop="version" :label="$t('devices.version')" width="100" />
+      <el-table-column :label="$t('devices.lastSeen')" width="170">
+        <template #default="{ row }">{{ fmtTime(row.last_seen) }}</template>
+      </el-table-column>
+      <el-table-column :label="$t('common.actions')" width="215" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click.stop="showCommand(row)" size="small">
             {{ $t('devices.sendCommand') }}
-          &lt;/el-button&gt;
-          &lt;el-button v-if="row.status === 'online' &amp;&amp; row.id !== 'dev_local'" link type="success" @click.stop="openSsh(row)" size="small"&gt;
+          </el-button>
+          <el-button v-if="row.status === 'online' && row.id !== 'dev_local'" link type="success" @click.stop="openSsh(row)" size="small">
             SSH
-          &lt;/el-button&gt;
-          &lt;el-popconfirm :title="$t('devices.delConfirm')" @confirm="doDelete(row)" :confirm-button-text="$t('common.confirm')" :cancel-button-text="$t('common.cancel')"&gt;
-            &lt;template #reference&gt;
-              &lt;el-button link type="danger" @click.stop size="small"&gt;{{ $t('devices.delete') }}&lt;/el-button&gt;
-            &lt;/template&gt;
-          &lt;/el-popconfirm&gt;
-        &lt;/template&gt;
-      &lt;/el-table-column&gt;
-    &lt;/el-table&gt;
+          </el-button>
+          <el-popconfirm :title="$t('devices.delConfirm')" @confirm="doDelete(row)" :confirm-button-text="$t('common.confirm')" :cancel-button-text="$t('common.cancel')">
+            <template #reference>
+              <el-button link type="danger" @click.stop size="small">{{ $t('devices.delete') }}</el-button>
+            </template>
+          </el-popconfirm>
+        </template>
+      </el-table-column>
+    </el-table>
 
-    &lt;!-- 批量操作栏 --&gt;
-    &lt;div v-if="selectedDevices.length &gt; 0" class="batch-bar"&gt;
-      &lt;span&gt;{{ $t('devices.batchSelected', { n: selectedDevices.length }) }}&lt;/span&gt;
-      &lt;el-button size="small" type="primary" @click="showBatchCommand"&gt;
+    <!-- 批量操作栏 -->
+    <div v-if="selectedDevices.length > 0" class="batch-bar">
+      <span>{{ $t('devices.batchSelected', { n: selectedDevices.length }) }}</span>
+      <el-button size="small" type="primary" @click="showBatchCommand">
         {{ $t('devices.batchCommand') }}
-      &lt;/el-button&gt;
-    &lt;/div&gt;
+      </el-button>
+    </div>
 
-    &lt;!-- ===== 设备详情弹窗 ===== --&gt;
-    &lt;el-dialog v-model="detailVisible" :title="detailDevice?.name || $t('devices.detail')" width="720px"&gt;
-      &lt;div v-if="detailDevice"&gt;
-        &lt;div class="desc-row"&gt;
-          &lt;div class="desc-block"&gt;&lt;span class="desc-label"&gt;{{ $t('devices.hostname') }}&lt;/span&gt; {{ detailDevice.hostname }}&lt;/div&gt;
-          &lt;div class="desc-block"&gt;&lt;span class="desc-label"&gt;IP&lt;/span&gt; {{ detailDevice.ip }}&lt;/div&gt;
-          &lt;div class="desc-block"&gt;&lt;span class="desc-label"&gt;OS&lt;/span&gt; {{ detailDevice.os }} {{ detailDevice.arch }}&lt;/div&gt;
-          &lt;div class="desc-block"&gt;&lt;span class="desc-label"&gt;{{ $t('devices.version') }}&lt;/span&gt; {{ detailDevice.version }}&lt;/div&gt;
-        &lt;/div&gt;
+    <!-- ===== 设备详情弹窗 ===== -->
+    <el-dialog v-model="detailVisible" :title="detailDevice?.name || $t('devices.detail')" width="760px">
+      <div v-if="detailDevice">
+        <div class="desc-row">
+          <div class="desc-block"><span class="desc-label">{{ $t('devices.hostname') }}</span> {{ detailDevice.hostname }}</div>
+          <div class="desc-block"><span class="desc-label">IP</span> {{ detailDevice.ip }}</div>
+          <div class="desc-block"><span class="desc-label">OS</span> {{ detailDevice.os }} {{ detailDevice.arch }}</div>
+          <div class="desc-block"><span class="desc-label">{{ $t('devices.version') }}</span> {{ detailDevice.version }}</div>
+        </div>
 
-        &lt;!-- 最近指标 --&gt;
-        &lt;h4&gt;{{ $t('devices.metrics') }}
-          &lt;el-button-group size="small" style="margin-left:8px"&gt;
-            &lt;el-button :type="trendRange===60?'primary':''" @click="trendRange=60;loadTrend()"&gt;1h&lt;/el-button&gt;
-            &lt;el-button :type="trendRange===720?'primary':''" @click="trendRange=720;loadTrend()"&gt;12h&lt;/el-button&gt;
-            &lt;el-button :type="trendRange===10080?'primary':''" @click="trendRange=10080;loadTrend()"&gt;7d&lt;/el-button&gt;
-          &lt;/el-button-group&gt;
-        &lt;/h4&gt;
-        &lt;canvas ref="trendCanvas" width="680" height="200" class="trend-chart"&gt;&lt;/canvas&gt;
+        <!-- 指标历史表 -->
+        <h4>{{ $t('devices.metrics') }}</h4>
+        <div v-if="detailDevice.metrics?.length" style="max-height: 240px; overflow-y: auto">
+          <el-table :data="detailDevice.metrics.slice(0, 30)" size="small" stripe>
+            <el-table-column :label="$t('devices.cpu')" width="70">
+              <template #default="{ row }">{{ toFixed(row.cpu, 1) }}%</template>
+            </el-table-column>
+            <el-table-column :label="$t('devices.memory')" width="70">
+              <template #default="{ row }">{{ toFixed(row.memory_pct, 1) }}%</template>
+            </el-table-column>
+            <el-table-column :label="$t('devices.disk')" width="70">
+              <template #default="{ row }">{{ toFixed(row.disk_pct, 1) }}%</template>
+            </el-table-column>
+            <el-table-column :label="$t('devices.network')" width="200">
+              <template #default="{ row }">
+                <span style="color:#4F7CFF">↓{{ fmtBytes(row.net_rx) }}/s</span>
+                <span style="margin:0 6px"></span>
+                <span style="color:#15C39A">↑{{ fmtBytes(row.net_tx) }}/s</span>
+              </template>
+            </el-table-column>
+            <el-table-column :label="$t('devices.uptime')" width="100">
+              <template #default="{ row }">{{ fmtUptime(row.uptime) }}</template>
+            </el-table-column>
+            <el-table-column :label="$t('common.time')" width="160">
+              <template #default="{ row }">{{ fmtTime(row.collected_at) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else class="empty">{{ $t('devices.noMetrics') }}</div>
 
-        &lt;!-- 进程列表 --&gt;
-        &lt;h4&gt;{{ $t('devices.processes') }}
-          &lt;el-button link size="small" @click="loadProcesses" :loading="processesLoading" style="margin-left:8px"&gt;
+        <!-- 趋势图 -->
+        <h4>{{ $t('devices.trend') }}
+          <el-button-group size="small" style="margin-left:8px">
+            <el-button :type="trendRange===60?'primary':''" @click="trendRange=60;loadTrend()">1h</el-button>
+            <el-button :type="trendRange===720?'primary':''" @click="trendRange=720;loadTrend()">12h</el-button>
+            <el-button :type="trendRange===10080?'primary':''" @click="trendRange=10080;loadTrend()">7d</el-button>
+          </el-button-group>
+        </h4>
+        <canvas ref="trendCanvas" width="720" height="200" class="trend-chart"></canvas>
+
+        <!-- 进程列表 -->
+        <h4>{{ $t('devices.processes') }}
+          <el-button link size="small" @click="loadProcesses" :loading="processesLoading" style="margin-left:8px">
             {{ $t('common.refresh') }}
-          &lt;/el-button&gt;
-        &lt;/h4&gt;
-        &lt;div v-if="processesData.length" style="max-height: 240px; overflow-y: auto"&gt;
-          &lt;el-table :data="processesData" size="small" stripe&gt;
-            &lt;el-table-column prop="pid" label="PID" width="70" /&gt;
-            &lt;el-table-column prop="user" :label="$t('devices.procUser')" width="80" /&gt;
-            &lt;el-table-column label="CPU" width="70"&gt;
-              &lt;template #default="{ row }"&gt;{{ row.cpu }}%&lt;/template&gt;
-            &lt;/el-table-column&gt;
-            &lt;el-table-column label="MEM" width="70"&gt;
-              &lt;template #default="{ row }"&gt;{{ row.mem }}%&lt;/template&gt;
-            &lt;/el-table-column&gt;
-            &lt;el-table-column prop="command" :label="$t('devices.procCommand')" min-width="200" show-overflow-tooltip&gt;
-              &lt;template #default="{ row }"&gt;&lt;code class="mono"&gt;{{ row.command }}&lt;/code&gt;&lt;/template&gt;
-            &lt;/el-table-column&gt;
-          &lt;/el-table&gt;
-        &lt;/div&gt;
-        &lt;div v-else-if="!processesLoading" class="empty"&gt;{{ $t('devices.noProcesses') }}&lt;/div&gt;
+          </el-button>
+        </h4>
+        <div v-if="processesData.length" style="max-height: 240px; overflow-y: auto">
+          <el-table :data="processesData" size="small" stripe>
+            <el-table-column prop="pid" label="PID" width="70" />
+            <el-table-column prop="user" :label="$t('devices.procUser')" width="80" />
+            <el-table-column label="CPU" width="70">
+              <template #default="{ row }">{{ row.cpu }}%</template>
+            </el-table-column>
+            <el-table-column label="MEM" width="70">
+              <template #default="{ row }">{{ row.mem }}MB</template>
+            </el-table-column>
+            <el-table-column prop="command" :label="$t('devices.procCommand')" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }"><code class="mono">{{ row.command }}</code></template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else-if="!processesLoading" class="empty">{{ $t('devices.noProcesses') }}</div>
 
-        &lt;!-- 网络连接 --&gt;
-        &lt;h4&gt;{{ $t('devices.connections') }}
-          &lt;el-button link size="small" @click="loadConnections" :loading="connsLoading" style="margin-left:8px"&gt;
+        <!-- 网络连接 -->
+        <h4>{{ $t('devices.connections') }}
+          <el-button link size="small" @click="loadConnections" :loading="connsLoading" style="margin-left:8px">
             {{ $t('common.refresh') }}
-          &lt;/el-button&gt;
-        &lt;/h4&gt;
-        &lt;div v-if="connsData.length" style="max-height: 240px; overflow-y: auto"&gt;
-          &lt;el-table :data="connsData" size="small" stripe&gt;
-            &lt;el-table-column prop="proto" label="Proto" width="65" /&gt;
-            &lt;el-table-column prop="local" :label="$t('devices.connLocal')" min-width="180" show-overflow-tooltip&gt;
-              &lt;template #default="{ row }"&gt;&lt;code class="mono"&gt;{{ row.local }}&lt;/code&gt;&lt;/template&gt;
-            &lt;/el-table-column&gt;
-            &lt;el-table-column prop="remote" :label="$t('devices.connRemote')" min-width="180" show-overflow-tooltip&gt;
-              &lt;template #default="{ row }"&gt;&lt;code class="mono"&gt;{{ row.remote }}&lt;/code&gt;&lt;/template&gt;
-            &lt;/el-table-column&gt;
-            &lt;el-table-column prop="state" :label="$t('devices.connState')" width="110"&gt;
-              &lt;template #default="{ row }"&gt;
-                &lt;el-tag size="small" :type="row.state === 'LISTEN' ? 'info' : 'success'"&gt;{{ row.state }}&lt;/el-tag&gt;
-              &lt;/template&gt;
-            &lt;/el-table-column&gt;
-          &lt;/el-table&gt;
-        &lt;/div&gt;
-        &lt;div v-else-if="!connsLoading" class="empty"&gt;{{ $t('devices.noConnections') }}&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;template #footer&gt;
-        &lt;el-button @click="detailVisible = false"&gt;{{ $t('common.close') }}&lt;/el-button&gt;
-      &lt;/template&gt;
-    &lt;/el-dialog&gt;
+          </el-button>
+        </h4>
+        <div v-if="connsData.length" style="max-height: 240px; overflow-y: auto">
+          <el-table :data="connsData" size="small" stripe>
+            <el-table-column prop="proto" label="Proto" width="65" />
+            <el-table-column prop="local" :label="$t('devices.connLocal')" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }"><code class="mono">{{ row.local }}</code></template>
+            </el-table-column>
+            <el-table-column prop="remote" :label="$t('devices.connRemote')" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }"><code class="mono">{{ row.remote }}</code></template>
+            </el-table-column>
+            <el-table-column prop="state" :label="$t('devices.connState')" width="110">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.state === 'LISTEN' ? 'info' : 'success'">{{ row.state }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else-if="!connsLoading" class="empty">{{ $t('devices.noConnections') }}</div>
 
-    &lt;!-- ===== 命令下发弹窗 ===== --&gt;
-    &lt;el-dialog v-model="commandVisible" :title="$t('devices.sendCommand')" width="480"&gt;
-      &lt;el-form&gt;
-        &lt;el-form-item :label="$t('common.name')"&gt;
-          &lt;el-input :model-value="commandTarget?.name" disabled /&gt;
-        &lt;/el-form-item&gt;
-        &lt;el-form-item label="Command"&gt;
-          &lt;el-input v-model="commandText" type="textarea" :rows="3"
-            :placeholder="$t('devices.commandPlaceholder')" /&gt;
-        &lt;/el-form-item&gt;
-      &lt;/el-form&gt;
-      &lt;template #footer&gt;
-        &lt;el-button @click="commandVisible = false"&gt;{{ $t('common.cancel') }}&lt;/el-button&gt;
-        &lt;el-button type="primary" @click="doSendCommand" :loading="sending"&gt;
+        <!-- 命令历史 -->
+        <h4>{{ $t('devices.commandHistory') }}</h4>
+        <div v-if="detailDevice.commands?.length" style="max-height: 200px; overflow-y: auto">
+          <el-table :data="detailDevice.commands.slice(0, 20)" size="small" stripe>
+            <el-table-column prop="command" :label="$t('devices.command')" min-width="180" show-overflow-tooltip>
+              <template #default="{ row }"><code class="mono">{{ row.command }}</code></template>
+            </el-table-column>
+            <el-table-column :label="$t('common.status')" width="90">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : 'info'">
+                  {{ row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column :label="$t('common.time')" width="160">
+              <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else class="empty">{{ $t('devices.noCommands') }}</div>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ===== 命令下发弹窗 ===== -->
+    <el-dialog v-model="commandVisible" :title="$t('devices.sendCommand')" width="480">
+      <el-form>
+        <el-form-item :label="$t('common.name')">
+          <el-input :model-value="commandTarget?.name" disabled />
+        </el-form-item>
+        <el-form-item label="Command">
+          <el-input v-model="commandText" type="textarea" :rows="3"
+            :placeholder="$t('devices.commandPlaceholder')" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="commandVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doSendCommand" :loading="sending">
           {{ $t('common.submit') }}
-        &lt;/el-button&gt;
-      &lt;/template&gt;
-    &lt;/el-dialog&gt;
+        </el-button>
+      </template>
+    </el-dialog>
 
-    &lt;!-- ===== 批量命令弹窗 ===== --&gt;
-    &lt;el-dialog v-model="batchVisible" :title="$t('devices.batchCommand')" width="550"&gt;
-      &lt;div class="batch-list"&gt;
-        &lt;el-tag v-for="d in selectedDevices" :key="d.id" size="small" style="margin:0 4px 4px 0"&gt;
+    <!-- ===== 批量命令弹窗 ===== -->
+    <el-dialog v-model="batchVisible" :title="$t('devices.batchCommand')" width="550">
+      <div class="batch-list">
+        <el-tag v-for="d in selectedDevices" :key="d.id" size="small" style="margin:0 4px 4px 0">
           {{ d.name }}
-        &lt;/el-tag&gt;
-      &lt;/div&gt;
-      &lt;el-form style="margin-top:12px"&gt;
-        &lt;el-form-item label="Command"&gt;
-          &lt;el-input v-model="commandText" type="textarea" :rows="4"
-            :placeholder="$t('devices.batchPlaceholder')" /&gt;
-        &lt;/el-form-item&gt;
-      &lt;/el-form&gt;
-      &lt;div v-if="batchResults.length" class="batch-results"&gt;
-        &lt;div v-for="r in batchResults" :key="r.deviceId" class="batch-result-item"&gt;
-          &lt;span class="batch-device"&gt;{{ r.deviceId }}&lt;/span&gt;
-          &lt;el-tag :type="r.status === 'completed' ? 'success' : 'danger'" size="small"&gt;{{ r.status }}&lt;/el-tag&gt;
-          &lt;pre class="batch-output"&gt;{{ r.result || r.error }}&lt;/pre&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-      &lt;template #footer&gt;
-        &lt;el-button @click="batchVisible = false"&gt;{{ $t('common.close') }}&lt;/el-button&gt;
-        &lt;el-button type="primary" @click="doBatchCommand" :loading="batchSending"&gt;
+        </el-tag>
+      </div>
+      <el-form style="margin-top:12px">
+        <el-form-item label="Command">
+          <el-input v-model="commandText" type="textarea" :rows="4"
+            :placeholder="$t('devices.batchPlaceholder')" />
+        </el-form-item>
+      </el-form>
+      <div v-if="batchResults.length" class="batch-results">
+        <div v-for="r in batchResults" :key="r.deviceId" class="batch-result-item">
+          <span class="batch-device">{{ r.deviceId }}</span>
+          <el-tag :type="r.status === 'completed' ? 'success' : 'danger'" size="small">{{ r.status }}</el-tag>
+          <pre class="batch-output">{{ r.result || r.error }}</pre>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="batchVisible = false">{{ $t('common.close') }}</el-button>
+        <el-button type="primary" @click="doBatchCommand" :loading="batchSending">
           {{ $t('common.submit') }}
-        &lt;/el-button&gt;
-      &lt;/template&gt;
-    &lt;/el-dialog&gt;
-  &lt;/div&gt;
-&lt;/template&gt;
+        </el-button>
+      </template>
+    </el-dialog>
 
-&lt;script setup lang="ts"&gt;
-import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+    <!-- ===== 告警规则区域 ===== -->
+    <div class="section" style="margin-top: 24px">
+      <div class="section-header">
+        <h3>{{ $t('devices.alerts') }}</h3>
+        <el-button size="small" type="primary" @click="showAlertForm(null)">+ {{ $t('devices.alertAdd') }}</el-button>
+      </div>
+      <el-table :data="store.alertRules" v-loading="store.alertLoading" size="small" stripe>
+        <el-table-column prop="name" :label="$t('devices.alertName')" min-width="120" />
+        <el-table-column :label="$t('devices.alertMetric')" width="80">
+          <template #default="{ row }">{{ row.metric }}</template>
+        </el-table-column>
+        <el-table-column :label="$t('devices.alertThreshold')" width="100">
+          <template #default="{ row }">{{ row.metric === 'disk_pct' || row.metric === 'memory_pct' || row.metric === 'cpu' ? row.threshold + '%' : row.threshold }}</template>
+        </el-table-column>
+        <el-table-column :label="$t('devices.alertDevice')" width="130">
+          <template #default="{ row }">{{ row.device_id || $t('devices.alertAllDevices') }}</template>
+        </el-table-column>
+        <el-table-column :label="$t('devices.alertEnabled')" width="80">
+          <template #default="{ row }">
+            <el-switch :model-value="!!row.enabled" @change="toggleAlert(row)" size="small" />
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('common.actions')" width="100">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="showAlertForm(row)">{{ $t('common.edit') }}</el-button>
+            <el-button link type="danger" size="small" @click="deleteAlert(row)">{{ $t('common.delete') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="!store.alertRules?.length && !store.alertLoading" class="empty">{{ $t('devices.alertNoRules') }}</div>
+    </div>
+
+    <!-- 告警规则编辑弹窗 -->
+    <el-dialog v-model="alertFormVisible" :title="alertEditId ? $t('common.edit') : $t('devices.alertAdd')" width="420" destroy-on-close>
+      <el-form label-width="90px">
+        <el-form-item :label="$t('devices.alertName')">
+          <el-input v-model="alertForm.name" placeholder="如 CPU 过高" maxlength="30" />
+        </el-form-item>
+        <el-form-item :label="$t('devices.alertMetric')">
+          <el-select v-model="alertForm.metric">
+            <el-option label="CPU" value="cpu" />
+            <el-option :label="$t('devices.memory')" value="memory_pct" />
+            <el-option :label="$t('devices.disk')" value="disk_pct" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('devices.alertThreshold')">
+          <el-input-number v-model="alertForm.threshold" :min="1" :max="100" :step="1" />
+        </el-form-item>
+        <el-form-item :label="$t('devices.alertDevice')">
+          <el-select v-model="alertForm.device_id" :placeholder="$t('devices.alertAllDevices')" clearable>
+            <el-option v-for="d in store.devices" :key="d.id" :label="d.name" :value="d.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="alertFormVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="doSaveAlert" :loading="alertSaving">{{ $t('common.submit') }}</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useDevicesStore } from '../stores/devices'
 import { useI18n } from 'vue-i18n'
@@ -203,52 +313,61 @@ import api from '../api'
 
 const { t } = useI18n()
 const store = useDevicesStore()
-
 const API_BASE = '/api/v2'
 
 interface Device { id: string; name: string; hostname: string; ip: string; os: string; arch: string; version: string; status: string; last_seen: string; tags?: string }
 interface DeviceDetail extends Device { metrics: any[]; commands: any[] }
 
+// ---------- details ----------
 const detailVisible = ref(false)
-const detailDevice = ref&lt;DeviceDetail | null&gt;(null)
+const detailDevice = ref<DeviceDetail | null>(null)
+const trendCanvas = ref()
+const trendData = ref<any[]>([])
+const trendRange = ref(60)
+const processesData = ref<any[]>([])
+const processesLoading = ref(false)
+const connsData = ref<any[]>([])
+const connsLoading = ref(false)
+let localTimer: any = null
+
+// ---------- command ----------
 const commandVisible = ref(false)
-const commandTarget = ref&lt;Device | null&gt;(null)
+const commandTarget = ref<Device | null>(null)
 const commandText = ref('')
 const sending = ref(false)
 
-// Batch commands
-const tableRef = ref()
-const selectedDevices = ref&lt;Device[]&gt;([])
+// ---------- batch ----------
+const selectedDevices = ref<Device[]>([])
 const batchVisible = ref(false)
+const batchResults = ref<any[]>([])
 const batchSending = ref(false)
-const batchResults = ref&lt;any[]&gt;([])
 
-// Tags
-const editingTag = ref&lt;string | null&gt;(null)
+// ---------- tags ----------
+const editingTag = ref('')
 const tagInput = ref('')
 const tagInputRef = ref()
 
-// Trend chart
-const trendCanvas = ref()
-const trendRange = ref(60)
-const trendData = ref&lt;any[]&gt;([])
+// ---------- alert ----------
+const alertFormVisible = ref(false)
+const alertEditId = ref<number | null>(null)
+const alertForm = ref({ name: '', metric: 'cpu', threshold: 90, device_id: '' })
+const alertSaving = ref(false)
 
-// Processes & Connections
-const processesData = ref&lt;any[]&gt;([])
-const connsData = ref&lt;any[]&gt;([])
-const processesLoading = ref(false)
-const connsLoading = ref(false)
-
-// ---------- LocalProvider 指标自动刷新 ----------
-let localTimer: any = null
-const isLocal = (d: Device) =&gt; d.id === 'dev_local'
-
-// Start local metrics polling when detail opens for local device
-watch(detailVisible, (v) =&gt; {
-  if (!v) { clearInterval(localTimer); localTimer = null; return }
+// ---------- lifecycle ----------
+watch(detailVisible, (v) => {
+  if (!v) { clearInterval(localTimer); localTimer = null }
 })
 
-onMounted(() =&gt; { store.load(); store.loadStats() })
+onMounted(() => {
+  store.load()
+  store.loadStats()
+  store.loadAlertRules()
+})
+
+function refresh() {
+  store.load()
+  store.loadAlertRules()
+}
 
 function fmtTime(t: string) {
   if (!t) return '-'
@@ -257,6 +376,30 @@ function fmtTime(t: string) {
   return d.toLocaleString()
 }
 
+function toFixed(v: any, n: number) {
+  const num = parseFloat(v)
+  return isNaN(num) ? '0' : num.toFixed(n)
+}
+
+function fmtBytes(b: any) {
+  const n = parseFloat(b)
+  if (isNaN(n) || n === 0) return '0 B'
+  if (n < 1024) return n.toFixed(0) + ' B'
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
+  return (n / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+function fmtUptime(s: any) {
+  const sec = parseInt(s) || 0
+  if (sec < 60) return sec + 's'
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's'
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm'
+  const d = Math.floor(sec / 86400)
+  const h = Math.floor((sec % 86400) / 3600)
+  return d + 'd ' + h + 'h'
+}
+
+// ---------- detail ----------
 async function showDetail(row: Device) {
   detailVisible.value = true
   detailDevice.value = null
@@ -271,15 +414,15 @@ async function showDetail(row: Device) {
   loadConnections()
 }
 
-// Selection
+// ---------- selection ----------
 function isSelectable(row: Device) { return row.status === 'online' || row.id === 'dev_local' }
 function onSelectionChange(rows: Device[]) { selectedDevices.value = rows }
 
-// Tags
+// ---------- tags ----------
 function startEditTag(row: Device) {
   editingTag.value = row.id
   tagInput.value = row.tags || ''
-  nextTick(() =&gt; tagInputRef.value?.focus?.())
+  nextTick(() => tagInputRef.value?.focus?.())
 }
 async function saveTag(row: Device) {
   try {
@@ -289,9 +432,8 @@ async function saveTag(row: Device) {
   editingTag.value = null
 }
 
-// SSH shortcut
+// ---------- SSH ----------
 function openSsh(row: Device) {
-  // Preset SSH params via sessionStorage so Ssh.vue can auto-connect
   sessionStorage.setItem('ssh_preset', JSON.stringify({
     host: row.ip || row.id,
     port: 22,
@@ -301,7 +443,7 @@ function openSsh(row: Device) {
   window.location.hash = '#/ssh'
 }
 
-// Batch commands
+// ---------- batch ----------
 function showBatchCommand() {
   commandText.value = ''
   batchResults.value = []
@@ -312,56 +454,53 @@ async function doBatchCommand() {
   batchSending.value = true
   try {
     const { data } = await api.post('/v2/device/commands/batch', {
-      deviceIds: selectedDevices.value.map(d =&gt; d.id),
+      deviceIds: selectedDevices.value.map(d => d.id),
       command: commandText.value
     }) as any
     batchResults.value = data?.data || []
     ElMessage.success(`${batchResults.value.length} ${t('devices.commandSent')}`)
   } catch {
     ElMessage.error(t('common.error'))
-  }
-  finally { batchSending.value = false }
+  } finally { batchSending.value = false }
 }
 
-// Command
+// ---------- command ----------
 function showCommand(row: Device) {
   commandTarget.value = row
   commandText.value = ''
   commandVisible.value = true
 }
 async function doSendCommand() {
-  if (!commandText.value.trim()) return
+  if (!commandText.value.trim()) return ElMessage.warning(t('devices.commandPlaceholder'))
   sending.value = true
   try {
-    const { data } = await axios.post(`${API_BASE}/device/command`, {
-      deviceId: commandTarget.value?.id, command: commandText.value
-    })
-    ElMessage.success(t('devices.commandSent'))
+    await store.sendCommand(commandTarget.value!.id, commandText.value)
+    ElMessage.success(t('common.success'))
     commandVisible.value = false
   } catch {
     ElMessage.error(t('common.error'))
-  }
-  finally { sending.value = false }
+  } finally { sending.value = false }
 }
 
-// Delete
+// ---------- delete ----------
 async function doDelete(row: Device) {
   try {
-    await axios.delete(`${API_BASE}/device/${row.id}`)
-    ElMessage.success(t('devices.deleted'))
-    await store.load()
+    await store.deleteDevice(row.id)
+    ElMessage.success(t('common.success'))
+    store.loadStats()
   } catch {
     ElMessage.error(t('common.error'))
   }
 }
 
-// Trend chart
+// ---------- trend ----------
 async function loadTrend() {
+  if (!detailDevice.value) return
   try {
-    const { data } = await axios.get(`${API_BASE}/device/${detailDevice.value!.id}/metrics`, {
+    const { data } = await axios.get(`${API_BASE}/device/${detailDevice.value.id}/metrics`, {
       params: { range: trendRange.value }
     })
-    trendData.value = data?.data || []
+    trendData.value = data?.data || data || []
     drawTrend()
   } catch { drawTrend() }
 }
@@ -373,27 +512,21 @@ function drawTrend() {
   const w = canvas.width, h = canvas.height
   const rows = trendData.value || []
   ctx.clearRect(0, 0, w, h)
-  if (rows.length &lt; 2) {
+  if (rows.length < 2) {
     ctx.fillStyle = '#999'
     ctx.font = '14px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(t('devices.noTrendData'), w/2, h/2)
+    ctx.fillText(t('devices.noTrendData'), w / 2, h / 2)
     return
   }
-
-  // Draw grid
   ctx.strokeStyle = '#e8e8e8'
   ctx.lineWidth = 0.5
-  for (let i = 0; i &lt;= 4; i++) {
-    const y = 10 + (h-20) * i / 4
+  for (let i = 0; i <= 4; i++) {
+    const y = 10 + (h - 20) * i / 4
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke()
   }
-
-  // CPU line
   drawLine(ctx, rows, w, h, '#4F7CFF', 'cpu')
-  // MEM line
   drawLine(ctx, rows, w, h, '#15C39A', 'memory_pct')
-  // DISK line
   drawLine(ctx, rows, w, h, '#F59E0B', 'disk_pct')
 }
 
@@ -403,7 +536,7 @@ function drawLine(ctx: any, rows: any[], w: number, h: number, color: string, ke
   ctx.strokeStyle = color
   ctx.lineWidth = 1.5
   ctx.beginPath()
-  for (let i = 0; i &lt; n; i++) {
+  for (let i = 0; i < n; i++) {
     const x = 10 + i * xStep
     const val = Math.min(100, parseFloat(rows[i][key]) || 0)
     const y = h - 10 - val / 100 * (h - 20)
@@ -413,7 +546,7 @@ function drawLine(ctx: any, rows: any[], w: number, h: number, color: string, ke
   ctx.stroke()
 }
 
-// Processes
+// ---------- processes ----------
 async function loadProcesses() {
   if (!detailDevice.value) return
   processesLoading.value = true
@@ -424,7 +557,7 @@ async function loadProcesses() {
   finally { processesLoading.value = false }
 }
 
-// Connections
+// ---------- connections ----------
 async function loadConnections() {
   if (!detailDevice.value) return
   connsLoading.value = true
@@ -434,9 +567,51 @@ async function loadConnections() {
   } catch { connsData.value = [] }
   finally { connsLoading.value = false }
 }
-&lt;/script&gt;
 
-&lt;style scoped&gt;
+// ---------- alert rules ----------
+function showAlertForm(row: any) {
+  if (row) {
+    alertEditId.value = row.id
+    alertForm.value = { name: row.name, metric: row.metric || 'cpu', threshold: row.threshold || 90, device_id: row.device_id || '' }
+  } else {
+    alertEditId.value = null
+    alertForm.value = { name: '', metric: 'cpu', threshold: 90, device_id: '' }
+  }
+  alertFormVisible.value = true
+}
+
+async function doSaveAlert() {
+  if (!alertForm.value.name.trim()) return ElMessage.warning(t('devices.alertName'))
+  alertSaving.value = true
+  try {
+    if (alertEditId.value) {
+      await store.updateAlertRule(alertEditId.value, alertForm.value)
+    } else {
+      await store.createAlertRule(alertForm.value)
+    }
+    ElMessage.success(t('common.success'))
+    alertFormVisible.value = false
+    store.loadAlertRules()
+  } catch {
+    ElMessage.error(t('common.error'))
+  } finally { alertSaving.value = false }
+}
+
+async function deleteAlert(row: any) {
+  try {
+    await store.deleteAlertRule(row.id)
+    ElMessage.success(t('common.success'))
+  } catch { ElMessage.error(t('common.error')) }
+}
+
+async function toggleAlert(row: any) {
+  try { await store.toggleAlertRule(row.id) } catch { /* ignore */ }
+}
+</script>
+
+<style scoped>
+.devices-page { }
+
 .stats-row { display: flex; gap: 16px; margin-bottom: 20px; }
 .stat-card { flex: 1; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; text-align: center; }
 .stat-card.online { border-left: 3px solid var(--el-color-success); }
@@ -451,6 +626,10 @@ h4 { font-size: 14px; margin: 16px 0 8px; color: var(--text-primary); display: f
 .empty { padding: 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
 .trend-chart { width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 8px; }
 .mono { font-family: monospace; font-size: 12px; }
+
+.section { border-top: 1px solid var(--border-color); padding-top: 20px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-header h3 { margin: 0; font-size: 15px; }
 
 /* Batch */
 .batch-bar {
@@ -471,4 +650,4 @@ h4 { font-size: 14px; margin: 16px 0 8px; color: var(--text-primary); display: f
 /* Tags */
 .tag-cell { cursor: pointer; font-size: 12px; padding: 2px 8px; background: var(--bg-elevated); border-radius: 4px; display: inline-block; min-width: 40px; }
 .tag-cell.placeholder { color: var(--text-tertiary); }
-&lt;/style&gt;
+</style>

@@ -61,6 +61,7 @@ class CommandService {
       type: 'command',
       command_id: commandId,
       action: command.action,
+      command: command.command || '',
       plugin: command.plugin || '',
       data: command.data || {}
     });

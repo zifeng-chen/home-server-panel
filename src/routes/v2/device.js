@@ -135,7 +135,29 @@ router.post('/command', async (req, res) => {
   try {
     const { deviceId, command } = req.body;
     if (!deviceId || !command) return res.status(400).json({ success: false, message: '缺少 deviceId 或 command' });
+    // 记录到 DB
     const result = await deviceService.createCommand(deviceId, command);
+    // 如果设备在线，通过 WS 推送
+    try {
+      const reply = await commandService.send(deviceId, {
+        action: 'run_command',
+        data: { command }
+      }, 15000);
+      result.result = reply.result || {};
+      if (reply.result?.output) {
+        const text = typeof reply.result.output === 'string' ? reply.result.output : JSON.stringify(reply.result.output);
+        await deviceService.updateCommandResult(result.id, {
+          status: 'completed',
+          result: text,
+          exitCode: reply.result.exit_code || 0
+        });
+        result.status = 'completed';
+        result.result = text;
+      }
+    } catch (wsErr) {
+      // WS 不在线则等待 Agent 轮询
+      result._wsNote = wsErr.message;
+    }
     res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

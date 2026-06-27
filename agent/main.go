@@ -34,7 +34,12 @@ var (
 	hostIP     string
 
 	httpClient = &http.Client{Timeout: 15 * time.Second}
-	agentVersion = "2.0.0"
+	agentVersion = "2.0.1"
+
+	// 网络速率计算：差分累计字节数 → B/s
+	lastNetRx  uint64
+	lastNetTx  uint64
+	lastNetTime time.Time
 )
 
 func main() {
@@ -262,6 +267,22 @@ func metricsLoop(interval time.Duration) {
 
 func collectMetrics() map[string]any {
 	m := MetricsSnapshot()
+
+	// 网络速率：差分计算 B/s（首次上报为 0）
+	now := time.Now()
+	rxRate := uint64(0)
+	txRate := uint64(0)
+	if !lastNetTime.IsZero() {
+		elapsed := now.Sub(lastNetTime).Seconds()
+		if elapsed > 0 {
+			rxRate = uint64(float64(m.NetRx-lastNetRx) / elapsed)
+			txRate = uint64(float64(m.NetTx-lastNetTx) / elapsed)
+		}
+	}
+	lastNetRx = m.NetRx
+	lastNetTx = m.NetTx
+	lastNetTime = now
+
 	return map[string]any{
 		"cpu": m.CPU,
 		"memory": map[string]any{
@@ -275,8 +296,8 @@ func collectMetrics() map[string]any {
 			"pct":   m.DiskPct,
 		},
 		"net": map[string]any{
-			"rx": m.NetRx,
-			"tx": m.NetTx,
+			"rx": rxRate,
+			"tx": txRate,
 		},
 		"uptime": m.Uptime,
 		"load":   []float64{m.Load1m},

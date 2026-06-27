@@ -1,3 +1,32 @@
+# v0.9.3-beta (2026-06-27)
+
+## [v0.9.3-beta] - 2026-06-27
+
+### 设备中心重构 — Phase 5+6 全部功能就绪
+
+**Devices.vue 完整重写 (~700行):**
+- ✅ 统计概览栏 (总数/在线/离线 三卡片)
+- ✅ 设备列表: 多选列 + 状态/标签/IP/OS/版本/操作(命令/SSH/删除)
+- ✅ 详情弹窗: 指标历史表 + Canvas 趋势图(1h/12h/7d) + 进程列表 + 网络连接 + 命令历史
+- ✅ 批量命令: 多选设备 → 并发下发 → 结果回显
+- ✅ 告警规则 CRUD: 名称/指标/阈值/设备/启用开关
+- ✅ 标签行内编辑
+- ✅ SSH 一键跳转 (sessionStorage 传参)
+
+**devices.ts Store 扩展:**
+- ✅ deleteDevice() / loadAlertRules() / createAlertRule() / updateAlertRule() / deleteAlertRule() / toggleAlertRule()
+- ✅ AlertRule TypeScript 接口
+
+**i18n:**
+- ✅ zh-CN + en-US 各新增 14 个词条 (alerts/alertAdd/alertName/alertMetric/alertThreshold/alertDevice/alertAllDevices/alertEnabled/alertNoRules/alertDelete/trend/commandHistory/network)
+- ✅ 修复重复 noCommands 词条
+
+**全局版本号统一:**
+- ✅ package.json / public/index.html / public/js/app.js / public/login.html / README.md 全部同步为 0.9.3-beta
+- ✅ vite.config.ts 动态读取 package.json (单一事实源)
+
+---
+
 # v0.8.5-beta (2026-06-21)
 
 ## [v0.8.5-beta] - 2026-06-21

@@ -1,6 +1,6 @@
 # Home Server Panel — 家庭服务器运维管理面板
 
-**版本**: v0.8.5-beta | **许可**: MIT
+**版本**: v0.9.3-beta | **许可**: MIT
 
 轻量级家庭服务器运维管理面板，支持 iStoreOS/OpenWRT、群晖 DSM、Debian/Ubuntu、macOS 等 Linux 发行版。
 
@@ -418,6 +418,10 @@ cd client && npm run dev  # Vite 开发服务器 (5173)
 
 | 版本 | 日期 | 主要内容 |
 |------|------|----------|
+| v0.9.3-beta | 2026-06-27 | 设备中心重构: 实时指标+进程+连接+趋势图+告警规则+批量命令+标签编辑 |
+| v0.9.2-beta | 2026-06-24 | 安全审计(bcrypt/限流/Cron黑名单) + i18n 清理 + Install重写 |
+| v0.9.1-beta | 2026-06-24 | Nginx 自动部署 + 对话框布局重构 + 可访问性检测 + MySQL连接修复 |
+| v0.9.0-beta | 2026-06-24 | V2.0 多设备架构(Go Agent + Provider抽象层)合并至main |
 | v0.8.5-beta | 2026-06-21 | 多用户管理 + PushPlus 增强 (标题/渠道) + 设置页重组 + 根除版本号硬编码 |
 | v0.8.4-beta | 2026-06-20 | 暗色模式表格修复 + Nginx 布局重构 + 移动端响应式 + Logo 组件 |
 | v0.8.3-beta | 2026-06-20 | 仪表盘修复 + Apple 风格 CSS 动画 + 登录页 Canvas 粒子动画 +

@@ -2,7 +2,7 @@
 
 家庭服务器运维管理面板，一站式 Web 界面管理你的路由器、NAS 和服务器。
 
-**版本**: v0.9.2-beta | **许可**: MIT
+**版本**: v0.9.4-beta | **许可**: MIT
 
 ---
 
@@ -27,7 +27,7 @@
 | 文档 | 适合谁 | 内容 |
 |------|--------|------|
 | [⬇️ 安装部署](docs/INSTALL.md) | 所有人 | 服务端安装 + Agent 安装 |
-| [🔌 API 接口](docs/API.md) | 开发者 | 74 个端点完整参考 |
+| [🔌 API 接口](docs/API.md) | 开发者 | 90+ 个端点完整参考 |
 | [🤖 设备 Agent](docs/AGENT.md) | 被管理设备 | Agent 下载、启动、自启动 |
 | [🏗️ 技术架构](docs/ARCHITECTURE.md) | 开发者 | 技术栈、目录结构、设计决策 |
 | [🔐 安全架构](docs/SECURITY.md) | 所有人 | 认证、加密、防护措施 |
@@ -48,4 +48,4 @@ node src/server.js
 
 ---
 
-**变更记录**: [CHANGELOG.md](CHANGELOG.md) | **最近版本**: v0.9.2-beta（安全审计 + Agent 抽离）
+**变更记录**: [CHANGELOG.md](CHANGELOG.md) | **最近版本**: v0.9.4-beta（合并 + 代码审查收尾）

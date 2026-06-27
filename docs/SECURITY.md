@@ -26,6 +26,7 @@
 | 命令注入 | 端口号 1-65535 校验、Nginx method 白名单 |
 | 路径遍历 | path.resolve + path.normalize + startsWith 三重确认 |
 | 错误脱敏 | 生产环境替换文件路径和内网 IP 为 `[PATH]` / `[IP]` |
+| 日志可靠性 | MySQL 异步写入失败时 console.warn 记录（不再静默吞错） |
 
 ## 前端安全
 
@@ -52,6 +53,8 @@
 - PushPlus Token 返回脱敏（前 6 位 + `****`）
 - SSH 私钥和密码采用 AES-256-GCM 加密后存储
 
+- MySQL 写入失败 → console.warn 记录（不再静默吞错）
+
 ---
 
-> 安全审计评分：7.5/10（v0.9.2-beta）— 无远程代码执行漏洞，核心防护到位
+> 安全审计评分：7.5/10（v0.9.4-beta）— 无远程代码执行漏洞，核心防护到位

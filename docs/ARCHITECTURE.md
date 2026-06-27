@@ -68,7 +68,7 @@
          SQLite 继续工作（无感知回退）
 ```
 
-9 张数据表：`ddns_config` | `ddns_records` | `ssl_certs` | `proxy_rules` | `ssh_config` | `cron_jobs` | `operation_logs` | `settings` | `users`
+13 张数据表：`ddns_config` | `ddns_records` | `ssl_certs` | `proxy_rules` | `ssh_config` | `cron_jobs` | `operation_logs` | `settings` | `users`
 
 ## 目录结构
 

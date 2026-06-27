@@ -105,11 +105,28 @@ WebSocket 终端：`ws://host:port/ws/ssh`（通过 Cookie `hsp_token` 认证）
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/v2/device` | 设备列表+在线状态 |
+| GET | `/api/v2/device/stats` | 设备统计（online/offline/total） |
+| GET | `/api/v2/device/:id` | 设备详情+指标+进程+连接 |
+| GET | `/api/v2/device/:id/metrics` | 历史指标（range: 1h/12h/7d） |
+| GET | `/api/v2/device/:id/processes` | 进程列表 |
+| GET | `/api/v2/device/:id/connections` | 网络连接 |
+| GET | `/api/v2/device/:id/commands` | 命令历史 |
 | POST | `/api/v2/device/register` | 设备注册（Agent 用） |
 | POST | `/api/v2/device/heartbeat` | 心跳上报 |
 | POST | `/api/v2/device/report` | 指标上报 |
+| POST | `/api/v2/device/commands/batch` | 批量命令（多选发送） |
 | POST | `/api/v2/device/:id/command` | 向设备发送命令 |
-| DELETE | `/api/v2/device/:id` | 删除设备 |
+| PUT | `/api/v2/device/:id/tags` | 更新设备标签 |
+| DELETE | `/api/v2/device/:id` | 删除设备（级联） |
+
+### 告警规则
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v2/alert/rules` | 告警规则列表 |
+| POST | `/api/v2/alert/rules` | 创建规则 |
+| PUT | `/api/v2/alert/rules/:id` | 更新规则 |
+| DELETE | `/api/v2/alert/rules/:id` | 删除规则 |
 
 WebSocket 命令通道：`ws://host:port/api/v2/device/ws`（`x-device-id` + `x-device-secret` 认证）
 

@@ -1,4 +1,14 @@
-# v0.9.3-beta (2026-06-27)
+# v0.9.4-beta (2026-06-27)
+
+## [v0.9.4-beta] - 2026-06-27
+
+### 合并 + 代码审查收尾
+- 🔀 main → v2.0-dev 合并（Nginx 修复链 + 安全审计 + 文档重构 + Install.vue SPA）
+- 🛡️ 代码审查遗留修复：DDNS 空 catch 注释、日志 MySQL 失败 warn、Cron getJob()
+- 📝 docs/ 五篇文档就绪：AGENT.md / API.md / ARCHITECTURE.md / INSTALL.md / SECURITY.md
+- 🎨 Settings.vue 新增数据库管理卡片
+- 🔒 bcrypt 自动迁移 + 登录限流 + Cron 黑名单加强
+- 🌍 i18n 中英文完整覆盖
 
 ## [v0.9.3-beta] - 2026-06-27
 

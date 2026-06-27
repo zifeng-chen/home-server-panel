@@ -124,7 +124,7 @@ class DdnsService {
     try {
       const localIpv6 = await this._getLocalIpv6();
       if (localIpv6) return localIpv6;
-    } catch (e) {}
+    } catch (e) { /* 本地接口检测也失败 */ }
 
     throw new Error('[内部] 无法获取公网 IPv6，所有服务均不可达');
   }
@@ -391,7 +391,7 @@ class DdnsService {
           record = { domain, record: found };
           break;
         }
-      } catch (e) {}
+      } catch (e) { /* 域名记录查找失败，继续尝试下一个域名 */ }
     }
 
     if (!record) throw new Error('记录不存在');

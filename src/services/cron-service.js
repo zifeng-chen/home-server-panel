@@ -25,6 +25,8 @@ class CronService {
 
   listJobs() { return this.jobs; }
 
+  getJob(id) { return this.jobs.find(j => j.id === id) || null; }
+
   addJob(job) {
     const j = {
       id: job.id || "cron-" + Date.now(),

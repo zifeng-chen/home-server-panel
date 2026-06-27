@@ -38,7 +38,7 @@ class LogService {
       try {
         const dbService = require("./db-service");
         if (dbService.mode === "mysql" && dbService.getPool()) {
-          dbService.addLog(r).catch(() => {});
+          dbService.addLog(r).catch(e => { console.warn('[日志] MySQL 写入失败:', e.message); });
         }
       } catch (_) {}
     });

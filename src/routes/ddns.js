@@ -57,6 +57,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/ddns/credentials-status - 检查各云厂商密钥配置状态
+router.get('/credentials-status', (req, res) => {
+  try {
+    const sqliteService = require('../services/sqlite-service');
+    const aliCreds = sqliteService.getAliyunCredentials();
+    const txCreds = sqliteService.getTencentCredentials();
+    res.json({
+      success: true,
+      data: {
+        aliyun: !!(aliCreds.accessKeyId && aliCreds.accessKeySecret),
+        tencent: !!(txCreds.secretId && txCreds.secretKey)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: _safeErr(err) });
+  }
+});
+
 // GET /api/ddns/ip - 获取公网 IP (IPv4)
 router.get('/ip', async (req, res) => {
   try {

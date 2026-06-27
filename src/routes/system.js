@@ -80,7 +80,7 @@ router.get('/config', (req, res) => {
     ddnsDomains: process.env.DDNS_DOMAINS || '',
     acmeEmail: process.env.ACME_EMAIL || '',
     acmeDnsProvider: process.env.ACME_DNS_PROVIDER || '',
-    pushplusToken: (process.env.PUSHPLUS_TOKEN || '').length > 0 ? '已配置' : '未配置',
+    pushplusToken: (process.env.PUSHPLUS_TOKEN || '').length > 0 ? (process.env.PUSHPLUS_TOKEN.slice(0, 6) + '****') : '未配置',
     pushplusTitle: process.env.PUSHPLUS_TITLE || '',
     pushplusChannel: process.env.PUSHPLUS_CHANNEL || 'wechat',
     certExpireDays: parseInt(process.env.CERT_EXPIRE_WARN_DAYS || '30'),

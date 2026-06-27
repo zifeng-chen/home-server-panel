@@ -48,3 +48,18 @@ CREATE TABLE IF NOT EXISTS device_commands (
   INDEX idx_device_status (device_id, status),
   FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. 告警规则表
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(64) NOT NULL COMMENT '规则名称',
+  metric ENUM('cpu','memory','disk') NOT NULL COMMENT '监控指标',
+  operator ENUM('gt','lt') NOT NULL COMMENT '比较运算符 gt=大于 lt=小于',
+  threshold DECIMAL(5,1) NOT NULL COMMENT '阈值',
+  device_id VARCHAR(64) DEFAULT NULL COMMENT '指定设备ID，NULL=全局',
+  enabled TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+  last_triggered TIMESTAMP NULL COMMENT '上次触发时间（冷却用）',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_device (device_id),
+  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

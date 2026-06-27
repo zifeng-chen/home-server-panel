@@ -808,6 +808,31 @@ class NginxService {
     }
   }
 
+  // ==================== 卸载 ====================
+  async uninstall() {
+    const cmds = [];
+    if (this.distro === 'openwrt') {
+      cmds.push('opkg remove --force-depends nginx 2>&1');
+    } else if (this.distro === 'alpine') {
+      cmds.push('apk del nginx 2>&1');
+    } else if (this.platform === 'darwin') {
+      cmds.push('brew uninstall nginx 2>&1');
+    } else {
+      cmds.push('sudo apt-get remove -y nginx 2>&1 || sudo yum remove -y nginx 2>&1');
+    }
+    const cmd = cmds.join('; ');
+    return new Promise((resolve) => {
+      exec(cmd, { timeout: 60000 }, (err, stdout, stderr) => {
+        const out = (stdout + '\n' + stderr).trim();
+        if (err) {
+          resolve({ success: false, message: '卸载失败: ' + (err.message || out.slice(-200)) });
+        } else {
+          resolve({ success: true, message: 'Nginx 已卸载', output: out.slice(-500) });
+        }
+      });
+    });
+  }
+
 }
 
 module.exports = new NginxService();

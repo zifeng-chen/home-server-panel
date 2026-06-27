@@ -181,7 +181,8 @@ router.get('/domains', (req, res) => {
 // DELETE /api/cert/domains/:domain - 删除域名及证书文件
 router.delete('/domains/:domain', (req, res) => {
   const deleteFiles = req.query.deleteFiles === 'true';
-  sslService.removeConfigDomain(req.params.domain, deleteFiles);
+  const domain = req.params.domain;
+  sslService.removeConfigDomain(domain, deleteFiles);
   res.json({ success: true, message: deleteFiles ? '域名及证书文件已删除' : '域名已从配置中移除（证书文件保留）' });
   _tryNotify('delete', domain, deleteFiles ? '已删除证书文件' : '仅移除配置');
 });

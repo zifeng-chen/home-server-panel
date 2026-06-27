@@ -352,7 +352,14 @@
     "connLocal": "本地地址",
     "connRemote": "远程地址",
     "connState": "状态",
-    "noConnections": "暂无连接数据"
+    "noConnections": "暂无连接数据",
+    "notFound": "设备不存在或已被删除",
+    "noTrendData": "数据不足，请等待采集...",
+    "batchSelected": "已选 {n} 台设备",
+    "batchPlaceholder": "输入要在所有选中设备上执行的命令...",
+    "clickToTag": "点击添加标签",
+    "batchCommand": "批量执行",
+    "commandHistory": "命令历史"
   },
   "settings": {
     "title": "系统设置",

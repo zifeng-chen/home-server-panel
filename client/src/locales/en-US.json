@@ -352,7 +352,14 @@
     "connLocal": "Local",
     "connRemote": "Remote",
     "connState": "State",
-    "noConnections": "No connection data"
+    "noConnections": "No connection data",
+    "notFound": "Device not found or has been removed",
+    "noTrendData": "Not enough data, waiting for collection...",
+    "batchSelected": "{n} device(s) selected",
+    "batchPlaceholder": "Enter command to run on all selected devices...",
+    "clickToTag": "Click to tag",
+    "batchCommand": "Batch Execute",
+    "commandHistory": "Command History"
   },
   "settings": {
     "title": "System Settings",

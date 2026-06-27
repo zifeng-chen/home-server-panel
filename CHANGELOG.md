@@ -2,6 +2,15 @@
 
 ## [v0.9.4-beta] - 2026-06-27
 
+### 设备详情页全面重设计
+- 🎨 设备详情从弹窗改为独立页面（路由 `/devices/:id`）
+- 📊 全新仪表盘：Canvas 弧形仪表（CPU/内存/磁盘）+ 网络流量卡片
+- 📈 平滑趋势图：贝塞尔曲线 + 渐变填充 + 网格刻度 + DPR 自适应
+- 🔧 页面内命令面板：Ctrl+Enter 提交 + 结果实时显示
+- 📋 三列信息面板：进程列表（带 CPU/MEM 条形图）+ 网络连接 + 命令历史
+- 🏠 面包屑导航 + 设备信息卡（SVG 图标 + 元数据 + SSH/命令/删除按钮）
+- 🌍 i18n 补齐 7 个新键（notFound/noTrendData/batchCommand 等）
+
 ### 合并 + 代码审查收尾
 - 🔀 main → v2.0-dev 合并（Nginx 修复链 + 安全审计 + 文档重构 + Install.vue SPA）
 - 🛡️ 代码审查遗留修复：DDNS 空 catch 注释、日志 MySQL 失败 warn、Cron getJob()

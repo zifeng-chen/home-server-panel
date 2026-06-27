@@ -19,7 +19,8 @@ const router = createRouter({
         { path: 'cron',       name: 'cron',      component: () => import('../pages/Cron.vue') },
         { path: 'docker',     name: 'docker',    component: () => import('../pages/Docker.vue') },
         { path: 'ssh',        name: 'ssh',       component: () => import('../pages/Ssh.vue') },
-        { path: 'devices',    name: 'devices',   component: () => import('../pages/Devices.vue') },
+        { path: 'devices',           name: 'devices',        component: () => import('../pages/Devices.vue') },
+        { path: 'devices/:id', name: 'device-detail',  component: () => import('../pages/DeviceDetail.vue') },
         { path: 'settings',   name: 'settings',  component: () => import('../pages/Settings.vue') },
       ]
     }

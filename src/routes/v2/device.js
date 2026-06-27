@@ -5,6 +5,17 @@ const deviceService = require('../../services/v2/device-service');
 const commandService = require('../../services/v2/command-service');
 const LocalProvider = require('../../services/v2/local-provider');
 
+// MySQL TIMESTAMP 列存储在 UTC，读写时转回 CST
+const toCst = (s) => {
+  if (!s) return s;
+  const d = s instanceof Date ? s : new Date(s.slice(-1) === 'Z' ? s : s + 'Z');
+  if (isNaN(d.getTime())) return s;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+const fixDeviceTz = (dev) => { dev.last_seen = toCst(dev.last_seen); dev.created_at = toCst(dev.created_at); return dev; };
+const fixListTz = (r) => { r.devices?.forEach(fixDeviceTz); return r; };
+
 // GET /api/v2/device/stats — 设备统计
 router.get('/stats', async (req, res) => {
   try {
@@ -24,7 +35,7 @@ router.get('/', async (req, res) => {
       page: parseInt(page) || 1,
       pageSize: Math.min(parseInt(pageSize) || 20, 100)
     });
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: fixListTz(result) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

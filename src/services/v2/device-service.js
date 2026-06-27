@@ -5,6 +5,9 @@ const dbService = require('../db-service');
 const LocalProvider = require('./local-provider');
 const crypto = require('crypto');
 
+// MySQL 容器用 UTC 时钟，NOW() 差 8 小时 → 统一用 Node.js 本地时间
+const nowStr = () => new Date().toISOString().replace('T', ' ').replace('Z', '');
+
 class DeviceService {
   /**
    * 生成设备认证凭据
@@ -47,17 +50,17 @@ class DeviceService {
       if (existing[0].secret !== secret) throw new Error('设备密钥不匹配');
       // 已注册，更新信息
       await pool.query(
-        `UPDATE devices SET name=?, hostname=?, ip=?, os=?, arch=?, version=?, status='online', last_seen=NOW()
+        `UPDATE devices SET name=?, hostname=?, ip=?, os=?, arch=?, version=?, status='online', last_seen=?
          WHERE id=?`,
-        [name, hostname, ip, os, arch, version, deviceId]
+        [name, hostname, ip, os, arch, version, nowStr(), deviceId]
       );
       return { registered: false, deviceId };
     }
     // 新设备注册
     await pool.query(
       `INSERT INTO devices (id, name, hostname, ip, os, arch, version, secret, status, last_seen)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', NOW())`,
-      [deviceId, name, hostname, ip, os, arch, version, secret]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', ?)`,
+      [deviceId, name, hostname, ip, os, arch, version, secret, nowStr()]
     );
     return { registered: true, deviceId };
   }
@@ -68,8 +71,8 @@ class DeviceService {
   async heartbeat(deviceId) {
     const pool = this._pool();
     const [result] = await pool.query(
-      `UPDATE devices SET status='online', last_seen=NOW() WHERE id=?`,
-      [deviceId]
+      `UPDATE devices SET status='online', last_seen=? WHERE id=?`,
+      [nowStr(), deviceId]
     );
     if (result.affectedRows === 0) throw new Error('设备不存在: ' + deviceId);
     return { ok: true, at: new Date().toISOString() };
@@ -82,12 +85,12 @@ class DeviceService {
     const pool = this._pool();
     // 更新设备状态
     await pool.query(
-      `UPDATE devices SET last_seen=NOW() WHERE id=?`, [deviceId]
+      `UPDATE devices SET last_seen=? WHERE id=?`, [nowStr(), deviceId]
     );
     // 存储指标
     await pool.query(
       `INSERT INTO device_metrics (device_id, cpu, memory_pct, disk_pct, net_rx, net_tx, uptime, collected_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         deviceId,
         metrics.cpu || 0,
@@ -95,7 +98,8 @@ class DeviceService {
         metrics.disk?.pct || 0,
         metrics.net?.rx || 0,
         metrics.net?.tx || 0,
-        metrics.uptime || 0
+        metrics.uptime || 0,
+        nowStr()
       ]
     );
     // 清理旧指标（保留最近 10080 条 = 7天 × 每分钟）
@@ -125,9 +129,9 @@ class DeviceService {
   async updateCommandResult(commandId, { status, result: output, exitCode }) {
     const pool = this._pool();
     await pool.query(
-      `UPDATE device_commands SET status=?, result=?, exit_code=?, executed_at=NOW()
+      `UPDATE device_commands SET status=?, result=?, exit_code=?, executed_at=?
        WHERE id=?`,
-      [status, output || null, exitCode ?? null, commandId]
+      [status, output || null, exitCode ?? null, nowStr(), commandId]
     );
     return { ok: true };
   }
@@ -205,8 +209,8 @@ class DeviceService {
   async detectOffline(minutes = 5) {
     const pool = this._pool();
     const [result] = await pool.query(
-      `UPDATE devices SET status='offline' WHERE status='online' AND last_seen < DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
-      [minutes]
+      `UPDATE devices SET status='offline' WHERE status='online' AND last_seen < DATE_SUB(?, INTERVAL ? MINUTE)`,
+      [nowStr(), minutes]
     );
     if (result.affectedRows > 0) {
       console.log(`[V2] 检测到 ${result.affectedRows} 台设备离线`);
@@ -248,9 +252,9 @@ class DeviceService {
     const pool = this._pool();
     const [rows] = await pool.query(
       `SELECT cpu, memory_pct, disk_pct, net_rx, net_tx, collected_at
-       FROM device_metrics WHERE device_id=? AND collected_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       FROM device_metrics WHERE device_id=? AND collected_at >= DATE_SUB(?, INTERVAL ? MINUTE)
        ORDER BY id ASC`,
-      [deviceId, rangeMin]
+      [deviceId, nowStr(), rangeMin]
     );
     return rows;
   }
@@ -296,22 +300,23 @@ class DeviceService {
     if (rows.length > 0) {
       // 更新心跳 + 刷新信息
       await pool.query(
-        `UPDATE devices SET hostname=?, ip=?, os=?, arch=?, version=?, status='online', last_seen=NOW() WHERE id='dev_local'`,
-        [hostname, ip, platform, arch, version]
+        `UPDATE devices SET hostname=?, ip=?, os=?, arch=?, version=?, status='online', last_seen=? WHERE id='dev_local'`,
+        [hostname, ip, platform, arch, version, nowStr()]
       );
       return;
     }
     // 首次注册
     await pool.query(
       `INSERT INTO devices (id, name, hostname, ip, os, arch, version, secret, status, last_seen)
-       VALUES ('dev_local', ?, ?, ?, ?, ?, ?, '', 'online', NOW())`,
+       VALUES ('dev_local', ?, ?, ?, ?, ?, ?, '', 'online', ?)`,
       [
         hostname + ' (主路由)',
         hostname,
         ip,
         platform,
         arch,
-        version
+        version,
+        nowStr()
       ]
     );
   }

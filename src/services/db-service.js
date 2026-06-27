@@ -50,7 +50,8 @@ class DbService {
         host, port, user, password, database,
         waitForConnections: true,
         connectionLimit: 10,
-        charset: 'utf8mb4'
+        charset: 'utf8mb4',
+        timezone: '+08:00'
       });
 
       await this._initSchema();

@@ -6,8 +6,8 @@ const commandService = require('./v2/command-service');
 
 let deviceWss = null;
 
-// 设备连接映射 (deviceId → ws)
-const deviceConns = new Map();
+// 设备连接映射 (deviceId → ws) — 使用独立模块避免循环依赖
+const deviceConns = require('./v2/device-connections');
 
 /**
  * 初始化 WebSocket 服务（绑定到 HTTP server）
@@ -58,10 +58,7 @@ function init(httpServer) {
           wss.handleUpgrade(request, socket, head, (ws) => {
             console.log(`[WS] 设备 WS 已连接: ${deviceId}`);
             deviceConns.set(deviceId, ws);
-            // 初始化命令服务（延迟到首次连接）
-            if (!commandService._initialized) {
-              commandService.init(deviceConns);
-            }
+            // commandService 直接引用 device-connections 模块，无需 init
 
             ws.on('close', () => {
               console.log(`[WS] 设备 WS 断开: ${deviceId}`);

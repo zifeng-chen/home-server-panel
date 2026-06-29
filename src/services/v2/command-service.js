@@ -2,8 +2,8 @@
 const crypto = require('crypto');
 const genId = () => 'cmd_' + crypto.randomBytes(4).toString('hex');
 
-// WS 设备连接池（由 ws-service.js 维护）
-let deviceConns = null; // Map<deviceId, WebSocket>
+// WS 设备连接池 — 独立模块打破循环依赖
+const deviceConns = require('./device-connections');
 
 // 待处理回调 Map<commandId, { resolve, reject, timer }>
 const pending = new Map();
@@ -12,12 +12,6 @@ const pending = new Map();
 const DEFAULT_TIMEOUT = 15000;
 
 class CommandService {
-  /**
-   * 初始化（由 ws-service.js 调用）
-   */
-  init(connsMap) {
-    deviceConns = connsMap;
-  }
 
   /**
    * 处理 Agent 返回的命令结果
@@ -49,8 +43,6 @@ class CommandService {
    * @returns {Promise<object>} { device_id, result }
    */
   async send(deviceId, command, timeout = DEFAULT_TIMEOUT) {
-    if (!deviceConns) throw new Error('CommandService 未初始化');
-
     const ws = deviceConns.get(deviceId);
     if (!ws || ws.readyState !== 1) {
       throw new Error(`设备 ${deviceId} 不在线或 WS 未连接`);
@@ -88,7 +80,6 @@ class CommandService {
    * 简易广播命令（不等待回复，fire-and-forget）
    */
   broadcast(action, data) {
-    if (!deviceConns) return;
     const msg = JSON.stringify({
       type: 'command',
       command_id: genId(),
@@ -96,7 +87,7 @@ class CommandService {
       plugin: '',
       data: data || {}
     });
-    for (const [deviceId, ws] of deviceConns) {
+    for (const [dId, ws] of deviceConns) {
       if (ws.readyState === 1) {
         try { ws.send(msg); } catch (_) {}
       }
@@ -107,9 +98,8 @@ class CommandService {
    * 获取在线设备列表
    */
   getOnlineDevices() {
-    if (!deviceConns) return [];
     const online = [];
-    for (const [deviceId, ws] of deviceConns) {
+    for (const [dId, ws] of deviceConns) {
       if (ws.readyState === 1) {
         online.push(deviceId);
       }

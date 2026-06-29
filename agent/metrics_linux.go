@@ -25,24 +25,68 @@ type MetricData struct {
 	Processes  int
 }
 
+// CPU delta tracking (跨 collectMetrics 调用)
+var (
+	prevCPUIdle  uint64
+	prevCPUTotal uint64
+)
+
 func MetricsSnapshot() MetricData {
 	m := MetricData{}
 
-	// CPU — /proc/loadavg (BusyBox 和标准 Linux 通用)
+	// Load 1m (参考值，显示在面板)
 	if raw, err := os.ReadFile("/proc/loadavg"); err == nil {
 		parts := strings.Fields(string(raw))
 		if len(parts) >= 1 {
 			m.Load1m, _ = strconv.ParseFloat(parts[0], 64)
 		}
 	}
-	// CPU cores for percentage
-	if raw, err := os.ReadFile("/proc/cpuinfo"); err == nil {
-		cores := float64(strings.Count(string(raw), "processor\t"))
-		if cores == 0 {
-			cores = float64(strings.Count(string(raw), "processor\t:"))
+
+	// CPU% — /proc/stat delta 算法 (扣除 idle/iowait)
+	// /proc/stat 第一行: cpu  user nice system idle iowait irq softirq steal ...
+	if raw, err := os.ReadFile("/proc/stat"); err == nil {
+		lines := strings.Split(string(raw), "\n")
+		var user, nice, system, idle, iowait, irq, softirq, steal uint64
+		for _, line := range lines {
+			if strings.HasPrefix(line, "cpu ") {
+				fields := strings.Fields(line)
+				if len(fields) >= 8 {
+					user, _ = strconv.ParseUint(fields[1], 10, 64)
+					nice, _ = strconv.ParseUint(fields[2], 10, 64)
+					system, _ = strconv.ParseUint(fields[3], 10, 64)
+					idle, _ = strconv.ParseUint(fields[4], 10, 64)
+					iowait, _ = strconv.ParseUint(fields[5], 10, 64)
+					irq, _ = strconv.ParseUint(fields[6], 10, 64)
+					softirq, _ = strconv.ParseUint(fields[7], 10, 64)
+					if len(fields) >= 9 {
+						steal, _ = strconv.ParseUint(fields[8], 10, 64)
+					}
+				}
+				break
+			}
 		}
-		if cores > 0 && m.Load1m > 0 {
-			m.CPU = m.Load1m / cores * 100
+		total := user + nice + system + idle + iowait + irq + softirq + steal
+		active := total - idle - iowait // 排除空闲和 IO 等待 = 真正 CPU 使用
+		if prevCPUTotal > 0 && total > prevCPUTotal {
+			dt := total - prevCPUTotal
+			da := active - (prevCPUTotal - prevCPUIdle)
+			if dt > 0 {
+				m.CPU = float64(da) / float64(dt) * 100
+			}
+		}
+		prevCPUIdle = idle + iowait
+		prevCPUTotal = total
+	}
+	// Fallback: 首次数值缺失时用 Load/cores 粗略估计
+	if m.CPU == 0 && m.Load1m > 0 {
+		if raw, err := os.ReadFile("/proc/cpuinfo"); err == nil {
+			cores := float64(strings.Count(string(raw), "processor\t"))
+			if cores == 0 {
+				cores = float64(strings.Count(string(raw), "processor\t:"))
+			}
+			if cores > 0 {
+				m.CPU = m.Load1m / cores * 100
+			}
 		}
 	}
 

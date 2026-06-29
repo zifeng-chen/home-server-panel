@@ -73,7 +73,7 @@ var defaultPlugins = map[string]PluginManifest{
 		Name:        "ps",
 		Version:     "1.0",
 		Description: "进程列表 (PID/CPU/MEM/CMD)",
-		Command:     "ps -eo pid,pcpu,pmem,args --sort=-pcpu 2>/dev/null | head -16 || ps | head -16",
+		Command:     "(ps -eo pid,pcpu,pmem,args --sort=-pcpu 2>/dev/null; ps) | head -20",
 		Timeout:     5,
 	},
 	"netstat": {

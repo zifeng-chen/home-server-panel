@@ -5,6 +5,76 @@ const deviceService = require('../../services/v2/device-service');
 const commandService = require('../../services/v2/command-service');
 const LocalProvider = require('../../services/v2/local-provider');
 
+// ===== 进程/连接输出解析 =====
+// 兼容 GNU ps (pid,pcpu,pmem,args) 和 BusyBox ps (PID USER VSZ STAT COMMAND)
+// 两种格式可能混合出现（Agent 同时跑两个 ps 命令）
+const parsePsOutput = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const procMap = new Map(); // pid → proc 去重
+  let inBusyBox = false;
+  for (let i = 0; i < lines.length && procMap.size < 20; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    // 跳过 header 行
+    const lower = line.toLowerCase();
+    if (lower.startsWith('pid') && (lower.includes('user') || lower.includes('%cpu') || lower.includes('pcpu'))) {
+      inBusyBox = lower.includes('user') || lower.includes('vsz') || lower.includes('stat');
+      continue;
+    }
+    const parts = line.split(/\s+/);
+    if (parts.length < 2) continue;
+    const pid = parts[0];
+    if (!/^\d+/.test(pid) || procMap.has(pid)) continue;
+    if (inBusyBox) {
+      // BusyBox ps:  PID  USER  VSZ   STAT  COMMAND...
+      //             [0]  [1]   [2]   [3]   [4+]
+      // VSZ = 虚拟内存(KB), 格式化为人类可读
+      const vsz = parseInt(parts[2]) || 0;
+      const vszStr = vsz > 1024 ? (vsz / 1024).toFixed(1) + 'M' : vsz + 'K';
+      procMap.set(pid, {
+        pid,
+        user: parts[1] || '',
+        cpu: '0',
+        mem: vszStr,
+        state: parts.length > 4 ? (parts[3] || 'R') : (parts[3] || 'R'),
+        command: parts.length > 4 ? parts.slice(4).join(' ') : parts.slice(3).join(' ')
+      });
+    } else {
+      // GNU: PID %CPU %MEM COMMAND...
+      procMap.set(pid, {
+        pid,
+        cpu: parts[1] || '0',
+        mem: parts[2] || '0',
+        command: parts.slice(3).join(' ') || line
+      });
+    }
+  }
+  return Array.from(procMap.values());
+};
+// 兼容 GNU netstat 和 BusyBox netstat -an
+const parseNetstatOutput = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  const lines = text.trim().split('\n');
+  const conns = [];
+  for (let i = 0; i < lines.length && conns.length < 25; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('Proto') || line.startsWith('Active')) continue;
+    const parts = line.split(/\s+/);
+    if (parts.length < 4) continue;
+    // netstat -an: Proto Recv-Q Send-Q LocalAddr ForeignAddr State
+    // BusyBox: Proto RecvQ SendQ LocalAddr ForeignAddr State
+    conns.push({
+      proto: parts[0] || 'tcp',
+      local: parts[3] || parts[2] || '',
+      remote: parts[4] || parts[3] || '',
+      state: parts[5] || parts[4] || 'LISTEN'
+    });
+  }
+  return conns;
+};
+
 // MySQL TIMESTAMP 列存储在 UTC，读写时转回 CST
 const toCst = (s) => {
   if (!s) return s;
@@ -141,7 +211,7 @@ router.post('/command', async (req, res) => {
     try {
       const reply = await commandService.send(deviceId, {
         action: 'run_command',
-        data: { command }
+        command
       }, 15000);
       result.result = reply.result || {};
       if (reply.result?.output) {
@@ -215,8 +285,9 @@ router.get('/:id/processes', async (req, res) => {
       processes = await new LocalProvider().getProcessList();
     } else {
       try {
-        const reply = await commandService.send(req.params.id, 'get_processes', 8000);
-        processes = reply?.result?.processes || reply?.result || []
+        const reply = await commandService.send(req.params.id, { action: 'get_processes' }, 8000);
+        const text = reply?.result?.stdout || reply?.result || '';
+        processes = parsePsOutput(text);
       } catch { processes = [] }
     }
     res.json({ success: true, data: processes });
@@ -233,8 +304,9 @@ router.get('/:id/connections', async (req, res) => {
       conns = await new LocalProvider().getConnections();
     } else {
       try {
-        const reply = await commandService.send(req.params.id, 'get_connections', 8000);
-        conns = reply?.result?.connections || reply?.result || []
+        const reply = await commandService.send(req.params.id, { action: 'get_connections' }, 8000);
+        const text = reply?.result?.stdout || reply?.result || '';
+        conns = parseNetstatOutput(text);
       } catch { conns = [] }
     }
     res.json({ success: true, data: conns });
@@ -246,7 +318,7 @@ router.get('/:id/connections', async (req, res) => {
 // GET /api/v2/device/:id/plugins — Agent 插件列表
 router.get('/:id/plugins', async (req, res) => {
   try {
-    const reply = await commandService.send(req.params.id, 'list_plugins', 8000);
+    const reply = await commandService.send(req.params.id, { action: 'list_plugins' }, 8000);
     res.json({ success: true, data: reply?.result?.plugins || reply?.result || [] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -6,10 +6,10 @@ const discoveryService = require('../../services/v2/discovery-service');
 // POST /api/v2/discovery/scan — 发起网络扫描
 router.post('/scan', async (req, res) => {
   try {
-    const { method, range } = req.body;
+    const { method, range } = req.body || {};
     const scanMethod = method || 'auto';
     const scanId = await discoveryService.scan(scanMethod, range);
-    res.json({ success: true, data: { scan_id: scanId } });
+    res.json({ success: true, data: { scanId } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -22,7 +22,18 @@ router.get('/scan/:scanId', async (req, res) => {
     if (!scan) {
       return res.status(404).json({ success: false, message: '扫描状态已过期或不存在' });
     }
-    res.json({ success: true, data: scan });
+    res.json({
+      success: true,
+      data: {
+        detail: scan.progress?.detail || '',
+        progress: scan.progress?.percent ?? 0,
+        completed: scan.completed || false,
+        devices: (scan.devices || []).map(d => ({
+          ip: d.ip, mac: d.mac, hostname: d.hostname || d.label,
+          vendor: d.vendor, type: d.type || 'unknown', managed: d.managed || false
+        }))
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

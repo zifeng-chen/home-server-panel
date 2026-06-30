@@ -2,21 +2,21 @@
   <div class="devices-page">
     <!-- 统计概览 -->
     <div class="stats-row">
-      <div class="stat-card" @click="$refs?.discoveryDialog?.show()" style="cursor:pointer">
-        <span class="stat-val">{{ store.stats?.total || 0 }}</span>
-        <span class="stat-label">{{ $t('devices.totalDevices') }}</span>
+      <div class="stat-card" @click="showDiscovery = true" style="cursor:pointer">
+        <span class="stat-num">{{ store.stats?.total || 0 }}</span>
+        <span class="stat-lbl">{{ $t('devices.totalDevices') }}</span>
       </div>
       <div class="stat-card online">
-        <span class="stat-val">{{ store.stats?.online || 0 }}</span>
-        <span class="stat-label">{{ $t('devices.online') }}</span>
+        <span class="stat-num">{{ store.stats?.online || 0 }}</span>
+        <span class="stat-lbl">{{ $t('devices.online') }}</span>
       </div>
       <div class="stat-card offline">
-        <span class="stat-val">{{ store.stats?.offline || 0 }}</span>
-        <span class="stat-label">{{ $t('devices.offline') }}</span>
+        <span class="stat-num">{{ store.stats?.offline || 0 }}</span>
+        <span class="stat-lbl">{{ $t('devices.offline') }}</span>
       </div>
       <div class="stat-card scan" @click="showDiscovery = true">
-        <span class="stat-val">🔍</span>
-        <span class="stat-label">{{ $t('discovery.title') }}</span>
+        <span class="stat-num">🔍</span>
+        <span class="stat-lbl">{{ $t('discovery.title') }}</span>
       </div>
     </div>
 
@@ -55,12 +55,8 @@
       </el-table-column>
       <el-table-column :label="$t('common.actions')" width="215" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click.stop="showCommand(row)" size="small">
-            {{ $t('devices.sendCommand') }}
-          </el-button>
-          <el-button v-if="row.status === 'online' && row.id !== 'dev_local'" link type="success" @click.stop="openSsh(row)" size="small">
-            SSH
-          </el-button>
+          <el-button link type="primary" @click.stop="showCommand(row)" size="small">{{ $t('devices.sendCommand') }}</el-button>
+          <el-button v-if="row.status === 'online' && row.id !== 'dev_local'" link type="success" @click.stop="openSsh(row)" size="small">SSH</el-button>
           <el-popconfirm :title="$t('devices.delConfirm')" @confirm="doDelete(row)" :confirm-button-text="$t('common.confirm')" :cancel-button-text="$t('common.cancel')">
             <template #reference>
               <el-button link type="danger" @click.stop size="small">{{ $t('devices.delete') }}</el-button>
@@ -71,97 +67,82 @@
     </el-table>
 
     <!-- 批量操作栏 -->
-    <div v-if="selectedDevices.length > 0" class="batch-bar">
+    <div v-if="selectedDevices.length" class="batch-bar">
       <span>{{ $t('devices.batchSelected', { n: selectedDevices.length }) }}</span>
-      <el-button size="small" type="primary" @click="showBatchCommand">
-        {{ $t('devices.batchCommand') }}
-      </el-button>
+      <el-button size="small" type="primary" @click="showBatchCommand">{{ $t('devices.batchCommand') }}</el-button>
     </div>
 
     <!-- ===== 设备发现浮窗 ===== -->
-    <el-dialog v-model="showDiscovery" :title="$t('discovery.title')" width="820" :close-on-click-modal="false" destroy-on-close>
-      <div class="disco-body">
-        <!-- Scan Bar -->
-        <section class="scan-bar">
-          <div class="scan-controls">
-            <div class="control-group">
-              <label class="control-label">{{ $t('discovery.scanRange') }}</label>
-              <el-input v-model="scanRange" :placeholder="$t('discovery.cidrPlaceholder')" :disabled="isScanning" size="small" class="range-input" />
+    <el-dialog v-model="showDiscovery" title="网络扫描" width="760" :close-on-click-modal="false" destroy-on-close class="discovery-dialog">
+      <div class="disco-root">
+        <!-- Scan Controls -->
+        <div class="disco-controls">
+          <div class="disco-field">
+            <label>{{ $t('discovery.scanRange') }}</label>
+            <div class="disco-input-group">
+              <el-input v-model="scanRange" :disabled="isScanning" size="default" class="range-input" />
+              <el-button type="primary" @click="startScan" :loading="isScanning" class="scan-btn">
+                {{ isScanning ? '...' : '开始扫描' }}
+              </el-button>
             </div>
-            <div class="control-group">
-              <label class="control-label">{{ $t('discovery.scanMethod') }}</label>
-              <el-select v-model="scanMethod" :disabled="isScanning" size="small" class="method-select">
-                <el-option :label="$t('discovery.auto')" value="auto" />
-                <el-option :label="$t('discovery.arp')" value="arp" />
-                <el-option :label="$t('discovery.mdns')" value="mdns" />
-                <el-option :label="$t('discovery.nmap')" value="nmap" />
-              </el-select>
-            </div>
-            <el-button :type="isScanning ? 'danger' : 'primary'" :loading="isScanning" @click="isScanning ? stopScan() : startScan()" size="small" class="scan-btn">
-              {{ isScanning ? $t('discovery.stopScan') : $t('discovery.startScan') }}
-            </el-button>
           </div>
-        </section>
-
-        <!-- Progress -->
-        <section v-if="scanProgress" class="progress-section">
-          <div class="progress-header">
-            <span class="progress-stage">
-              <el-icon class="is-loading" v-if="!scanProgress.completed"><Loading /></el-icon>
-              <el-icon v-else><CircleCheckFilled /></el-icon>
-              {{ scanProgress.detail }}
-            </span>
-            <span class="progress-pct">{{ scanProgress.progress }}%</span>
-          </div>
-          <el-progress :percentage="scanProgress.progress" :status="scanProgress.completed ? 'success' : ''" :stroke-width="6" />
-        </section>
-
-        <!-- Result Table -->
-        <section v-if="discoveredDevices.length" class="result-section" style="margin-top:12px">
-          <el-table :data="discoveredDevices" size="small" stripe max-height="320">
-            <el-table-column prop="hostname" :label="$t('devices.hostname')" min-width="120">
-              <template #default="{ row }">{{ row.hostname || row.label || row.ip }}</template>
-            </el-table-column>
-            <el-table-column prop="ip" :label="$t('devices.ip')" width="150">
-              <template #default="{ row }"><code class="mono">{{ row.ip }}</code></template>
-            </el-table-column>
-            <el-table-column prop="mac" :label="$t('discovery.mac')" width="160">
-              <template #default="{ row }"><code class="mono">{{ row.mac || '-' }}</code></template>
-            </el-table-column>
-            <el-table-column prop="vendor" :label="$t('discovery.vendor')" min-width="130">
-              <template #default="{ row }">{{ row.vendor || '-' }}</template>
-            </el-table-column>
-            <el-table-column :label="$t('common.status')" width="80">
-              <template #default="{ row }">
-                <el-tag :type="row.managed ? 'success' : 'info'" size="small" effect="dark">
-                  {{ row.managed ? $t('devices.online') : $t('discovery.newDevice') }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column :label="$t('common.actions')" width="130">
-              <template #default="{ row }">
-                <el-button v-if="!row.managed" link type="primary" size="small" @click="installAgent(row)">安装 Agent</el-button>
-                <span v-else class="text-muted">已管理</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </section>
-
-        <!-- Empty -->
-        <div v-if="!isScanning && !discoveredDevices.length && scanAttempted" class="panel-empty" style="margin-top:20px">
-          {{ $t('discovery.noDevices') }}
         </div>
 
-        <!-- Install Password Form -->
-        <el-dialog v-model="installVisible" :title="$t('discovery.installAgent')" width="380" append-to-body>
+        <!-- Progress -->
+        <div v-if="scanProgress" class="disco-progress">
+          <div class="dp-head">
+            <span class="dp-stage">{{ scanProgress.completed ? '✅' : '⏳' }} {{ scanProgress.detail || '准备中...' }}</span>
+            <span class="dp-pct">{{ scanProgress.progress }}%</span>
+          </div>
+          <div class="dp-bar">
+            <div class="dp-fill" :style="{ width: scanProgress.progress + '%' }" :class="{ done: scanProgress.completed }"></div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div v-if="discoveredDevices.length" class="disco-results">
+          <div class="dr-header">
+            <span class="dr-count">发现 {{ discoveredDevices.length }} 台设备</span>
+          </div>
+          <div class="dr-grid">
+            <div class="dr-card" v-for="d in discoveredDevices" :key="d.ip" :class="{ managed: d.managed }">
+              <div class="drc-top">
+                <span class="drc-icon">{{ deviceIcon(d) }}</span>
+                <div class="drc-meta">
+                  <span class="drc-name">{{ d.hostname || d.ip }}</span>
+                  <code class="drc-ip">{{ d.ip }}</code>
+                </div>
+                <el-tag v-if="d.managed" type="success" size="small" effect="dark">受管</el-tag>
+                <el-tag v-else type="info" size="small">新设备</el-tag>
+              </div>
+              <div class="drc-details">
+                <span v-if="d.mac" class="drc-item"><small>MAC</small> <code>{{ d.mac }}</code></span>
+                <span v-if="d.vendor" class="drc-item"><small>厂商</small> {{ d.vendor }}</span>
+              </div>
+              <div class="drc-actions" v-if="!d.managed">
+                <el-button size="small" type="primary" plain @click="installAgent(d)">安装 Agent</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty -->
+        <div v-if="!isScanning && !discoveredDevices.length && scanAttempted" class="disco-empty">
+          <span class="empty-icon">📡</span>
+          <span>未发现新设备</span>
+          <span class="empty-hint">尝试扩大扫描范围或更换扫描方式</span>
+        </div>
+
+        <!-- Install Form -->
+        <el-dialog v-model="installVisible" title="安装 Agent" width="380" append-to-body>
           <el-form label-width="80px">
-            <el-form-item :label="$t('discovery.targetHost')">
+            <el-form-item label="目标主机">
               <el-input :model-value="installTarget?.ip" disabled />
             </el-form-item>
-            <el-form-item :label="$t('discovery.sshPassword')">
+            <el-form-item label="SSH 密码">
               <el-input v-model="installPassword" type="password" show-password />
             </el-form-item>
-            <el-form-item :label="$t('discovery.sshUser')">
+            <el-form-item label="用户名">
               <el-input v-model="installUser" placeholder="root" />
             </el-form-item>
           </el-form>
@@ -174,9 +155,6 @@
           </div>
         </el-dialog>
       </div>
-      <template #footer>
-        <el-button @click="showDiscovery = false">{{ $t('common.close') }}</el-button>
-      </template>
     </el-dialog>
 
     <!-- 命令下发弹窗 -->
@@ -186,15 +164,12 @@
           <el-input :model-value="commandTarget?.name" disabled />
         </el-form-item>
         <el-form-item label="Command">
-          <el-input v-model="commandText" type="textarea" :rows="3"
-            :placeholder="$t('devices.commandPlaceholder')" />
+          <el-input v-model="commandText" type="textarea" :rows="3" :placeholder="$t('devices.commandPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="commandVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="doSendCommand" :loading="sending">
-          {{ $t('common.submit') }}
-        </el-button>
+        <el-button type="primary" @click="doSendCommand" :loading="sending">{{ $t('common.submit') }}</el-button>
       </template>
     </el-dialog>
 
@@ -287,7 +262,6 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading, CircleCheckFilled } from '@element-plus/icons-vue'
 import { useDevicesStore } from '../stores/devices'
 import { useI18n } from 'vue-i18n'
 import api from '../api'
@@ -301,46 +275,76 @@ interface Device { id: string; name: string; hostname: string; ip: string; os: s
 // ===== Discovery State =====
 const showDiscovery = ref(false)
 const scanRange = ref('192.168.100.0/24')
-const scanMethod = ref('auto')
 const isScanning = ref(false)
 const scanAttempted = ref(false)
 const scanProgress = ref<{ detail: string; progress: number; completed: boolean } | null>(null)
 const discoveredDevices = ref<any[]>([])
 let scanPollTimer: any = null
 
+function deviceIcon(d: any) {
+  const type = d.type || ''
+  if (type.includes('router') || d.hostname?.includes('iStore')) return '📡'
+  if (type.includes('nas') || d.hostname?.includes('iOSun')) return '💾'
+  if (type.includes('desktop') || d.hostname?.includes('Mac')) return '💻'
+  if (type.includes('phone')) return '📱'
+  return '🖥️'
+}
+
 async function startScan() {
   isScanning.value = true
   scanAttempted.value = true
   discoveredDevices.value = []
+  scanProgress.value = { detail: '正在初始化...', progress: 0, completed: false }
   try {
-    const res = await api.get('/v2/discovery/scan', { params: { range: scanRange.value, method: scanMethod.value } }) as any
-    if (res.data?.scanId) {
+    const res = await api.post('/v2/discovery/scan', { range: scanRange.value, method: 'auto' }) as any
+    if (res.success && res.data?.scanId) {
       pollScan(res.data.scanId)
+    } else if (res.success && res.data?.devices) {
+      // Immediate result — no async
+      isScanning.value = false
+      discoveredDevices.value = res.data.devices.map((d: any) => ({
+        ...d,
+        managed: store.devices.some(dev => dev.ip === d.ip || dev.hostname === d.hostname)
+      }))
+      scanProgress.value = { detail: '扫描完成', progress: 100, completed: true }
     } else {
       isScanning.value = false
-      discoveredDevices.value = res.data?.devices || []
-      scanProgress.value = { detail: t('discovery.scanComplete'), progress: 100, completed: true }
+      ElMessage.error(res?.message || '扫描失败')
     }
-  } catch { isScanning.value = false; ElMessage.error(t('common.error')) }
+  } catch (e: any) {
+    isScanning.value = false
+    ElMessage.error(e?.response?.data?.message || e.message || '扫描失败')
+  }
 }
+
 async function pollScan(scanId: string) {
   scanPollTimer = setInterval(async () => {
     try {
       const res = await api.get(`/v2/discovery/scan/${scanId}`) as any
-      if (res.data) {
-        scanProgress.value = res.data
-        discoveredDevices.value = (res.data.devices || []).map((d: any) => ({
-          ...d,
-          managed: store.devices.some(dev => dev.ip === d.ip || dev.hostname === d.hostname)
-        }))
-        if (res.data.completed) { stopScan() }
+      if (res.success && res.data) {
+        scanProgress.value = {
+          detail: res.data.detail || '',
+          progress: res.data.progress ?? 0,
+          completed: res.data.completed
+        }
+        if (res.data.devices?.length) {
+          discoveredDevices.value = res.data.devices.map((d: any) => ({
+            ...d,
+            managed: store.devices.some(dev => dev.ip === d.ip || dev.hostname === d.hostname)
+          }))
+        }
+        if (res.data.completed) {
+          clearInterval(scanPollTimer)
+          scanPollTimer = null
+          isScanning.value = false
+        }
       }
-    } catch { stopScan() }
+    } catch {
+      clearInterval(scanPollTimer)
+      scanPollTimer = null
+      isScanning.value = false
+    }
   }, 1500)
-}
-function stopScan() {
-  isScanning.value = false
-  if (scanPollTimer) { clearInterval(scanPollTimer); scanPollTimer = null }
 }
 
 // ===== Agent Install =====
@@ -372,25 +376,9 @@ async function doInstall() {
     installResult.value = { message: 'Agent 安装已启动，等待设备上线...', error: false }
     ElMessage.success(t('common.success'))
     installVisible.value = false
-    // Start polling install progress
-    pollInstall(res.data?.installId)
   } catch (e: any) {
     installResult.value = { message: e?.response?.data?.message || e.message || t('common.error'), error: true }
   } finally { installing.value = false }
-}
-let installPollTimer: any = null
-async function pollInstall(installId: string) {
-  if (!installId) return
-  installPollTimer = setInterval(async () => {
-    try {
-      const res = await api.get(`/v2/install/${installId}`) as any
-      if (res.success && res.data?.status === 'done') {
-        clearInterval(installPollTimer)
-        store.load()
-        store.loadStats()
-      }
-    } catch { clearInterval(installPollTimer) }
-  }, 2000)
 }
 
 // ===== Command =====
@@ -494,27 +482,29 @@ async function deleteAlert(row: any) {
   try { await store.deleteAlertRule(row.id); ElMessage.success(t('common.success')) }
   catch { ElMessage.error(t('common.error')) }
 }
-async function toggleAlert(row: any) {
-  try { await store.toggleAlertRule(row.id) } catch {}
-}
+async function toggleAlert(row: any) { try { await store.toggleAlertRule(row.id) } catch {} }
 </script>
 
 <style scoped>
 .devices-page { }
 
 .stats-row { display: flex; gap: 16px; margin-bottom: 20px; }
-.stat-card { flex: 1; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; text-align: center; }
+.stat-card {
+  flex: 1; padding: 18px 20px; border-radius: var(--radius-lg); text-align: center; cursor: pointer;
+  background: var(--bg-glass); backdrop-filter: blur(12px); border: 1px solid var(--border-color);
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 .stat-card.online { border-left: 3px solid var(--el-color-success); }
 .stat-card.offline { border-left: 3px solid var(--el-color-info); }
-.stat-card.scan { border-left: 3px solid var(--accent); background: var(--accent); color: #fff; }
-.stat-card.scan .stat-val { font-size: 24px; }
-.stat-card.scan .stat-label { color: rgba(255,255,255,0.85); }
-.stat-val { font-size: 28px; font-weight: 700; display: block; color: var(--text-primary); }
-.stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.stat-card.scan { border-left: 3px solid var(--accent); background: linear-gradient(135deg, var(--accent), #6366f1); color: #fff; border-color: transparent; }
+.stat-card.scan .stat-num { font-size: 24px; }
+.stat-card.scan .stat-lbl { color: rgba(255,255,255,0.85); }
+.stat-num { font-size: 28px; font-weight: 800; display: block; color: var(--text-primary); }
+.stat-lbl { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 
 .device-link { color: var(--accent); text-decoration: none; font-weight: 500; }
 .device-link:hover { text-decoration: underline; }
-
 .mono { font-family: monospace; font-size: 12px; }
 
 .section { border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 24px; }
@@ -535,20 +525,58 @@ async function toggleAlert(row: any) {
 .tag-cell { cursor: pointer; font-size: 12px; padding: 2px 8px; background: var(--bg-elevated); border-radius: 4px; display: inline-block; min-width: 40px; }
 .tag-cell.placeholder { color: var(--text-tertiary); }
 
-/* Discovery Dialog */
-.disco-body { }
-.scan-bar { }
-.scan-controls { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
-.control-group { display: flex; flex-direction: column; gap: 4px; }
-.control-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
-.range-input { width: 180px; }
-.method-select { width: 100px; }
-.progress-section { margin-top: 14px; padding: 12px; background: var(--bg-base); border-radius: 8px; }
-.progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
-.progress-stage { display: flex; align-items: center; gap: 6px; }
-.progress-pct { font-weight: 600; color: var(--accent); }
-.panel-empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 24px 0; }
-.text-muted { color: var(--text-tertiary); font-size: 12px; }
+/* ===== Discovery Float ===== */
+.disco-root { padding: 4px 0; }
+
+.disco-controls { margin-bottom: 16px; }
+.disco-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+.disco-input-group { display: flex; gap: 10px; }
+.range-input { flex: 1; }
+.scan-btn { min-width: 110px; }
+
+/* Progress bar (custom, matches glass theme) */
+.disco-progress {
+  padding: 16px 20px; margin-bottom: 16px; border-radius: var(--radius-md);
+  background: var(--bg-base); border: 1px solid var(--border-color);
+}
+.dp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.dp-stage { color: var(--text-secondary); }
+.dp-pct { font-weight: 700; color: var(--accent); font-size: 14px; font-family: var(--font-mono); }
+.dp-bar { width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
+.dp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #6366f1); border-radius: 3px; transition: width .4s ease; }
+.dp-fill.done { background: #22c55e; }
+
+/* Result grid */
+.disco-results { }
+.dr-header { margin-bottom: 12px; }
+.dr-count { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; max-height: 350px; overflow-y: auto; }
+
+.dr-card {
+  padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--bg-glass); border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px); transition: border-color var(--dur-fast);
+}
+.dr-card.managed { opacity: 0.7; }
+.drc-top { display: flex; align-items: center; gap: 10px; }
+.drc-icon { font-size: 22px; }
+.drc-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.drc-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.drc-ip { font-size: 11px; color: var(--text-tertiary); }
+.drc-details { display: flex; gap: 16px; margin-top: 10px; }
+.drc-item { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text-secondary); }
+.drc-item small { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+.drc-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+
+/* Empty */
+.disco-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 40px 0; color: var(--text-tertiary); font-size: 14px;
+}
+.empty-icon { font-size: 40px; opacity: 0.4; }
+.empty-hint { font-size: 12px; color: var(--text-quaternary); }
+
+/* Install */
 .install-result { margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
 .install-result.success { background: #22c55e15; color: #22c55e; }
 .install-result.error { background: #ef444415; color: #ef4444; }

@@ -100,23 +100,29 @@ async function getAlertRules() {
 // ===== 拓扑节点聚合 =====
 async function getTopologyNodes() {
   try {
-    // 已管理设备节点
+    // 已管理设备节点（去重：deviceId 优先保留 agent 版本，排除 dev_local）
     const allDevices = await deviceService.list({ pageSize: 100 }).catch(() => ({ devices: [] }));
-    const managed = (allDevices.devices || []).map(d => ({
-      id: d.deviceId || d.id,
-      label: d.hostname || d.name || d.ip || '?',
-      ip: d.ip,
-      type: guessType(d),
-      online: d.status === 'online' || d.online === true,
-      cpu: d.cpu || 0,
-      memory: d.memory || 0,
-      managed: true
-    }));
+    const seen = new Set();
+    const managed = [];
+    for (const d of (allDevices.devices || [])) {
+      if (d.deviceId === 'dev_local') continue;
+      const key = d.ip || d.hostname;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      managed.push({
+        id: d.deviceId || d.id,
+        label: d.hostname || d.name || d.ip || '?',
+        ip: d.ip,
+        type: guessType(d),
+        online: d.status === 'online' || d.online === true,
+        cpu: d.cpu || 0,
+        memory: d.memory || 0,
+        managed: true
+      });
+    }
 
-    // 从发现引擎取最近扫描结果（如果有活跃扫描）
-    // discoveryService 内存中保存最近扫描，若无返回空
+    // 从发现引擎取最近扫描结果
     const discovered = [];
-    // 尝试从 discovery service 拿到最近数据
     try {
       const scans = discoveryService.activeScans;
       if (scans && scans.size > 0) {

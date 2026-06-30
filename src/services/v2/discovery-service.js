@@ -94,11 +94,59 @@ class DiscoveryService {
     s.completed = true;
   }
 
+  // ===== 虚拟接口/网段过滤 =====
+  // 保留: br-lan/br-wan (OpenWrt 主网桥)、eth*/wan/lan/pppoe* (物理接口)
+  // 排除: docker0、br-<hash>(Docker网络)、veth、tailscale、WireGuard、tun/tap、virbr
+  _isVirtualInterface(iface) {
+    if (!iface) return false;
+    const v = iface.toLowerCase();
+    // 明确保留的接口
+    if (v === 'br-lan' || v === 'br-wan' || v === 'lan' || v === 'wan') return false;
+    if (v.startsWith('eth') || v.startsWith('en') || v.startsWith('pppoe')) return false;
+    // 虚拟接口
+    if (v === 'lo') return true;
+    if (v.startsWith('docker')) return true;
+    // br-<hash> (Docker 网络桥，通常是 br- + 12位hex)
+    if (v.startsWith('br-') && v.length >= 15 && /^br-[0-9a-f]{12}$/i.test(v)) return true;
+    if (v.startsWith('veth')) return true;
+    if (v.startsWith('tailscale')) return true;
+    if (v.startsWith('wg')) return true;
+    if (v.startsWith('tun') || v.startsWith('tap')) return true;
+    if (v.startsWith('virbr')) return true;
+    return false;
+  }
+
+  // 排除本地回环、链路本地、组播/广播地址
+  _isVirtualIP(ip) {
+    if (!ip) return true;
+    // Loopback
+    if (ip.startsWith('127.')) return true;
+    // Link-local (APIPA)
+    if (ip.startsWith('169.254.')) return true;
+    // 0.0.0.0 / 255.255.255.255
+    if (ip === '0.0.0.0' || ip === '255.255.255.255') return true;
+    // 组播 (224.0.0.0/4)
+    const oct1 = parseInt(ip.split('.')[0]);
+    if (oct1 >= 224 && oct1 <= 239) return true;
+    // Docker 默认桥接网段 (172.17.0.0/16)
+    if (ip.startsWith('172.17.')) return true;
+    // Docker 用户自定义网络常见范围 (172.18.0.0/16 ~ 172.31.0.0/16)
+    if (ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.20.')
+      || ip.startsWith('172.21.') || ip.startsWith('172.22.') || ip.startsWith('172.23.')
+      || ip.startsWith('172.24.') || ip.startsWith('172.25.') || ip.startsWith('172.26.')
+      || ip.startsWith('172.27.') || ip.startsWith('172.28.') || ip.startsWith('172.29.')
+      || ip.startsWith('172.30.') || ip.startsWith('172.31.')) return true;
+    // Tailscale CGNAT (100.64.0.0/10)
+    const oct2 = parseInt(ip.split('.')[1]);
+    if (oct1 === 100 && oct2 >= 64 && oct2 <= 127) return true;
+    return false;
+  }
+
   // ===== ARP 扫描 =====
   async _scanArp() {
     const devices = [];
     try {
-      // 优先用 /proc/net/arp（Linux 零依赖）
+      // 优先用 /proc/net/arp（Linux 零依赖）— 有 interface 列可过滤
       const fs = require('fs');
       try {
         const arpData = fs.readFileSync('/proc/net/arp', 'utf-8');
@@ -106,12 +154,13 @@ class DiscoveryService {
         // Header: IP address HW type Flags HW address Mask Device
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].trim().split(/\s+/);
-          if (parts.length >= 4 && parts[0] !== 'IP') {
+          if (parts.length >= 6 && parts[0] !== 'IP') {
             const ip = parts[0];
             const mac = parts[3].toLowerCase();
-            if (ip === '0.0.0.0' || ip.startsWith('127.')) continue;
+            const iface = parts[5] || '';
+            if (this._isVirtualIP(ip)) continue;
+            if (this._isVirtualInterface(iface)) continue;
             if (mac === '00:00:00:00:00:00') continue;
-            // 排除多播/广播 MAC
             if (mac.startsWith('01:') || mac === 'ff:ff:ff:ff:ff:ff') continue;
             devices.push({
               ip, mac,
@@ -122,15 +171,19 @@ class DiscoveryService {
           }
         }
       } catch (_) {
-        // Fallback: ip neigh show (BusyBox 兼容)
+        // Fallback: ip neigh show (BusyBox 兼容) — 有 dev 字段可过滤
         const result = await this._exec('ip neigh show 2>/dev/null');
         const lines = result.trim().split('\n').filter(Boolean);
         for (const line of lines) {
-          const match = line.match(/^([0-9.]+|[\w:]+)\s+.*lladdr\s+([0-9a-f:]{17})/i);
-          if (match) {
-            const ip = match[1];
-            const mac = match[2].toLowerCase();
-            if (ip.startsWith('127.')) continue;
+          const ipMatch = line.match(/^([0-9.]+|[:\w]+)/);
+          const macMatch = line.match(/lladdr\s+([0-9a-f:]{17})/i);
+          const devMatch = line.match(/dev\s+(\S+)/i);
+          if (ipMatch && macMatch) {
+            const ip = ipMatch[1];
+            const mac = macMatch[1].toLowerCase();
+            const iface = devMatch ? devMatch[1] : '';
+            if (this._isVirtualIP(ip)) continue;
+            if (this._isVirtualInterface(iface)) continue;
             if (mac === '00:00:00:00:00:00') continue;
             devices.push({
               ip, mac,
@@ -157,9 +210,10 @@ class DiscoveryService {
         // avahi-browse -p 格式: =;iface;proto;name;type;domain;host;addr;port;txt
         const parts = line.split(';');
         if (parts.length >= 8 && parts[0] === '=') {
+          const iface = parts[1] || ''; // <-- interface 字段可过滤虚拟接口
           const hostname = parts[6] || '';
           const addr = parts[7] || '';
-          if (addr && !addr.startsWith('127.') && !addr.includes(':')) {
+          if (addr && !addr.includes(':') && !this._isVirtualIP(addr) && !this._isVirtualInterface(iface)) {
             devices.push({
               ip: addr,
               mac: '',

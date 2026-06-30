@@ -26,7 +26,7 @@ import { useAuthStore } from '../stores/auth'
 import Logo from './Logo.vue'
 import {
   Odometer, Connection, Key, Coin, Switch,
-  Loading, Timer, Box, Monitor, Setting, Search
+  Loading, Timer, Box, Monitor, Setting
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
@@ -44,7 +44,6 @@ const allNavItems = [
   { label: t('sidebar.docker'),    path: '/docker',    icon: Box },
   { label: t('sidebar.ssh'),       path: '/ssh',       icon: Monitor },
   { label: t('sidebar.devices'),   path: '/devices',   icon: Monitor },
-  { label: t('sidebar.discovery'), path: '/discovery', icon: Search },
   { label: t('sidebar.settings'),  path: '/settings',  icon: Setting },
 ]
 

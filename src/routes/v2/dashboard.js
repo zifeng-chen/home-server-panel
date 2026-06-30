@@ -171,4 +171,47 @@ function guessType(d) {
   return 'server';
 }
 
+// GET /api/v2/dashboard/recent-alerts — 最近告警（实时评估）
+router.get('/recent-alerts', async (req, res) => {
+  try {
+    const [rules, allDevices] = await Promise.all([
+      getAlertRules(),
+      deviceService.list({ pageSize: 100 }).catch(() => ({ devices: [] }))
+    ]);
+    const devices = allDevices.devices || [];
+    const triggered = [];
+
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+      const targetDevices = rule.device_id
+        ? devices.filter(d => d.id === rule.device_id || d.deviceId === rule.device_id)
+        : devices.filter(d => d.status === 'online' || d.online === true);
+
+      for (const dev of targetDevices) {
+        let currentVal = 0;
+        if (rule.metric === 'cpu') currentVal = parseFloat(dev.cpu) || 0;
+        else if (rule.metric === 'memory_pct') currentVal = parseFloat(dev.memory) || 0;
+        else if (rule.metric === 'disk_pct') currentVal = parseFloat(dev.disk) || 0;
+        // No net_rx in device list, skip network for now
+
+        if (currentVal > (rule.threshold || 90)) {
+          triggered.push({
+            rule_name: rule.name,
+            device_name: dev.name || dev.hostname || dev.id,
+            device_id: dev.id || dev.deviceId,
+            metric: rule.metric,
+            value: currentVal,
+            threshold: rule.threshold,
+            level: currentVal > (rule.threshold * 1.1) ? 'danger' : 'warning'
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, data: triggered });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

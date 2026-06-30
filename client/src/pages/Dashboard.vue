@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <!-- ===== Row 1: Stats Cards (new) ===== -->
+    <!-- ===== Row 1: Stats Cards ===== -->
     <section class="stats-row">
       <div class="stat-card glass" v-for="card in statCards" :key="card.key"
         :class="card.key" @click="card.link && $router.push(card.link)">
@@ -13,8 +13,9 @@
       </div>
     </section>
 
-    <!-- ===== Row 2: System Overview + Operation Log (original) ===== -->
+    <!-- ===== Row 2: System Overview | Quick Actions | Recent Alerts ===== -->
     <div class="row-top">
+      <!-- System Overview (original) -->
       <div class="card overview">
         <h3 class="card-title">{{ $t('dashboard.systemOverview') }}</h3>
         <div class="kv-list" v-if="sys.sysInfo">
@@ -25,15 +26,46 @@
           <div class="kv"><span class="k">{{ $t('dashboard.uptime') }}</span><span class="v">{{ fmtUptime(sys.uptime) }}</span></div>
         </div>
       </div>
-      <div class="card logs">
-        <h3 class="card-title">{{ $t('dashboard.operationLog') }}</h3>
-        <div class="log-list" v-if="logs.length">
-          <div class="log-item" v-for="(l,i) in logs" :key="i">
-            <span class="log-time">{{ l.time }}</span>
-            <span class="log-msg">{{ l.message }}</span>
+
+      <!-- Quick Actions (A) -->
+      <div class="card quick-actions">
+        <h3 class="card-title">⚡ 快捷操作</h3>
+        <div class="qa-grid">
+          <div class="qa-item" @click="$router.push('/devices');showDiscoveryEvent?.()">
+            <span class="qa-icon">🔍</span><span class="qa-label">扫描网络</span>
+          </div>
+          <div class="qa-item" @click="$router.push('/devices')">
+            <span class="qa-icon">➕</span><span class="qa-label">添加设备</span>
+          </div>
+          <div class="qa-item" @click="$router.push('/ssl')">
+            <span class="qa-icon">🔒</span><span class="qa-label">续期 SSL</span>
+          </div>
+          <div class="qa-item" @click="$router.push('/ddns')">
+            <span class="qa-icon">🌐</span><span class="qa-label">DDNS 检查</span>
+          </div>
+          <div class="qa-item" @click="$router.push('/settings')">
+            <span class="qa-icon">⚙️</span><span class="qa-label">系统设置</span>
+          </div>
+          <div class="qa-item" @click="$router.push('/docker')">
+            <span class="qa-icon">🐳</span><span class="qa-label">Docker</span>
           </div>
         </div>
-        <div v-else class="empty">{{ $t('dashboard.noLogs') }}</div>
+      </div>
+
+      <!-- Recent Alerts (B) -->
+      <div class="card recent-alerts">
+        <h3 class="card-title">⚠️ 最近告警</h3>
+        <div class="alert-list" v-if="recentAlerts.length">
+          <div class="alert-item" v-for="(a,i) in recentAlerts" :key="i" :class="a.level">
+            <div class="alert-dot" :class="a.level"></div>
+            <div class="alert-body">
+              <span class="alert-device">{{ a.device_name }}</span>
+              <span class="alert-detail">{{ alertMetricName(a.metric) }} {{ a.value.toFixed(1) }}% &gt; 阈值 {{ a.threshold }}%</span>
+              <span class="alert-rule">{{ a.rule_name }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty">暂无告警，设备运行正常 ✅</div>
       </div>
     </div>
 
@@ -53,7 +85,7 @@
       </div>
     </div>
 
-    <!-- ===== Row 4: Topology | Resource (new) ===== -->
+    <!-- ===== Row 4: Topology | Resource ===== -->
     <section class="row-dual">
       <div class="panel glass topology-panel">
         <h3 class="panel-title"><span class="dot" style="background:#22c55e"></span> 网络拓扑</h3>
@@ -83,21 +115,42 @@
         </div>
       </div>
 
+      <!-- ===== Resource Overview (device-switchable) ===== -->
       <div class="panel glass resource-panel">
-        <h3 class="panel-title"><span class="dot" style="background:#4F7CFF"></span> 资源总览</h3>
-        <div class="resource-metrics">
-          <div class="rm-item" v-for="m in resourceMetrics" :key="m.key">
-            <div class="rm-header">
-              <span class="rm-name">{{ m.name }}</span>
-              <span class="rm-val">{{ m.value }}<small>{{ m.unit }}</small></span>
-            </div>
-            <canvas :ref="el => setCanvasRef(m.key, el)" :width="m.w" :height="m.h" class="rm-chart"></canvas>
+        <div class="panel-title-row">
+          <h3 class="panel-title"><span class="dot" style="background:#4F7CFF"></span> 资源总览</h3>
+          <el-select v-model="selectedDeviceId" size="small" class="device-picker" @change="onDeviceSwitch" placeholder="选择设备">
+            <el-option
+              v-for="d in resourceDeviceList"
+              :key="d.id"
+              :label="d.name"
+              :value="d.id"
+            />
+          </el-select>
+        </div>
+        <div class="resource-metrics" v-if="resourceDeviceList.length">
+          <div class="rm-item">
+            <div class="rm-header"><span class="rm-name">CPU</span><span class="rm-val">{{ resData.cpu }}<small> %</small></span></div>
+            <canvas ref="resCpu" width="280" height="76" class="rm-chart"></canvas>
+          </div>
+          <div class="rm-item">
+            <div class="rm-header"><span class="rm-name">内存</span><span class="rm-val">{{ resData.memory }}<small> %</small></span></div>
+            <canvas ref="resMem" width="280" height="76" class="rm-chart"></canvas>
+          </div>
+          <div class="rm-item">
+            <div class="rm-header"><span class="rm-name">磁盘</span><span class="rm-val">{{ resData.disk }}<small> %</small></span></div>
+            <canvas ref="resDisk" width="280" height="76" class="rm-chart"></canvas>
+          </div>
+          <div class="rm-item">
+            <div class="rm-header"><span class="rm-name">网络</span><span class="rm-val">{{ resData.network }}<small> KB/s</small></span></div>
+            <canvas ref="resNet" width="280" height="76" class="rm-chart"></canvas>
           </div>
         </div>
+        <div v-else class="panel-empty">暂无设备</div>
       </div>
     </section>
 
-    <!-- ===== Row 5: Timeline (new) ===== -->
+    <!-- ===== Row 5: Timeline ===== -->
     <section class="panel glass timeline-panel">
       <h3 class="panel-title"><span class="dot" style="background:#F59E0B"></span> 事件时间线</h3>
       <div class="timeline" v-if="timelineItems.length">
@@ -131,26 +184,12 @@ import acmePng from '../assets/acme.png'
 const router = useRouter()
 const sys = useSystemStore()
 
-// ===== Original: System Info =====
+// ===== Original: System =====
 const publicIp = computed(() => {
   const ips = sys.sysInfo?.ips || []
   const pub = ips.filter((ip: string) => !/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.)/.test(ip))
   return pub.length ? pub.join(', ') : '--'
 })
-
-// ===== Original: Operation Logs =====
-const logs = ref<{ time: string; message: string }[]>([])
-async function fetchLogs() {
-  try {
-    const res = await api.get('/log', { params: { page: 1, limit: 8 } }) as any
-    if (res.success && res.data?.list) {
-      logs.value = res.data.list.map((r: any) => ({
-        time: r.timeCst?.match(/\d{2}:\d{2}/)?.[0] || '--:--',
-        message: r.message || r.action || ''
-      }))
-    }
-  } catch { /* ignore */ }
-}
 
 // ===== Original: Services =====
 const isDark = ref(false)
@@ -167,10 +206,7 @@ const services = ref([
   { name: 'acme.sh',  online: false, icon: acmePng, color: '#EC4899' },
 ])
 const servicesDisplay = computed(() =>
-  services.value.map(s => ({
-    ...s,
-    icon: s.name === 'PM2' && isDark.value ? pm2DarkPng : s.icon
-  }))
+  services.value.map(s => ({ ...s, icon: s.name === 'PM2' && isDark.value ? pm2DarkPng : s.icon }))
 )
 async function fetchServices() {
   try {
@@ -179,35 +215,40 @@ async function fetchServices() {
       const isOnline = (p: any) => p.status === 'running' || p.status === 'online' || p.status === 'active' || p.active === true
       const svcMap: Record<string, boolean> = {}
       for (const cat of ['pm2', 'docker', 'system'] as const) {
-        for (const p of res.data[cat] || []) {
-          if (p.name) svcMap[p.name.toLowerCase()] = isOnline(p)
-        }
+        for (const p of res.data[cat] || []) { if (p.name) svcMap[p.name.toLowerCase()] = isOnline(p) }
       }
-      try {
-        const dbRes = await api.get('/db/status') as any
-        svcMap['mysql'] = dbRes?.data?.connected === true
-      } catch {}
-      if (!svcMap['pm2'] && res.data?.pm2?.length === 0) {
-        try { const pm2Res = await api.get('/process/pm2/status') as any; svcMap['pm2'] = pm2Res?.data?.running === true } catch {}
-      }
+      try { const dbRes = await api.get('/db/status') as any; svcMap['mysql'] = dbRes?.data?.connected === true } catch {}
+      try { const pm2Res = await api.get('/process/pm2/status') as any; svcMap['pm2'] = pm2Res?.data?.running === true } catch {}
       services.value.forEach(s => { s.online = svcMap[s.name.toLowerCase()] ?? false })
     }
   } catch {}
 }
-
 function fmtUptime(s: number) {
   if (!s || s < 0) return '--'
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60)
   return (d ? d + '天 ' : '') + h + '时' + m + '分' + sec + '秒'
 }
 
-// ===== New: Stats Cards =====
+// ===== New: Stats =====
 const statCards = ref([
   { key: 'devices', icon: '🖥️', value: '--', label: '在线设备', link: '/devices', color: '#4F7CFF', pulse: false },
   { key: 'alerts',  icon: '⚠️', value: '--', label: '活跃告警', link: '/devices', color: '#F59E0B', pulse: false },
   { key: 'uptime',  icon: '⏱️', value: '--', label: '运行时长', link: '', color: '#10B981', pulse: false },
   { key: 'network', icon: '🌐', value: '--', label: '总流量(h)', link: '', color: '#A78BFA', pulse: false },
 ])
+
+// ===== New: Recent Alerts (B) =====
+const recentAlerts = ref<any[]>([])
+async function fetchRecentAlerts() {
+  try {
+    const res = await api.get('/v2/dashboard/recent-alerts') as any
+    if (res.success) recentAlerts.value = res.data || []
+  } catch { recentAlerts.value = [] }
+}
+function alertMetricName(m: string) {
+  const map: Record<string, string> = { cpu: 'CPU', memory_pct: '内存', disk_pct: '磁盘' }
+  return map[m] || m
+}
 
 // ===== New: Topology =====
 const topoBox = ref({ w: 600, h: 280 })
@@ -246,7 +287,6 @@ function layoutTopology(nodes: any[], links: any[], width: number, height: numbe
   })
   return { nodes: positionedNodes, links: positionedLinks }
 }
-
 function animateParticles(links: any[]) {
   if (particleTimer) clearInterval(particleTimer)
   const activeLinks = links.filter((l: any) => l.active)
@@ -261,17 +301,69 @@ function animateParticles(links: any[]) {
   }, 50)
 }
 
-// ===== New: Resource Charts =====
-const resourceMetrics = ref([
-  { key: 'cpu', name: 'CPU', value: '--', unit: '%', w: 280, h: 76 },
-  { key: 'memory', name: '内存', value: '--', unit: '%', w: 280, h: 76 },
-  { key: 'disk', name: '磁盘', value: '--', unit: '%', w: 280, h: 76 },
-  { key: 'network', name: '网络', value: '--', unit: ' KB/s', w: 280, h: 76 },
-])
-const canvasRefs: Record<string, HTMLCanvasElement> = {}
-function setCanvasRef(key: string, el: any) { if (el) canvasRefs[key] = el }
+// ===== New: Resource (device-switchable) =====
+const resourceDeviceList = ref<any[]>([])
+const selectedDeviceId = ref('')
+const resCpu = ref<HTMLCanvasElement | null>(null)
+const resMem = ref<HTMLCanvasElement | null>(null)
+const resDisk = ref<HTMLCanvasElement | null>(null)
+const resNet = ref<HTMLCanvasElement | null>(null)
+const resData = ref({ cpu: '--', memory: '--', disk: '--', network: '--' })
+let resRefreshTimer: any = null
 
-function drawMiniChart(canvas: HTMLCanvasElement, data: number[], color: string, maxVal: number) {
+async function onDeviceSwitch() {
+  await fetchResourceData(selectedDeviceId.value)
+}
+async function fetchResourceData(deviceId: string) {
+  if (!deviceId) return
+  try {
+    let metricsData: any
+    // local device → use realtime API; remote → use historical metrics
+    if (deviceId === 'dev_local') {
+      const res = await api.get(`/v2/device/${deviceId}/metrics/local`) as any
+      if (res.success) {
+        const m = res.data
+        resData.value = {
+          cpu: m.cpu?.toFixed?.(1) || String(m.cpu || '--'),
+          memory: m.memory?.pct?.toFixed?.(1) || String(m.memory?.pct || '--'),
+          disk: m.disk?.pct?.toFixed?.(1) || String(m.disk?.pct || '--'),
+          network: m.net ? ((m.net.rx + m.net.tx) / 1024).toFixed(0) : '--'
+        }
+      }
+    } else {
+      const res = await api.get(`/v2/device/${deviceId}/metrics`, { params: { limit: 180 } }) as any
+      if (res.success && res.data?.length) {
+        const pts = res.data
+        const latest = pts[0]
+        resData.value = {
+          cpu: parseFloat(latest.cpu || 0).toFixed(1),
+          memory: parseFloat(latest.memory_pct || 0).toFixed(1),
+          disk: parseFloat(latest.disk_pct || 0).toFixed(1),
+          network: ((parseFloat(latest.net_rx || 0) + parseFloat(latest.net_tx || 0)) / 1024).toFixed(0)
+        }
+        metricsData = pts
+      } else {
+        resData.value = { cpu: '--', memory: '--', disk: '--', network: '--' }
+      }
+    }
+    // Draw charts from historical data
+    if (deviceId !== 'dev_local') {
+      await nextTick()
+      drawChartsFromHistory(metricsData)
+    } else {
+      // For local device, fetch history too
+      try {
+        const hRes = await api.get(`/v2/device/${deviceId}/metrics`, { params: { limit: 180 } }) as any
+        if (hRes.success && hRes.data?.length) {
+          await nextTick()
+          drawChartsFromHistory(hRes.data)
+        }
+      } catch {}
+    }
+  } catch {}
+}
+
+function drawChart(canvas: HTMLCanvasElement | null, data: number[], color: string, maxVal: number) {
   if (!canvas) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -280,6 +372,7 @@ function drawMiniChart(canvas: HTMLCanvasElement, data: number[], color: string,
   const plotW = w - pad * 2, plotH = h - pad * 2
   const peak = maxVal || Math.max(...data, 1)
 
+  // Gradient fill
   const grad = ctx.createLinearGradient(0, 0, 0, h)
   grad.addColorStop(0, color + '40')
   grad.addColorStop(1, color + '05')
@@ -293,8 +386,7 @@ function drawMiniChart(canvas: HTMLCanvasElement, data: number[], color: string,
   })
   ctx.lineTo(pad + plotW, h - pad)
   ctx.closePath()
-  ctx.fillStyle = grad
-  ctx.fill()
+  ctx.fillStyle = grad; ctx.fill()
 
   ctx.beginPath()
   data.forEach((v, i) => {
@@ -302,10 +394,7 @@ function drawMiniChart(canvas: HTMLCanvasElement, data: number[], color: string,
     const y = h - pad - (v / peak) * plotH
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
   })
-  ctx.strokeStyle = color
-  ctx.lineWidth = 1.5
-  ctx.lineJoin = 'round'
-  ctx.stroke()
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke()
 
   if (data.length) {
     const lastX = pad + ((data.length - 1) / Math.max(data.length - 1, 1)) * plotW
@@ -314,16 +403,26 @@ function drawMiniChart(canvas: HTMLCanvasElement, data: number[], color: string,
   }
 }
 
+function drawChartsFromHistory(pts: any[]) {
+  if (!pts || pts.length < 2) return
+  const data = [...pts].reverse() // oldest first for chart
+  const cpuArr = data.map((p: any) => parseFloat(p.cpu || 0))
+  const memArr = data.map((p: any) => parseFloat(p.memory_pct || 0))
+  const diskArr = data.map((p: any) => parseFloat(p.disk_pct || 0))
+  const netArr = data.map((p: any) => (parseFloat(p.net_rx || 0) + parseFloat(p.net_tx || 0)) / 1024)
+  drawChart(resCpu.value, cpuArr, '#4F7CFF', Math.max(100, ...cpuArr))
+  drawChart(resMem.value, memArr, '#A78BFA', Math.max(100, ...memArr))
+  drawChart(resDisk.value, diskArr, '#F59E0B', Math.max(100, ...diskArr))
+  drawChart(resNet.value, netArr, '#22C55E', Math.max(100, ...netArr))
+}
+
 // ===== New: Timeline =====
 const timelineItems = ref<any[]>([])
 function mergeTimeline(logEntries: any[], alerts: any[], devices: any[]) {
   const items: any[] = []
-  for (const l of (logEntries || []).slice(0, 12)) {
+  for (const l of (logEntries || []).slice(0, 15)) {
     const t = l.time || ''
     items.push({ time: t.match(/\d{2}:\d{2}:\d{2}/)?.[0] || t.slice(-8) || '', message: l.message || '', type: 'log', icon: '📋', color: '#6B7280', sortTime: l.time || '' })
-  }
-  for (const d of (devices || [])) {
-    if (d.online) items.push({ time: '最近', message: `${d.name || d.hostname} 在线`, type: 'device', icon: '🟢', color: '#22C55E', sortTime: d.lastSeen || '' })
   }
   for (const a of (alerts || [])) {
     if (a.enabled) items.push({ time: '监控中', message: `告警: ${a.name} (${a.metric} > ${a.threshold}%)`, type: 'alert', icon: '⚠️', color: '#F59E0B', sortTime: '' })
@@ -332,7 +431,7 @@ function mergeTimeline(logEntries: any[], alerts: any[], devices: any[]) {
   return items.slice(0, 15)
 }
 
-// ===== New: Cockpit Data =====
+// ===== Data Fetch =====
 async function fetchOverview() {
   try {
     const res = await api.get('/v2/dashboard/overview') as any
@@ -349,40 +448,40 @@ async function fetchOverview() {
       id: n.id, label: n.label, ip: n.ip, type: n.type || 'server',
       emoji: typeEmoji(n.type), color: typeColor(n.type), online: n.online !== false
     }))
-    const topoLinks = (topoData.links || []).map((l: any) => ({
-      source: l.source, target: l.target, active: l.rx > 0 || l.tx > 0
-    }))
+    const tLinks = (topoData.links || []).map((l: any) => ({ source: l.source, target: l.target, active: l.rx > 0 || l.tx > 0 }))
     const { nodes, links } = layoutTopology(
       managedNodes.length ? managedNodes : defaultTopo.nodes,
-      topoLinks.length ? topoLinks : defaultTopo.links,
+      tLinks.length ? tLinks : defaultTopo.links,
       topoBox.value.w, topoBox.value.h
     )
-    topoNodes.value = nodes
-    topoLinks.value = links
+    topoNodes.value = nodes; topoLinks.value = links
     animateParticles(links)
 
-    // Resources
+    // Resource: build device list (local + online agents)
     const allDevices = d.devices || []
-    const cpuData = allDevices.filter((dev: any) => dev.cpu != null).map((dev: any) => dev.cpu)
-    const memData = allDevices.filter((dev: any) => dev.memory != null).map((dev: any) => dev.memory)
-    const diskData = allDevices.filter((dev: any) => dev.disk != null).map((dev: any) => dev.disk)
-    const netData = allDevices.filter((dev: any) => dev.net_rx != null).map((dev: any) => dev.net_rx)
-    const avg = (arr: number[]) => arr.length ? (arr.reduce((a: number,b: number) => a+b,0)/arr.length).toFixed(1) : '--'
-    resourceMetrics.value[0].value = avg(cpuData)
-    resourceMetrics.value[1].value = avg(memData)
-    resourceMetrics.value[2].value = avg(diskData)
-    resourceMetrics.value[3].value = netData.length ? (netData.reduce((a: number,b: number) => a+b,0)/1024).toFixed(0) : '--'
+    const deviceList = allDevices
+      .filter((dev: any) => dev.status === 'online' || dev.online || dev.id === 'dev_local')
+      .map((dev: any) => ({ id: dev.id || dev.deviceId, name: dev.name || dev.hostname || dev.id, ip: dev.ip, type: 'agent' }))
+    // Ensure dev_local is first
+    const local = deviceList.find((d: any) => d.id === 'dev_local')
+    const others = deviceList.filter((d: any) => d.id !== 'dev_local').filter((d: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === d.name) === i)
+    resourceDeviceList.value = local ? [local, ...others] : deviceList.filter((d: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.name === d.name) === i)
 
-    // Total traffic for stats card
-    if (netData.length) statCards.value[3].value = (netData.reduce((a: number,b: number) => a+b,0)/1024).toFixed(0) + ' KB/s'
+    // Default to dev_local
+    if (!selectedDeviceId.value && resourceDeviceList.value.length) {
+      selectedDeviceId.value = resourceDeviceList.value[0].id
+      fetchResourceData(selectedDeviceId.value)
+    }
 
-    await nextTick()
-    drawMiniChart(canvasRefs['cpu'], cpuData.length > 1 ? cpuData : [30,45,38,52,41,48], '#4F7CFF', 100)
-    drawMiniChart(canvasRefs['memory'], memData.length > 1 ? memData : [55,60,58,62,59,61], '#A78BFA', 100)
-    drawMiniChart(canvasRefs['disk'], diskData.length > 1 ? diskData : [28,29,30,31,30,32], '#F59E0B', 100)
-    drawMiniChart(canvasRefs['network'], netData.length > 1 ? netData.map((v: number) => v/1024) : [120,450,280,600,350,520], '#22C55E', 1000)
-
+    // Timeline
     timelineItems.value = mergeTimeline(d.logs || [], d.alerts || [], allDevices)
+
+    // Recent alerts
+    fetchRecentAlerts()
+
+    // Total traffic stat
+    const netData = allDevices.filter((dev: any) => dev.net_rx != null).map((dev: any) => dev.net_rx)
+    if (netData.length) statCards.value[3].value = (netData.reduce((a: number,b: number) => a+b,0)/1024).toFixed(0) + ' KB/s'
   } catch (e) {
     console.error('[Dashboard] fetchOverview:', e)
   }
@@ -400,27 +499,29 @@ async function fetchUptime() {
   } catch {}
 }
 
-function typeEmoji(t: string) {
-  const m: Record<string, string> = { router:'📡', nas:'💾', desktop:'💻', server:'🖥️', iot:'🔌', phone:'📱', unknown:'❓' }
-  return m[t] || '🖥️'
-}
-function typeColor(t: string) {
-  const m: Record<string, string> = { router:'#F59E0B', nas:'#8B5CF6', desktop:'#4F7CFF', server:'#3B82F6', iot:'#EC4899', unknown:'#6B7280' }
-  return m[t] || '#6B7280'
-}
+function typeEmoji(t: string) { const m: Record<string, string> = { router:'📡', nas:'💾', desktop:'💻', server:'🖥️', iot:'🔌', unknown:'❓' }; return m[t] || '🖥️' }
+function typeColor(t: string) { const m: Record<string, string> = { router:'#F59E0B', nas:'#8B5CF6', desktop:'#4F7CFF', server:'#3B82F6', iot:'#EC4899', unknown:'#6B7280' }; return m[t] || '#6B7280' }
+
+// ===== Quick Actions event emitter for cross-page trigger =====
+const showDiscoveryEvent = () => { window.dispatchEvent(new CustomEvent('hsp:open-discovery')) }
 
 // ===== Lifecycle =====
 onMounted(async () => {
   updateTheme()
   const observer = new MutationObserver(updateTheme)
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
-  await Promise.all([fetchLogs(), fetchServices(), fetchOverview(), fetchUptime()])
+  await Promise.all([fetchServices(), fetchOverview(), fetchUptime()])
   uptimeTimer = setInterval(fetchUptime, 10000)
+  // Auto-refresh resource data every 30s
+  resRefreshTimer = setInterval(() => {
+    if (selectedDeviceId.value) fetchResourceData(selectedDeviceId.value)
+  }, 30000)
 })
 
 onUnmounted(() => {
   if (particleTimer) clearInterval(particleTimer)
   if (uptimeTimer) clearInterval(uptimeTimer)
+  if (resRefreshTimer) clearInterval(resRefreshTimer)
 })
 </script>
 
@@ -429,56 +530,66 @@ onUnmounted(() => {
 .dashboard { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
 
 /* ===== Original Cards ===== */
-.card {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  box-shadow: var(--shadow-sm);
-}
+.card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: var(--shadow-sm); }
 .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
-.row-top { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* Row 2: 3-column grid on wide screens, 2+1 on medium */
+.row-top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 .kv-list { display: flex; flex-direction: column; gap: 8px; }
 .kv { display: flex; justify-content: space-between; font-size: 13px; }
 .kv .k { color: var(--text-tertiary); }
 .kv .v { color: var(--text-primary); font-weight: 500; }
-.log-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
-.log-item { display: flex; gap: 10px; font-size: 12px; }
-.log-time { color: var(--text-tertiary); font-family: var(--font-mono); flex-shrink: 0; }
-.log-msg { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Quick Actions ===== */
+.qa-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.qa-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border-radius: var(--radius-md);
+  background: var(--bg-base); border: 1px solid var(--border-color);
+  cursor: pointer; transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.qa-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+.qa-icon { font-size: 22px; }
+.qa-label { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ===== Recent Alerts ===== */
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-item { display: flex; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg-base); }
+.alert-item.warning { border-left: 3px solid #F59E0B; }
+.alert-item.danger { border-left: 3px solid #EF4444; }
+.alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.alert-dot.warning { background: #F59E0B; }
+.alert-dot.danger { background: #EF4444; }
+.alert-body { display: flex; flex-direction: column; gap: 2px; }
+.alert-device { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.alert-detail { font-size: 12px; color: #F59E0B; font-family: var(--font-mono); }
+.alert-rule { font-size: 11px; color: var(--text-tertiary); }
 .empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 24px 0; }
 
 /* ===== Services ===== */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .service-item {
-  display: flex; align-items: center; gap: 14px;
-  padding: 16px 18px; border-radius: var(--radius-md);
-  background: var(--bg-base); border: 1px solid var(--border-color);
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+  border-radius: var(--radius-md); background: var(--bg-base); border: 1px solid var(--border-color);
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
 .service-item.online { border-color: transparent; }
 .service-item:hover { box-shadow: var(--shadow-md); }
-.s-icon-wrap {
-  width: 48px; height: 48px; border-radius: var(--radius-md);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: background var(--dur-fast); padding: 8px;
-}
+.s-icon-wrap { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 8px; }
 .s-icon-img { width: 32px; height: 32px; object-fit: contain; }
 .s-info { display: flex; flex-direction: column; gap: 2px; }
 .s-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .s-status { font-size: 12px; font-weight: 500; }
 
 /* ===== Glass Panel ===== */
-.glass {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-}
+.glass { background: var(--bg-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: var(--radius-lg); }
 .panel { padding: 20px 24px; }
-.panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .panel-empty { color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 24px 0; }
+.panel-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.panel-title-row .panel-title { margin-bottom: 0; }
+.device-picker { width: 180px; }
 
 /* ===== Stats Row ===== */
 .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
@@ -524,10 +635,10 @@ onUnmounted(() => {
 .tl-icon { font-size: 12px; flex-shrink: 0; }
 .tl-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-item.alert .tl-msg { color: #F59E0B; font-weight: 500; }
-.tl-item.device .tl-msg { color: #22C55E; }
 
 /* ===== Responsive ===== */
+@media (max-width: 1300px) { .row-top { grid-template-columns: 1fr 1fr; } .row-top .recent-alerts { grid-column: 1 / -1; } }
 @media (max-width: 1100px) { .stats-row { grid-template-columns: repeat(2, 1fr); } .row-dual { grid-template-columns: 1fr; } }
-@media (max-width: 900px) { .row-top { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { .dashboard { padding: 12px; } .stats-row { grid-template-columns: 1fr; } .resource-metrics { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .row-top { grid-template-columns: 1fr; } .stats-row { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .dashboard { padding: 12px; } .qa-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>

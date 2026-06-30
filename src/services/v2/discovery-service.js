@@ -72,6 +72,8 @@ class DiscoveryService {
       };
       try {
         const info = await this._identifyDevice(d.ip);
+        if (!d.hostname && info.hostname) d.hostname = info.hostname;
+        delete info.hostname;
         Object.assign(d, info);
       } catch (_) { /* 探测失败，保留基本信息 */ }
     }
@@ -212,7 +214,17 @@ class DiscoveryService {
 
   // ===== 端口探测 + 设备识别 =====
   async _identifyDevice(ip) {
-    const info = { open_ports: [], http_server: '', ssh_banner: '', os_guess: '' };
+    const info = { hostname: '', open_ports: [], http_server: '', ssh_banner: '', os_guess: '' };
+
+    // DNS 反向解析 (PTR)
+    try {
+      const hostnames = await dns.reverse(ip);
+      if (hostnames && hostnames.length > 0) {
+        info.hostname = hostnames[0].replace(/\.local\.?$/i, '').replace(/\.$/,'');
+        // 去除常见域名后缀
+        info.hostname = info.hostname.replace(/\.lan$/i, '').replace(/\.home$/i, '').replace(/\.fritz\.box$/i, '');
+      }
+    } catch (_) { /* PTR 记录不存在 */ }
     const ports = [22, 80, 443, 445, 3389, 8080, 8443, 5000, 5001];
     const results = await Promise.allSettled(
       ports.map(p => this._probePort(ip, p))

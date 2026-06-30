@@ -313,6 +313,7 @@ app.use('/api/db', require('./routes/db'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/monitor', require('./routes/monitor'));
 app.use('/api/v2/discovery', require('./routes/v2/discovery'));
+app.use('/api/v2/install', require('./routes/v2/install'));
 
 // SPA fallback
 app.use((req, res, next) => {

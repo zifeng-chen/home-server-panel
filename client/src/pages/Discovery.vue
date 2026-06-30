@@ -251,14 +251,64 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- Install Agent Dialog -->
+    <el-dialog
+      v-model="showInstallDialog"
+      :title="t('discovery.installAgent') + ' → ' + (currentInstallDevice?.hostname || currentInstallDevice?.ip || '')"
+      width="480px"
+      destroy-on-close
+      @close="cancelInstall"
+    >
+      <div v-if="!isInstalling" class="install-form">
+        <p class="install-hint">输入目标设备的 SSH 凭据，自动完成上传和启动</p>
+        <el-input
+          v-model="installPassword"
+          type="password"
+          placeholder="SSH 密码 (root)"
+          show-password
+          class="install-input"
+          @keyup.enter="startInstall"
+        />
+        <div class="install-actions">
+          <el-button @click="showInstallDialog = false">{{ t('common.cancel') }}</el-button>
+          <el-button type="primary" :icon="Upload" @click="startInstall" :loading="false">
+            开始安装
+          </el-button>
+        </div>
+      </div>
+
+      <div v-else class="install-running">
+        <div class="install-progress-header">
+          <el-icon :size="40" v-if="installProgress?.status === 'done'"><CircleCheckFilled /></el-icon>
+          <el-icon :size="40" v-else-if="installProgress?.status === 'error'"><CircleCloseFilled /></el-icon>
+          <el-icon :size="40" v-else class="is-loading"><Loading /></el-icon>
+          <span class="install-stage">{{ installProgress?.progress?.detail || t('discovery.identifying') }}</span>
+        </div>
+        <el-progress
+          v-if="installProgress?.progress?.percent"
+          :percentage="installProgress.progress.percent"
+          :status="installProgress.status === 'error' ? 'exception' : installProgress.status === 'done' ? 'success' : undefined"
+          :stroke-width="6"
+        />
+        <div class="install-log" v-if="installLog.length > 0">
+          <div v-for="(line, i) in installLog" :key="i" class="log-line">{{ line }}</div>
+        </div>
+        <div class="install-actions" v-if="installProgress?.status === 'done' || installProgress?.status === 'done_warn' || installProgress?.status === 'error'">
+          <el-button type="primary" @click="finishInstall">
+            {{ installProgress?.status === 'error' ? t('common.close') : t('common.done') }}
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
-import { Search, Close, Loading, CircleCheckFilled, CircleCloseFilled, Plus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Close, Loading, CircleCheckFilled, CircleCloseFilled, Plus, Upload } from '@element-plus/icons-vue'
 import api from '../api'
 
 const { t } = useI18n()
@@ -276,6 +326,13 @@ const showManualDialog = ref(false)
 const manualIP = ref('')
 const isIdentifying = ref(false)
 const identifiedDevice = ref<any>(null)
+const showInstallDialog = ref(false)
+const currentInstallDevice = ref<any>(null)
+const installPassword = ref('')
+const isInstalling = ref(false)
+const installProgress = ref<any>(null)
+const installLog = ref<string[]>([])
+let installPollTimer: ReturnType<typeof setInterval> | null = null
 
 // ===== Computed =====
 const managedCount = computed(() => devices.value.filter(d => d.managed).length)
@@ -364,9 +421,74 @@ async function identifyDevice() {
 }
 
 function installOnDevice(device: any) {
-  // Phase 2 — for now, navigate to devices page
-  ElMessage.info(`Phase 2: 安装 Agent 到 ${device.ip} — 即将支持`)
-  // TODO Phase 2: open installer dialog
+  currentInstallDevice.value = device
+  installPassword.value = ''
+  showInstallDialog.value = true
+}
+
+async function startInstall() {
+  if (!installPassword.value.trim() || !currentInstallDevice.value) return
+  try {
+    isInstalling.value = true
+    installLog.value = []
+    installProgress.value = { progress: { stage: 'init', percent: 0, detail: '正在连接...' }, status: 'running' }
+
+    const res = await api.post('/api/v2/install', {
+      ip: currentInstallDevice.value.ip,
+      username: 'root',
+      password: installPassword.value,
+      name: currentInstallDevice.value.hostname || '',
+      serverUrl: 'http://192.168.100.1:3456'
+    })
+
+    if (res.success) {
+      startInstallPoll(res.data.install_id)
+    } else {
+      throw new Error(res.message || '安装请求失败')
+    }
+  } catch (e: any) {
+    isInstalling.value = false
+    installProgress.value = { status: 'error', progress: { detail: e.message || String(e) } }
+    ElMessage.error(e.message || String(e))
+  }
+}
+
+function startInstallPoll(installId: string) {
+  stopInstallPoll()
+  installPollTimer = setInterval(async () => {
+    try {
+      const res = await api.get(`/api/v2/install/${installId}`)
+      if (res.success) {
+        installProgress.value = res.data
+        installLog.value = res.data.log || []
+        if (res.data.status === 'done' || res.data.status === 'done_warn' || res.data.status === 'error') {
+          stopInstallPoll()
+          if (res.data.status === 'done') ElMessage.success('Agent 安装成功！')
+          else if (res.data.status === 'error') ElMessage.error('安装失败')
+        }
+      }
+    } catch {
+      stopInstallPoll()
+    }
+  }, 1500)
+}
+
+function stopInstallPoll() {
+  if (installPollTimer) { clearInterval(installPollTimer); installPollTimer = null }
+}
+
+function finishInstall() {
+  showInstallDialog.value = false
+  isInstalling.value = false
+  installProgress.value = null
+  stopInstallPoll()
+}
+
+function cancelInstall() {
+  stopInstallPoll()
+  isInstalling.value = false
+  installProgress.value = null
+  installLog.value = []
 }
 
 // ===== Helpers =====
@@ -385,7 +507,7 @@ function sourceLabel(source: string): string {
 }
 
 // ===== Cleanup =====
-onUnmounted(() => stopPoll())
+onUnmounted(() => { stopPoll(); stopInstallPoll() })
 </script>
 
 <style scoped>
@@ -652,5 +774,34 @@ onUnmounted(() => stopPoll())
   -webkit-backdrop-filter: var(--blur-glass);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
+}
+
+/* Install Dialog */
+.install-form { padding: 4px 0; }
+.install-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
+.install-input { margin-bottom: 16px; }
+.install-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.install-running { padding: 8px 0; }
+.install-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.install-stage { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.install-log {
+  margin-top: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.log-line {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 </style>

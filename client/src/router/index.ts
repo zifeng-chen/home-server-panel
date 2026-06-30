@@ -21,6 +21,7 @@ const router = createRouter({
         { path: 'ssh',        name: 'ssh',       component: () => import('../pages/Ssh.vue') },
         { path: 'devices',           name: 'devices',        component: () => import('../pages/Devices.vue') },
         { path: 'devices/:id', name: 'device-detail',  component: () => import('../pages/DeviceDetail.vue') },
+        { path: 'discovery',  name: 'discovery',   component: () => import('../pages/Discovery.vue') },
         { path: 'settings',   name: 'settings',  component: () => import('../pages/Settings.vue') },
       ]
     }

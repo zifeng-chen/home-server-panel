@@ -314,6 +314,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/monitor', require('./routes/monitor'));
 app.use('/api/v2/discovery', require('./routes/v2/discovery'));
 app.use('/api/v2/install', require('./routes/v2/install'));
+app.use('/api/v2/dashboard', require('./routes/v2/dashboard'));
 
 // SPA fallback
 app.use((req, res, next) => {

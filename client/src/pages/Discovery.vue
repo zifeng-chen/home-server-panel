@@ -343,7 +343,7 @@ function startPoll(scanId: string) {
   stopPoll()
   pollTimer = setInterval(async () => {
     try {
-      const res = await api.get(`/api/v2/discovery/scan/${scanId}`)
+      const res = await api.get(`/v2/discovery/scan/${scanId}`)
       if (res.success) {
         scanProgress.value = res.data
         if (res.data.devices) {
@@ -375,7 +375,7 @@ async function startScan() {
     devices.value = []
     scanProgress.value = { stage: 'starting', percent: 0, detail: '正在初始化...', completed: false }
 
-    const res = await api.post('/api/v2/discovery/scan', {
+    const res = await api.post('/v2/discovery/scan', {
       method: scanMethod.value,
       range: scanMethod.value === 'nmap' ? scanRange.value : undefined
     })
@@ -405,7 +405,7 @@ async function identifyDevice() {
   try {
     isIdentifying.value = true
     identifiedDevice.value = null
-    const res = await api.get(`/api/v2/discovery/identify?ip=${encodeURIComponent(manualIP.value.trim())}`)
+    const res = await api.get(`/v2/discovery/identify?ip=${encodeURIComponent(manualIP.value.trim())}`)
     if (res.success) {
       identifiedDevice.value = res.data
       // Also add to device list
@@ -433,7 +433,7 @@ async function startInstall() {
     installLog.value = []
     installProgress.value = { progress: { stage: 'init', percent: 0, detail: '正在连接...' }, status: 'running' }
 
-    const res = await api.post('/api/v2/install', {
+    const res = await api.post('/v2/install', {
       ip: currentInstallDevice.value.ip,
       username: 'root',
       password: installPassword.value,
@@ -457,7 +457,7 @@ function startInstallPoll(installId: string) {
   stopInstallPoll()
   installPollTimer = setInterval(async () => {
     try {
-      const res = await api.get(`/api/v2/install/${installId}`)
+      const res = await api.get(`/v2/install/${installId}`)
       if (res.success) {
         installProgress.value = res.data
         installLog.value = res.data.log || []

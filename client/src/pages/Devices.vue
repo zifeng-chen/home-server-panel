@@ -42,51 +42,46 @@
         <div v-for="dev in filteredDevices" :key="dev.id"
              class="d-card" :class="{ offline: dev.status !== 'online' }"
              @click="openDetail(dev)">
-          <!-- 卡片头部 -->
-          <div class="dc-top">
+          <!-- 卡头顶栏：图标 + 名称/IP + 状态 -->
+          <div class="dc-head">
             <span class="dc-icon">{{ devIcon(dev) }}</span>
-            <div class="dc-info">
+            <div class="dc-head-mid">
               <span class="dc-name">{{ dev.name || dev.hostname || dev.id }}</span>
-              <span class="dc-ip">{{ dev.ip || '—' }}</span>
+              <div class="dc-meta">
+                <span class="dc-ip">{{ dev.ip || '—' }}</span>
+                <span v-if="dev.tags" class="dc-badge">{{ dev.tags }}</span>
+              </div>
             </div>
             <span class="dc-dot" :class="dev.status"></span>
           </div>
-          <!-- 指标数据（在线设备） -->
-          <div v-if="dev.status === 'online' && dev.latest" class="dc-metrics">
-            <div class="dcm-item" v-if="dev.latest.cpu !== null && dev.latest.cpu !== undefined">
-              <span class="dcm-val" :style="{ color: cpuColor(dev.latest.cpu) }">{{ dev.latest.cpu }}%</span>
-              <span class="dcm-key">CPU</span>
+          <!-- 指标 2×2 网格 -->
+          <div v-if="dev.status === 'online' && dev.latest" class="dc-gauge-grid">
+            <div class="dcg-cell">
+              <span class="dcg-val" :class="cpuLevel(dev.latest.cpu)">{{ dev.latest.cpu ?? '—' }}<small>%</small></span>
+              <span class="dcg-lbl">CPU</span>
             </div>
-            <div class="dcm-item" v-if="dev.latest.memory_pct !== null && dev.latest.memory_pct !== undefined">
-              <span class="dcm-val" :style="{ color: memColor(dev.latest.memory_pct) }">{{ dev.latest.memory_pct }}%</span>
-              <span class="dcm-key">内存</span>
+            <div class="dcg-cell">
+              <span class="dcg-val" :class="memLevel(dev.latest.memory_pct)">{{ dev.latest.memory_pct ?? '—' }}<small>%</small></span>
+              <span class="dcg-lbl">内存</span>
             </div>
-            <div class="dcm-item" v-if="dev.latest.disk_pct !== null && dev.latest.disk_pct !== undefined">
-              <span class="dcm-val" :style="{ color: diskColor(dev.latest.disk_pct) }">{{ dev.latest.disk_pct }}%</span>
-              <span class="dcm-key">磁盘</span>
+            <div class="dcg-cell">
+              <span class="dcg-val" :class="diskLevel(dev.latest.disk_pct)">{{ dev.latest.disk_pct ?? '—' }}<small>%</small></span>
+              <span class="dcg-lbl">磁盘</span>
             </div>
-            <div class="dcm-item" v-if="dev.latest.uptime !== null && dev.latest.uptime !== undefined">
-              <span class="dcm-val sm">{{ fmtUptime(dev.latest.uptime) }}</span>
-              <span class="dcm-key">运行</span>
+            <div class="dcg-cell">
+              <span class="dcg-val sm">{{ fmtUptime(dev.latest.uptime) }}</span>
+              <span class="dcg-lbl">运行</span>
             </div>
           </div>
-          <div v-else-if="dev.status === 'online'" class="dc-metrics">
-            <span class="dc-no-data">等待数据...</span>
-          </div>
-          <!-- 离线设备 -->
-          <div v-else class="dc-offline-msg">
-            <span>最后在线 {{ fmtTime(dev.last_seen) }}</span>
-          </div>
-          <!-- 快捷操作 -->
-          <div class="dc-actions" @click.stop>
-            <button class="dca-btn" @click="showCommand(dev)">⌨️ 命令</button>
-            <button v-if="dev.id !== 'dev_local' && dev.status === 'online'" class="dca-btn" @click="openSsh(dev)">🔗 SSH</button>
-            <button class="dca-btn" @click="startEditTag(dev)">{{ dev.tags ? '🏷️' : '➕' }}</button>
-            <button class="dca-btn danger" @click="confirmDelete(dev)">🗑️</button>
-          </div>
-          <!-- 标签条 -->
-          <div class="dc-tags" v-if="dev.tags">
-            <span class="dct-chip">{{ dev.tags }}</span>
+          <div v-else-if="dev.status === 'online'" class="dc-no-data">等待指标数据...</div>
+          <!-- 离线提示 -->
+          <div v-else class="dc-offline-msg">最后在线 {{ fmtTime(dev.last_seen) }}</div>
+          <!-- 悬浮操作栏 -->
+          <div class="dc-hover-bar" @click.stop>
+            <button class="dch-btn" title="命令" @click="showCommand(dev)">⌨️</button>
+            <button v-if="dev.id !== 'dev_local' && dev.status === 'online'" class="dch-btn" title="SSH" @click="openSsh(dev)">🔗</button>
+            <button class="dch-btn" title="标签" @click="startEditTag(dev)">{{ dev.tags ? '🏷️' : '🏷' }}</button>
+            <button class="dch-btn danger" title="删除" @click="confirmDelete(dev)">🗑</button>
           </div>
         </div>
       </div>
@@ -126,7 +121,7 @@
     <div class="d-section">
       <div class="d-section-head">
         <h3 class="d-section-title">⚠️ 告警规则</h3>
-        <button class="dca-btn" @click="openAlertForm()">+ 添加</button>
+        <button class="dch-btn" style="width:auto;padding:4px 12px;font-size:12px" @click="openAlertForm()">+ 添加</button>
       </div>
       <div v-if="store.alertRules?.length" class="d-list">
         <div v-for="r in store.alertRules" :key="r.id" class="d-list-item alert-item">
@@ -136,8 +131,8 @@
             <span class="dli-sub">{{ r.metric }} {{ r.metric === 'cpu' ? '≥' : '>' }} {{ r.threshold }}{{ r.metric === 'disk_pct' || r.metric === 'memory_pct' ? '%' : '' }} · {{ r.device_id || '全部设备' }}</span>
           </div>
           <el-switch :model-value="!!r.enabled" @change="toggleAlert(r)" size="small" />
-          <button class="dca-btn mini" @click="openAlertForm(r)">✏️</button>
-          <button class="dca-btn mini danger" @click="deleteAlert(r)">🗑️</button>
+          <button class="dch-btn" @click="openAlertForm(r)">✏️</button>
+          <button class="dch-btn danger" @click="deleteAlert(r)">🗑</button>
         </div>
       </div>
       <div v-else-if="!store.alertLoading" class="d-empty">暂无告警规则</div>
@@ -312,9 +307,10 @@ const fmtUptime = (s: number) => {
   if (s < 86400) return Math.floor(s / 3600) + '时'
   return Math.floor(s / 86400) + '天'
 }
-const cpuColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#22c55e'
-const memColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#3b82f6'
-const diskColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#8b5cf6'
+// ── 指标等级（用于 CSS class）──
+const cpuLevel = (v: number | null | undefined) => v == null ? '' : v > 90 ? 'crit' : v > 70 ? 'warn' : 'ok'
+const memLevel = (v: number | null | undefined) => v == null ? '' : v > 90 ? 'crit' : v > 70 ? 'warn' : 'ok'
+const diskLevel = (v: number | null | undefined) => v == null ? '' : v > 90 ? 'crit' : v > 70 ? 'warn' : 'ok'
 
 // ── 数据加载 ──
 async function loadAll() {
@@ -464,44 +460,57 @@ onMounted(() => loadAll())
 .d-empty { padding: 32px; text-align: center; color: #94a3b8; font-size: 13px; }
 
 /* 卡片网格 */
-.d-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.d-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .d-card {
-  position: relative; padding: 14px; border-radius: 14px; background: #fff;
-  border: 1px solid #f1f5f9; cursor: pointer; transition: all .2s;
+  position: relative; padding: 16px; border-radius: 14px; background: #fff;
+  border: 1px solid #f1f5f9; cursor: pointer; overflow: hidden;
+  transition: all .2s;
 }
-.d-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: #e2e8f0; }
-.d-card.offline { opacity: .55; }
-.dc-top { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-.dc-icon { font-size: 24px; }
-.dc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.dc-name { font-size: 14px; font-weight: 600; color: #1A1A1A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,.08); border-color: #e2e8f0; }
+.d-card.offline { opacity: .5; }
+/* 卡头顶栏 */
+.dc-head { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.dc-icon { font-size: 26px; flex-shrink: 0; }
+.dc-head-mid { flex: 1; min-width: 0; }
+.dc-name { font-size: 14px; font-weight: 600; color: #1A1A1A; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-meta { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
 .dc-ip { font-size: 11px; color: #64748b; }
+.dc-badge {
+  font-size: 10px; padding: 1px 7px; border-radius: 5px; background: #eef2ff; color: #4f7cff;
+  max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .dc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dc-dot.online { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.4); }
 .dc-dot.offline { background: #94a3b8; }
-
-/* 指标 */
-.dc-metrics { display: flex; gap: 14px; margin-bottom: 8px; }
-.dcm-item { display: flex; flex-direction: column; align-items: center; }
-.dcm-val { font-size: 18px; font-weight: 700; }
-.dcm-val.sm { font-size: 12px; }
-.dcm-key { font-size: 10px; color: #94a3b8; }
-.dc-no-data { font-size: 11px; color: #94a3b8; }
-.dc-offline-msg { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
-
-/* 操作按钮 */
-.dc-actions { display: flex; gap: 4px; flex-wrap: wrap; }
-.dca-btn {
-  padding: 3px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
-  background: transparent; cursor: pointer; font-size: 11px; transition: all .15s;
+/* 指标 2×2 网格 */
+.dc-gauge-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 10px;
 }
-.dca-btn:hover { background: #f1f5f9; }
-.dca-btn.danger:hover { color: #ef4444; border-color: #fecaca; }
-.dca-btn.mini { padding: 2px 6px; font-size: 10px; }
-
-/* 标签 */
-.dc-tags { margin-top: 6px; }
-.dct-chip { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #eef2ff; color: #4f7cff; font-size: 11px; }
+.dcg-cell { text-align: center; padding: 8px 4px; border-radius: 10px; background: #f8fafc; }
+.dcg-val { font-size: 22px; font-weight: 700; display: block; color: #1A1A1A; }
+.dcg-val small { font-size: 12px; font-weight: 500; }
+.dcg-val.ok { color: #22c55e; }
+.dcg-val.warn { color: #f59e0b; }
+.dcg-val.crit { color: #ef4444; }
+.dcg-val.sm { font-size: 13px; }
+.dcg-lbl { font-size: 10px; color: #94a3b8; display: block; margin-top: 2px; }
+.dc-no-data { font-size: 12px; color: #94a3b8; padding: 8px 0; text-align: center; }
+.dc-offline-msg { font-size: 12px; color: #94a3b8; padding: 8px 0; text-align: center; }
+/* 悬浮操作栏 */
+.dc-hover-bar {
+  display: flex; gap: 4px; justify-content: center; padding-top: 8px;
+  opacity: 0; transform: translateY(4px); transition: all .2s;
+  border-top: 1px solid #f1f5f9;
+}
+.d-card:hover .dc-hover-bar { opacity: 1; transform: translateY(0); }
+.dch-btn {
+  width: 32px; height: 32px; border: 1px solid #e2e8f0; border-radius: 8px;
+  background: transparent; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.dch-btn:hover { background: #f1f5f9; }
+.dch-btn.danger:hover { color: #ef4444; border-color: #fecaca; }
 
 /* 发现设备列表 */
 .d-list { display: flex; flex-direction: column; gap: 6px; }

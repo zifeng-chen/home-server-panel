@@ -190,7 +190,16 @@ class DeviceService {
       metrics.forEach(m => { metricMap[m.device_id] = m; });
       devices.forEach(d => { d.latest = metricMap[d.id] || null; });
     }
-    return devices;
+    // IP 去重：同一 IP 只保留一台（Go Agent 优先 > dev_local，在线优先 > 离线）
+    const ipMap = new Map();
+    devices.forEach(d => {
+      if (!d.ip) { ipMap.set(d.id, d); return; }
+      const existing = ipMap.get(d.ip);
+      if (!existing) { ipMap.set(d.ip, d); }
+      else if (d.id !== 'dev_local' && existing.id === 'dev_local') { ipMap.set(d.ip, d); }
+      else if (d.status === 'online' && existing.status !== 'online') { ipMap.set(d.ip, d); }
+    });
+    return Array.from(ipMap.values());
   }
 
   /**

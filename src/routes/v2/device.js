@@ -111,8 +111,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/v2/device/list-with-metrics — 设备列表 + 最新指标（卡片展示用）
-router.get('/list-with-metrics', async (req, res) => {
+// GET /api/v2/device/overview — 设备列表 + 最新指标（卡片展示用）
+router.get('/overview', async (req, res) => {
   try {
     const devices = await deviceService.listWithMetrics();
     res.json({ success: true, data: devices });

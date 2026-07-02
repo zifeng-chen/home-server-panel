@@ -167,6 +167,33 @@ class DeviceService {
   }
 
   /**
+   * 设备列表 + 每个设备的最新一条指标（前端卡片展示用）
+   */
+  async listWithMetrics() {
+    const pool = this._pool();
+    const [devices] = await pool.query(
+      `SELECT id, name, hostname, ip, os, arch, version, status, tags, last_seen, created_at
+       FROM devices ORDER BY status='online' DESC, last_seen DESC`
+    );
+    if (devices.length > 0) {
+      const ids = devices.map(d => pool.escape(d.id)).join(',');
+      const [metrics] = await pool.query(
+        `SELECT m.device_id, m.cpu, m.memory_pct, m.disk_pct, m.net_rx, m.net_tx,
+                m.uptime, m.collected_at
+         FROM device_metrics m
+         INNER JOIN (
+           SELECT device_id, MAX(id) as max_id FROM device_metrics
+           WHERE device_id IN (${ids}) GROUP BY device_id
+         ) latest ON m.device_id = latest.device_id AND m.id = latest.max_id`
+      );
+      const metricMap = {};
+      metrics.forEach(m => { metricMap[m.device_id] = m; });
+      devices.forEach(d => { d.latest = metricMap[d.id] || null; });
+    }
+    return devices;
+  }
+
+  /**
    * 设备详情
    */
   async getDetail(deviceId) {

@@ -111,6 +111,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/v2/device/list-with-metrics — 设备列表 + 最新指标（卡片展示用）
+router.get('/list-with-metrics', async (req, res) => {
+  try {
+    const devices = await deviceService.listWithMetrics();
+    res.json({ success: true, data: devices });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/v2/device/commands/batch — 批量命令（在 :id 之前避免路由冲突）
 router.post('/commands/batch', async (req, res) => {
   try {

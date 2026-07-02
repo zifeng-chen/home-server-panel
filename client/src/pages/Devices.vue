@@ -1,583 +1,532 @@
+<!-- ================================================================
+  设备总控台 — 统一纳管 + 发现双区
+  家庭服务器面板 v0.9.4-beta
+================================================================ -->
 <template>
-  <div class="devices-page">
-    <!-- 统计概览 -->
-    <div class="stats-row">
-      <div class="stat-card" @click="showDiscovery = true" style="cursor:pointer">
-        <span class="stat-num">{{ store.stats?.total || 0 }}</span>
-        <span class="stat-lbl">{{ $t('devices.totalDevices') }}</span>
+  <div class="d-root">
+    <!-- ── 统计亮片 ── -->
+    <div class="d-stats">
+      <div class="d-stat" :class="{ active: tab === 'managed' }" @click="tab = 'managed'">
+        <span class="ds-num">{{ store.stats?.online || 0 }}</span>
+        <span class="ds-lbl">在线</span>
       </div>
-      <div class="stat-card online">
-        <span class="stat-num">{{ store.stats?.online || 0 }}</span>
-        <span class="stat-lbl">{{ $t('devices.online') }}</span>
+      <div class="d-stat" :class="{ active: tab === 'offline' }" @click="tab = 'offline'">
+        <span class="ds-num off">{{ store.stats?.offline || 0 }}</span>
+        <span class="ds-lbl">离线</span>
       </div>
-      <div class="stat-card offline">
-        <span class="stat-num">{{ store.stats?.offline || 0 }}</span>
-        <span class="stat-lbl">{{ $t('devices.offline') }}</span>
+      <div class="d-stat">
+        <span class="ds-num">{{ devices.length }}</span>
+        <span class="ds-lbl">已纳管</span>
       </div>
-      <div class="stat-card scan" @click="showDiscovery = true">
-        <span class="stat-num">🔍</span>
-        <span class="stat-lbl">{{ $t('discovery.title') }}</span>
+      <div class="d-stat" :class="{ active: tab === 'unmanaged' }" @click="tab = 'unmanaged'">
+        <span class="ds-num accent">{{ unmanagedCount }}</span>
+        <span class="ds-lbl">未纳管</span>
+      </div>
+      <button class="d-scan-btn" @click="scanToggle" :disabled="scanning">
+        {{ scanning ? '扫描中...' : '🔍 扫描发现' }}
+      </button>
+    </div>
+
+    <!-- ── 扫描进度条 ── -->
+    <div v-if="scanning" class="d-scan-bar">
+      <div class="dsb-fill" :style="{ width: scanProgress + '%' }"></div>
+      <span class="dsb-text">{{ scanDetail }} ({{ scanProgress }}%)</span>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 已纳管设备卡片（tab=managed/offline 时显示）                     -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div v-if="tab !== 'unmanaged' && filteredDevices.length" class="d-section">
+      <h3 class="d-section-title">🤖 已纳管设备</h3>
+      <div class="d-card-grid">
+        <div v-for="dev in filteredDevices" :key="dev.id"
+             class="d-card" :class="{ offline: dev.status !== 'online' }"
+             @click="openDetail(dev)">
+          <!-- 卡片头部 -->
+          <div class="dc-top">
+            <span class="dc-icon">{{ devIcon(dev) }}</span>
+            <div class="dc-info">
+              <span class="dc-name">{{ dev.name || dev.hostname || dev.id }}</span>
+              <span class="dc-ip">{{ dev.ip || '—' }}</span>
+            </div>
+            <span class="dc-dot" :class="dev.status"></span>
+          </div>
+          <!-- 指标数据（在线设备） -->
+          <div v-if="dev.status === 'online' && dev.latest" class="dc-metrics">
+            <div class="dcm-item" v-if="dev.latest.cpu !== null && dev.latest.cpu !== undefined">
+              <span class="dcm-val" :style="{ color: cpuColor(dev.latest.cpu) }">{{ dev.latest.cpu }}%</span>
+              <span class="dcm-key">CPU</span>
+            </div>
+            <div class="dcm-item" v-if="dev.latest.memory_pct !== null && dev.latest.memory_pct !== undefined">
+              <span class="dcm-val" :style="{ color: memColor(dev.latest.memory_pct) }">{{ dev.latest.memory_pct }}%</span>
+              <span class="dcm-key">内存</span>
+            </div>
+            <div class="dcm-item" v-if="dev.latest.disk_pct !== null && dev.latest.disk_pct !== undefined">
+              <span class="dcm-val" :style="{ color: diskColor(dev.latest.disk_pct) }">{{ dev.latest.disk_pct }}%</span>
+              <span class="dcm-key">磁盘</span>
+            </div>
+            <div class="dcm-item" v-if="dev.latest.uptime !== null && dev.latest.uptime !== undefined">
+              <span class="dcm-val sm">{{ fmtUptime(dev.latest.uptime) }}</span>
+              <span class="dcm-key">运行</span>
+            </div>
+          </div>
+          <div v-else-if="dev.status === 'online'" class="dc-metrics">
+            <span class="dc-no-data">等待数据...</span>
+          </div>
+          <!-- 离线设备 -->
+          <div v-else class="dc-offline-msg">
+            <span>最后在线 {{ fmtTime(dev.last_seen) }}</span>
+          </div>
+          <!-- 快捷操作 -->
+          <div class="dc-actions" @click.stop>
+            <button class="dca-btn" @click="showCommand(dev)">⌨️ 命令</button>
+            <button v-if="dev.id !== 'dev_local' && dev.status === 'online'" class="dca-btn" @click="openSsh(dev)">🔗 SSH</button>
+            <button class="dca-btn" @click="startEditTag(dev)">{{ dev.tags ? '🏷️' : '➕' }}</button>
+            <button class="dca-btn danger" @click="confirmDelete(dev)">🗑️</button>
+          </div>
+          <!-- 标签条 -->
+          <div class="dc-tags" v-if="dev.tags">
+            <span class="dct-chip">{{ dev.tags }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-else-if="tab !== 'unmanaged' && !filteredDevices.length && !store.loading" class="d-empty">
+      暂无{{ tab === 'offline' ? '离线' : '已纳管' }}设备
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 发现设备列表（tab=unmanaged / 扫描完成后自动展开）              -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div v-if="showUnmanaged && unmanagedDevices.length" class="d-section">
+      <div class="d-section-head">
+        <h3 class="d-section-title">📡 发现设备（未纳管）</h3>
+        <span class="dsh-count">共 {{ unmanagedCount }} 台</span>
+      </div>
+      <div class="d-list">
+        <div v-for="d in unmanagedDevices" :key="d.ip + d.mac" class="d-list-item">
+          <span class="dli-icon">{{ devIcon(d) }}</span>
+          <div class="dli-info">
+            <span class="dli-name">{{ d.hostname || d.ip }}</span>
+            <span class="dli-sub">{{ d.ip }}<span v-if="d.mac"> · {{ d.mac }}</span><span v-if="d.vendor"> · {{ d.vendor }}</span></span>
+          </div>
+          <button class="dli-install" @click="installAgent(d)">📥 安装 Agent</button>
+        </div>
       </div>
     </div>
 
-    <!-- 设备列表 -->
-    <el-table :data="store.devices" v-loading="store.loading" stripe class="data-table" @row-click="openDetail" ref="tableRef" @selection-change="onSelectionChange">
-      <el-table-column type="selection" width="42" :selectable="isSelectable" />
-      <el-table-column prop="name" :label="$t('devices.hostDevice')" min-width="140">
-        <template #default="{ row }">
-          <router-link :to="`/devices/${row.id}`" class="device-link" @click.stop>{{ row.name }}</router-link>
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('common.status')" width="90">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small" effect="dark">
-            {{ row.status === 'online' ? $t('devices.online') : $t('devices.offline') }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="tags" :label="$t('devices.tags')" width="120">
-        <template #default="{ row }">
-          <el-input v-if="editingTag === row.id" v-model="tagInput" size="small" @blur="saveTag(row)" @keyup.enter="saveTag(row)" ref="tagInputRef" />
-          <span v-else @click.stop="startEditTag(row)" class="tag-cell" :class="{ placeholder: !row.tags }">
-            {{ row.tags || $t('devices.clickToTag') }}
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="ip" :label="$t('devices.ip')" width="160">
-        <template #default="{ row }"><code class="mono">{{ row.ip }}</code></template>
-      </el-table-column>
-      <el-table-column prop="os" :label="$t('devices.os')" width="110">
-        <template #default="{ row }">{{ row.os }} {{ row.arch }}</template>
-      </el-table-column>
-      <el-table-column prop="version" :label="$t('devices.version')" width="100" />
-      <el-table-column :label="$t('devices.lastSeen')" width="170">
-        <template #default="{ row }">{{ fmtTime(row.last_seen) }}</template>
-      </el-table-column>
-      <el-table-column :label="$t('common.actions')" width="215" fixed="right">
-        <template #default="{ row }">
-          <el-button link type="primary" @click.stop="showCommand(row)" size="small">{{ $t('devices.sendCommand') }}</el-button>
-          <el-button v-if="row.status === 'online' && row.id !== 'dev_local'" link type="success" @click.stop="openSsh(row)" size="small">SSH</el-button>
-          <el-popconfirm :title="$t('devices.delConfirm')" @confirm="doDelete(row)" :confirm-button-text="$t('common.confirm')" :cancel-button-text="$t('common.cancel')">
-            <template #reference>
-              <el-button link type="danger" @click.stop size="small">{{ $t('devices.delete') }}</el-button>
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <!-- 批量操作栏 -->
-    <div v-if="selectedDevices.length" class="batch-bar">
-      <span>{{ $t('devices.batchSelected', { n: selectedDevices.length }) }}</span>
-      <el-button size="small" type="primary" @click="showBatchCommand">{{ $t('devices.batchCommand') }}</el-button>
+    <!-- 未纳管为空 -->
+    <div v-if="showUnmanaged && !unmanagedDevices.length && !scanning && scanAttempted" class="d-empty">
+      未发现新设备
     </div>
 
-    <!-- ===== 设备发现浮窗 ===== -->
-    <el-dialog v-model="showDiscovery" title="网络扫描" width="760" :close-on-click-modal="false" destroy-on-close class="discovery-dialog">
-      <div class="disco-root">
-        <!-- Scan Controls -->
-        <div class="disco-controls">
-          <div class="disco-field">
-            <label>{{ $t('discovery.scanRange') }}</label>
-            <div class="disco-input-group">
-              <el-input v-model="scanRange" :disabled="isScanning" size="default" class="range-input" />
-              <el-button type="primary" @click="startScan" :loading="isScanning" class="scan-btn">
-                {{ isScanning ? '...' : '开始扫描' }}
-              </el-button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Progress -->
-        <div v-if="scanProgress" class="disco-progress">
-          <div class="dp-head">
-            <span class="dp-stage">{{ scanProgress.completed ? '✅' : '⏳' }} {{ scanProgress.detail || '准备中...' }}</span>
-            <span class="dp-pct">{{ scanProgress.progress }}%</span>
-          </div>
-          <div class="dp-bar">
-            <div class="dp-fill" :style="{ width: scanProgress.progress + '%' }" :class="{ done: scanProgress.completed }"></div>
-          </div>
-        </div>
-
-        <!-- Results -->
-        <div v-if="discoveredDevices.length" class="disco-results">
-          <div class="dr-header">
-            <span class="dr-count">发现 {{ discoveredDevices.length }} 台设备</span>
-          </div>
-          <div class="dr-grid">
-            <div class="dr-card" v-for="d in discoveredDevices" :key="d.ip" :class="{ managed: d.managed }">
-              <div class="drc-top">
-                <span class="drc-icon">{{ deviceIcon(d) }}</span>
-                <div class="drc-meta">
-                  <span class="drc-name">{{ d.hostname || d.ip }}</span>
-                  <code class="drc-ip">{{ d.ip }}</code>
-                </div>
-                <el-tag v-if="d.managed" type="success" size="small" effect="dark">受管</el-tag>
-                <el-tag v-else type="info" size="small">新设备</el-tag>
-              </div>
-              <div class="drc-details">
-                <span v-if="d.mac" class="drc-item"><small>MAC</small> <code>{{ d.mac }}</code></span>
-                <span v-if="d.vendor" class="drc-item"><small>厂商</small> {{ d.vendor }}</span>
-              </div>
-              <div class="drc-actions" v-if="!d.managed">
-                <el-button size="small" type="primary" plain @click="installAgent(d)">安装 Agent</el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Empty -->
-        <div v-if="!isScanning && !discoveredDevices.length && scanAttempted" class="disco-empty">
-          <span class="empty-icon">📡</span>
-          <span>未发现新设备</span>
-          <span class="empty-hint">尝试扩大扫描范围或更换扫描方式</span>
-        </div>
-
-        <!-- Install Form -->
-        <el-dialog v-model="installVisible" title="安装 Agent" width="380" append-to-body>
-          <el-form label-width="80px">
-            <el-form-item label="目标主机">
-              <el-input :model-value="installTarget?.ip" disabled />
-            </el-form-item>
-            <el-form-item label="SSH 密码">
-              <el-input v-model="installPassword" type="password" show-password />
-            </el-form-item>
-            <el-form-item label="用户名">
-              <el-input v-model="installUser" placeholder="root" />
-            </el-form-item>
-          </el-form>
-          <template #footer>
-            <el-button @click="installVisible = false">{{ $t('common.cancel') }}</el-button>
-            <el-button type="primary" @click="doInstall" :loading="installing">{{ $t('common.submit') }}</el-button>
-          </template>
-          <div v-if="installResult" class="install-result" :class="installResult.error ? 'error' : 'success'">
-            {{ installResult.message }}
-          </div>
-        </el-dialog>
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 告警规则区域（精简复用）                                       -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div class="d-section">
+      <div class="d-section-head">
+        <h3 class="d-section-title">⚠️ 告警规则</h3>
+        <button class="dca-btn" @click="openAlertForm()">+ 添加</button>
       </div>
-    </el-dialog>
+      <div v-if="store.alertRules?.length" class="d-list">
+        <div v-for="r in store.alertRules" :key="r.id" class="d-list-item alert-item">
+          <span class="dli-icon">⚠️</span>
+          <div class="dli-info">
+            <span class="dli-name">{{ r.name }}</span>
+            <span class="dli-sub">{{ r.metric }} {{ r.metric === 'cpu' ? '≥' : '>' }} {{ r.threshold }}{{ r.metric === 'disk_pct' || r.metric === 'memory_pct' ? '%' : '' }} · {{ r.device_id || '全部设备' }}</span>
+          </div>
+          <el-switch :model-value="!!r.enabled" @change="toggleAlert(r)" size="small" />
+          <button class="dca-btn mini" @click="openAlertForm(r)">✏️</button>
+          <button class="dca-btn mini danger" @click="deleteAlert(r)">🗑️</button>
+        </div>
+      </div>
+      <div v-else-if="!store.alertLoading" class="d-empty">暂无告警规则</div>
+    </div>
 
-    <!-- 命令下发弹窗 -->
-    <el-dialog v-model="commandVisible" :title="$t('devices.sendCommand')" width="480" append-to-body>
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 弹窗：命令下发                                                -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <el-dialog v-model="cmdVisible" title="下发命令" width="440" append-to-body destroy-on-close>
       <el-form>
-        <el-form-item :label="$t('common.name')">
-          <el-input :model-value="commandTarget?.name" disabled />
-        </el-form-item>
-        <el-form-item label="Command">
-          <el-input v-model="commandText" type="textarea" :rows="3" :placeholder="$t('devices.commandPlaceholder')" />
+        <el-form-item label="设备"><el-input :model-value="cmdTarget?.name" disabled /></el-form-item>
+        <el-form-item label="命令">
+          <el-input v-model="cmdText" type="textarea" rows="3" placeholder="输入命令..." />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="commandVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="doSendCommand" :loading="sending">{{ $t('common.submit') }}</el-button>
+        <el-button @click="cmdVisible = false">取消</el-button>
+        <el-button type="primary" @click="doCmd" :loading="cmdSending">执行</el-button>
       </template>
     </el-dialog>
 
-    <!-- 批量命令弹窗 -->
-    <el-dialog v-model="batchVisible" :title="$t('devices.batchCommand')" width="550" append-to-body>
-      <div class="batch-list">
-        <el-tag v-for="d in selectedDevices" :key="d.id" size="small" style="margin:0 4px 4px 0">{{ d.name }}</el-tag>
-      </div>
-      <el-form style="margin-top:12px">
-        <el-form-item label="Command">
-          <el-input v-model="commandText" type="textarea" :rows="4" :placeholder="$t('devices.batchPlaceholder')" />
-        </el-form-item>
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 弹窗：标签编辑                                                -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <el-dialog v-model="tagVisible" title="设备标签" width="360" append-to-body destroy-on-close>
+      <el-form>
+        <el-form-item label="标签"><el-input v-model="tagText" placeholder="如：陈先生的MacBook / 书房" maxlength="50" /></el-form-item>
       </el-form>
-      <div v-if="batchResults.length" class="batch-results">
-        <div v-for="r in batchResults" :key="r.deviceId" class="batch-result-item">
-          <span class="batch-device">{{ r.deviceId }}</span>
-          <el-tag :type="r.status === 'completed' ? 'success' : 'danger'" size="small">{{ r.status }}</el-tag>
-          <pre class="batch-output">{{ r.result || r.error }}</pre>
-        </div>
-      </div>
       <template #footer>
-        <el-button @click="batchVisible = false">{{ $t('common.close') }}</el-button>
-        <el-button type="primary" @click="doBatchCommand" :loading="batchSending">{{ $t('common.submit') }}</el-button>
+        <el-button @click="tagVisible = false">取消</el-button>
+        <el-button type="primary" @click="doSaveTag" :loading="tagSaving">保存</el-button>
       </template>
     </el-dialog>
 
-    <!-- ===== 告警规则区域 ===== -->
-    <div class="section">
-      <div class="section-header">
-        <h3>{{ $t('devices.alerts') }}</h3>
-        <el-button size="small" type="primary" @click="showAlertForm(null)">+ {{ $t('devices.alertAdd') }}</el-button>
-      </div>
-      <el-table :data="store.alertRules" v-loading="store.alertLoading" size="small" stripe>
-        <el-table-column prop="name" :label="$t('devices.alertName')" min-width="120" />
-        <el-table-column :label="$t('devices.alertMetric')" width="80">
-          <template #default="{ row }">{{ row.metric }}</template>
-        </el-table-column>
-        <el-table-column :label="$t('devices.alertThreshold')" width="100">
-          <template #default="{ row }">{{ row.metric === 'disk_pct' || row.metric === 'memory_pct' || row.metric === 'cpu' ? row.threshold + '%' : row.threshold }}</template>
-        </el-table-column>
-        <el-table-column :label="$t('devices.alertDevice')" width="130">
-          <template #default="{ row }">{{ row.device_id || $t('devices.alertAllDevices') }}</template>
-        </el-table-column>
-        <el-table-column :label="$t('devices.alertEnabled')" width="80">
-          <template #default="{ row }">
-            <el-switch :model-value="!!row.enabled" @change="toggleAlert(row)" size="small" />
-          </template>
-        </el-table-column>
-        <el-table-column :label="$t('common.actions')" width="100">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="showAlertForm(row)">{{ $t('common.edit') }}</el-button>
-            <el-button link type="danger" size="small" @click="deleteAlert(row)">{{ $t('common.delete') }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div v-if="!store.alertRules?.length && !store.alertLoading" class="empty">{{ $t('devices.alertNoRules') }}</div>
-    </div>
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 弹窗：安装 Agent                                              -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <el-dialog v-model="installVisible" title="安装 Agent" width="380" append-to-body destroy-on-close>
+      <el-form label-width="80px">
+        <el-form-item label="目标 IP"><el-input :model-value="installTarget?.ip" disabled /></el-form-item>
+        <el-form-item label="用户名"><el-input v-model="installUser" placeholder="root" /></el-form-item>
+        <el-form-item label="SSH 密码"><el-input v-model="installPass" type="password" show-password /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="installVisible = false">取消</el-button>
+        <el-button type="primary" @click="doInstall" :loading="installing">安装</el-button>
+      </template>
+      <div v-if="installMsg" class="d-install-msg" :class="installOk ? 'ok' : 'err'">{{ installMsg }}</div>
+    </el-dialog>
 
-    <!-- 告警规则编辑弹窗 -->
-    <el-dialog v-model="alertFormVisible" :title="alertEditId ? $t('common.edit') : $t('devices.alertAdd')" width="420" destroy-on-close append-to-body>
-      <el-form label-width="90px">
-        <el-form-item :label="$t('devices.alertName')">
-          <el-input v-model="alertForm.name" placeholder="如 CPU 过高" maxlength="30" />
-        </el-form-item>
-        <el-form-item :label="$t('devices.alertMetric')">
-          <el-select v-model="alertForm.metric">
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 弹窗：告警规则编辑                                            -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <el-dialog v-model="alertVisible" :title="alertEdit ? '编辑规则' : '添加规则'" width="420" append-to-body destroy-on-close>
+      <el-form label-width="80px">
+        <el-form-item label="名称"><el-input v-model="alertFm.name" placeholder="如 CPU 过高" maxlength="30" /></el-form-item>
+        <el-form-item label="指标">
+          <el-select v-model="alertFm.metric">
             <el-option label="CPU" value="cpu" />
-            <el-option :label="$t('devices.memory')" value="memory_pct" />
-            <el-option :label="$t('devices.disk')" value="disk_pct" />
+            <el-option label="内存" value="memory_pct" />
+            <el-option label="磁盘" value="disk_pct" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="$t('devices.alertThreshold')">
-          <el-input-number v-model="alertForm.threshold" :min="1" :max="100" :step="1" />
-        </el-form-item>
-        <el-form-item :label="$t('devices.alertDevice')">
-          <el-select v-model="alertForm.device_id" :placeholder="$t('devices.alertAllDevices')" clearable>
-            <el-option v-for="d in store.devices" :key="d.id" :label="d.name" :value="d.id" />
+        <el-form-item label="阈值"><el-input-number v-model="alertFm.threshold" :min="1" :max="100" /></el-form-item>
+        <el-form-item label="设备">
+          <el-select v-model="alertFm.device_id" placeholder="全部设备" clearable>
+            <el-option v-for="d in devices" :key="d.id" :label="d.name || d.hostname || d.id" :value="d.id" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="alertFormVisible = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="doSaveAlert" :loading="alertSaving">{{ $t('common.submit') }}</el-button>
+        <el-button @click="alertVisible = false">取消</el-button>
+        <el-button type="primary" @click="doSaveAlert" :loading="alertSaving">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDevicesStore } from '../stores/devices'
-import { useI18n } from 'vue-i18n'
 import api from '../api'
 
-const { t } = useI18n()
 const store = useDevicesStore()
 const router = useRouter()
 
-interface Device { id: string; name: string; hostname: string; ip: string; os: string; arch: string; version: string; status: string; last_seen: string; tags?: string }
+// ── Tab ──
+const tab = ref('managed') // 'managed' | 'offline' | 'unmanaged'
 
-// ===== Discovery State =====
-const showDiscovery = ref(false)
-const scanRange = ref('192.168.100.0/24')
-const isScanning = ref(false)
+// ── 设备数据 ──
+const devices = ref<any[]>([])
+
+// ── 扫描 ──
+const scanning = ref(false)
+const scanProgress = ref(0)
+const scanDetail = ref('')
 const scanAttempted = ref(false)
-const scanProgress = ref<{ detail: string; progress: number; completed: boolean } | null>(null)
-const discoveredDevices = ref<any[]>([])
-let scanPollTimer: any = null
+const discovered = ref<any[]>([])
+let scanTimer: any = null
 
-function deviceIcon(d: any) {
-  const type = d.type || ''
-  if (type.includes('router') || d.hostname?.includes('iStore')) return '📡'
-  if (type.includes('nas') || d.hostname?.includes('iOSun')) return '💾'
-  if (type.includes('desktop') || d.hostname?.includes('Mac')) return '💻'
-  if (type.includes('phone')) return '📱'
+// ── 未纳管列表（聚合去重）──
+const unmanagedDevices = computed(() => {
+  const managedIPs = new Set(devices.value.map(d => d.ip).filter(Boolean))
+  const managedHosts = new Set(devices.value.map(d => d.hostname).filter(Boolean))
+  return discovered.value.filter(d => {
+    if (managedIPs.has(d.ip)) return false
+    if (d.hostname && managedHosts.has(d.hostname)) return false
+    return true
+  })
+})
+const unmanagedCount = computed(() => unmanagedDevices.value.length)
+const showUnmanaged = computed(() => tab.value === 'unmanaged' || (scanAttempted.value && unmanagedDevices.value.length > 0))
+
+// ── 已纳管筛选 ──
+const filteredDevices = computed(() => {
+  if (tab.value === 'offline') return devices.value.filter(d => d.status !== 'online')
+  if (tab.value === 'unmanaged') return []
+  return devices.value // managed = all
+})
+
+// ── 命令 ──
+const cmdVisible = ref(false)
+const cmdTarget = ref<any>(null)
+const cmdText = ref('')
+const cmdSending = ref(false)
+
+// ── 标签 ──
+const tagVisible = ref(false)
+const tagTarget = ref<any>(null)
+const tagText = ref('')
+const tagSaving = ref(false)
+
+// ── 安装 ──
+const installVisible = ref(false)
+const installTarget = ref<any>(null)
+const installUser = ref('root')
+const installPass = ref('')
+const installing = ref(false)
+const installMsg = ref('')
+const installOk = ref(false)
+
+// ── 告警 ──
+const alertVisible = ref(false)
+const alertEdit = ref<any>(null)
+const alertFm = ref({ name: '', metric: 'cpu', threshold: 90, device_id: '' })
+const alertSaving = ref(false)
+
+// ── 辅助函数 ──
+const devIcon = (d: any) => {
+  const n = (d.name || d.hostname || '').toLowerCase()
+  if (d.type === 'nas' || n.includes('nas') || n.includes('iosun')) return '💾'
+  if (d.type === 'router' || n.includes('router') || n.includes('istore')) return '📶'
+  if (d.type === 'phone' || n.includes('phone')) return '📱'
+  if (d.os?.includes('Darwin') || n.includes('mac')) return '🍎'
+  if (d.os?.includes('Windows') || n.includes('win')) return '🪟'
+  if (d.vendor?.includes('Apple')) return '🍎'
+  if (d.vendor?.includes('HP') || d.type === 'printer') return '🖨️'
+  if (d.vendor?.includes('Samsung') || d.type === 'media') return '📺'
+  if (d.os?.includes('Linux')) return '🐧'
   return '🖥️'
 }
+const fmtTime = (t: string) => {
+  if (!t) return '—'
+  const d = new Date(t.endsWith('Z') ? t : t + 'Z')
+  return isNaN(d.getTime()) ? t : d.toLocaleString('zh-CN', { hour12: false })
+}
+const fmtUptime = (s: number) => {
+  if (!s) return '—'
+  if (s < 3600) return Math.floor(s / 60) + '分'
+  if (s < 86400) return Math.floor(s / 3600) + '时'
+  return Math.floor(s / 86400) + '天'
+}
+const cpuColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#22c55e'
+const memColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#3b82f6'
+const diskColor = (v: number) => v > 90 ? '#ef4444' : v > 70 ? '#f59e0b' : '#8b5cf6'
 
-async function startScan() {
-  isScanning.value = true
-  scanAttempted.value = true
-  discoveredDevices.value = []
-  scanProgress.value = { detail: '正在初始化...', progress: 0, completed: false }
+// ── 数据加载 ──
+async function loadAll() {
   try {
-    const res = await api.post('/v2/discovery/scan', { range: scanRange.value, method: 'auto' }) as any
-    if (res.success && res.data?.scanId) {
-      pollScan(res.data.scanId)
-    } else if (res.success && res.data?.devices) {
-      // Immediate result — no async
-      isScanning.value = false
-      discoveredDevices.value = res.data.devices.map((d: any) => ({
-        ...d,
-        managed: store.devices.some(dev => dev.ip === d.ip || dev.hostname === d.hostname)
-      }))
-      scanProgress.value = { detail: '扫描完成', progress: 100, completed: true }
-    } else {
-      isScanning.value = false
-      ElMessage.error(res?.message || '扫描失败')
-    }
-  } catch (e: any) {
-    isScanning.value = false
-    ElMessage.error(e?.response?.data?.message || e.message || '扫描失败')
-  }
+    store.loadStats()
+    store.loadAlertRules()
+    const { data: d } = await api.get('/v2/device/list-with-metrics') as any
+    if (d.success) devices.value = d.data || []
+  } catch {}
 }
 
-async function pollScan(scanId: string) {
-  scanPollTimer = setInterval(async () => {
+// ── 扫描（精简版，复用现有 discovery API）──
+async function scanToggle() {
+  if (scanning.value) return
+  scanning.value = true
+  scanProgress.value = 0
+  scanDetail.value = '初始化...'
+  discovered.value = []
+  try {
+    const { data: r } = await api.post('/v2/discovery/scan', { range: '192.168.100.0/24', method: 'auto' }) as any
+    if (r.success && r.data?.scanId) pollScan(r.data.scanId)
+    else { scanning.value = false; scanAttempted.value = false }
+  } catch { scanning.value = false }
+}
+function pollScan(scanId: string) {
+  scanTimer = setInterval(async () => {
     try {
-      const res = await api.get(`/v2/discovery/scan/${scanId}`) as any
-      if (res.success && res.data) {
-        scanProgress.value = {
-          detail: res.data.detail || '',
-          progress: res.data.progress ?? 0,
-          completed: res.data.completed
-        }
-        if (res.data.devices?.length) {
-          discoveredDevices.value = res.data.devices.map((d: any) => ({
-            ...d,
-            managed: store.devices.some(dev => dev.ip === d.ip || dev.hostname === d.hostname)
-          }))
-        }
-        if (res.data.completed) {
-          clearInterval(scanPollTimer)
-          scanPollTimer = null
-          isScanning.value = false
-        }
+      const { data: r } = await api.get(`/v2/discovery/scan/${scanId}`) as any
+      if (r.success && r.data) {
+        scanProgress.value = r.data.progress ?? 0
+        scanDetail.value = r.data.detail || ''
+        if (r.data.devices?.length) discovered.value = r.data.devices
+        if (r.data.completed) { clearInterval(scanTimer); scanning.value = false; scanAttempted.value = true }
       }
-    } catch {
-      clearInterval(scanPollTimer)
-      scanPollTimer = null
-      isScanning.value = false
-    }
+    } catch { clearInterval(scanTimer); scanning.value = false }
   }, 1500)
 }
 
-// ===== Agent Install =====
-const installVisible = ref(false)
-const installTarget = ref<any>(null)
-const installPassword = ref('')
-const installUser = ref('root')
-const installing = ref(false)
-const installResult = ref<any>(null)
-
-function installAgent(row: any) {
-  installTarget.value = row
-  installPassword.value = ''
-  installUser.value = 'root'
-  installResult.value = null
-  installVisible.value = true
-}
-async function doInstall() {
-  if (!installTarget.value) return
-  installing.value = true
-  installResult.value = null
-  try {
-    const res = await api.post('/v2/install', {
-      host: installTarget.value.ip,
-      username: installUser.value || 'root',
-      password: installPassword.value,
-      arch: 'amd64'
-    }) as any
-    installResult.value = { message: 'Agent 安装已启动，等待设备上线...', error: false }
-    ElMessage.success(t('common.success'))
-    installVisible.value = false
-  } catch (e: any) {
-    installResult.value = { message: e?.response?.data?.message || e.message || t('common.error'), error: true }
-  } finally { installing.value = false }
+// ── 命令 ──
+function showCommand(dev: any) { cmdTarget.value = dev; cmdText.value = ''; cmdVisible.value = true }
+async function doCmd() {
+  if (!cmdText.value.trim()) return ElMessage.warning('请输入命令')
+  cmdSending.value = true
+  try { await store.sendCommand(cmdTarget.value!.id, cmdText.value); ElMessage.success('已下发'); cmdVisible.value = false }
+  catch { ElMessage.error('失败') } finally { cmdSending.value = false }
 }
 
-// ===== Command =====
-const commandVisible = ref(false)
-const commandTarget = ref<Device | null>(null)
-const commandText = ref('')
-const sending = ref(false)
-
-// ===== Batch =====
-const selectedDevices = ref<Device[]>([])
-const batchVisible = ref(false)
-const batchResults = ref<any[]>([])
-const batchSending = ref(false)
-
-// ===== Tags =====
-const editingTag = ref('')
-const tagInput = ref('')
-const tagInputRef = ref()
-
-// ===== Alerts =====
-const alertFormVisible = ref(false)
-const alertEditId = ref<number | null>(null)
-const alertForm = ref({ name: '', metric: 'cpu', threshold: 90, device_id: '' })
-const alertSaving = ref(false)
-
-onMounted(() => {
-  store.load()
-  store.loadStats()
-  store.loadAlertRules()
-})
-
-function openDetail(row: Device) { router.push(`/devices/${row.id}`) }
-
-function fmtTime(t: string) {
-  if (!t) return '-'
-  const d = new Date(t.slice(-1) === 'Z' ? t : t + 'Z')
-  if (isNaN(d.getTime())) return t
-  return d.toLocaleString()
-}
-
-function isSelectable(row: Device) { return row.status === 'online' || row.id === 'dev_local' }
-function onSelectionChange(rows: Device[]) { selectedDevices.value = rows }
-
-function startEditTag(row: Device) { editingTag.value = row.id; tagInput.value = row.tags || ''; nextTick(() => tagInputRef.value?.focus?.()) }
-async function saveTag(row: Device) {
-  try { await api.put(`/v2/device/${row.id}/tags`, { tags: tagInput.value }); row.tags = tagInput.value } catch {}
-  editingTag.value = null
-}
-
-function openSsh(row: Device) {
-  sessionStorage.setItem('ssh_preset', JSON.stringify({ host: row.ip || row.id, port: 22, username: 'root', name: row.name || row.hostname || row.id }))
+// ── SSH ──
+function openSsh(dev: any) {
+  sessionStorage.setItem('ssh_preset', JSON.stringify({ host: dev.ip || dev.id, port: 22, username: 'root', name: dev.name || dev.hostname }))
   router.push('/ssh')
 }
 
-function showBatchCommand() { commandText.value = ''; batchResults.value = []; batchVisible.value = true }
-async function doBatchCommand() {
-  if (!commandText.value.trim()) return ElMessage.warning(t('devices.commandPlaceholder'))
-  batchSending.value = true
+// ── 标签 ──
+function startEditTag(dev: any) { tagTarget.value = dev; tagText.value = dev.tags || ''; tagVisible.value = true }
+async function doSaveTag() {
+  if (!tagTarget.value) return
+  tagSaving.value = true
+  try { await api.put(`/v2/device/${tagTarget.value.id}/tags`, { tags: tagText.value }); ElMessage.success('已保存'); tagVisible.value = false; loadAll() }
+  catch { ElMessage.error('失败') } finally { tagSaving.value = false }
+}
+
+// ── 删除 ──
+async function confirmDelete(dev: any) {
   try {
-    const { data } = await api.post('/v2/device/commands/batch', { deviceIds: selectedDevices.value.map(d => d.id), command: commandText.value }) as any
-    batchResults.value = data?.data || []
-    ElMessage.success(`${batchResults.value.length} ${t('devices.commandSent')}`)
-  } catch { ElMessage.error(t('common.error')) } finally { batchSending.value = false }
+    await ElMessageBox.confirm(`确定删除 ${dev.name || dev.hostname || dev.id}？历史数据将一并清除。`, '删除设备', { type: 'warning' })
+    await store.deleteDevice(dev.id)
+    ElMessage.success('已删除')
+    loadAll()
+  } catch {}
 }
 
-function showCommand(row: Device) { commandTarget.value = row; commandText.value = ''; commandVisible.value = true }
-async function doSendCommand() {
-  if (!commandText.value.trim()) return ElMessage.warning(t('devices.commandPlaceholder'))
-  sending.value = true
-  try { await store.sendCommand(commandTarget.value!.id, commandText.value); ElMessage.success(t('common.success')); commandVisible.value = false }
-  catch { ElMessage.error(t('common.error')) } finally { sending.value = false }
+// ── 安装 Agent ──
+function installAgent(row: any) { installTarget.value = row; installPass.value = ''; installUser.value = 'root'; installMsg.value = ''; installVisible.value = true }
+async function doInstall() {
+  if (!installTarget.value || !installPass.value) return ElMessage.warning('请输入 SSH 密码')
+  installing.value = true; installMsg.value = ''
+  try {
+    const { data: r } = await api.post('/v2/install', { host: installTarget.value.ip, username: installUser.value || 'root', password: installPass.value, arch: 'amd64' }) as any
+    installOk.value = r.success !== false
+    installMsg.value = 'Agent 安装已启动，等待设备上线...'
+    ElMessage.success(installMsg.value)
+  } catch (e: any) {
+    installOk.value = false
+    installMsg.value = e?.response?.data?.message || e.message || '安装失败'
+  } finally { installing.value = false }
 }
 
-async function doDelete(row: Device) {
-  try { await store.deleteDevice(row.id); ElMessage.success(t('common.success')); store.loadStats() }
-  catch { ElMessage.error(t('common.error')) }
-}
-
-function showAlertForm(row: any) {
-  if (row) {
-    alertEditId.value = row.id
-    alertForm.value = { name: row.name, metric: row.metric || 'cpu', threshold: row.threshold || 90, device_id: row.device_id || '' }
-  } else {
-    alertEditId.value = null
-    alertForm.value = { name: '', metric: 'cpu', threshold: 90, device_id: '' }
-  }
-  alertFormVisible.value = true
+// ── 告警 ──
+function openAlertForm(row?: any) {
+  if (row) { alertEdit.value = row; alertFm.value = { name: row.name, metric: row.metric || 'cpu', threshold: row.threshold || 90, device_id: row.device_id || '' } }
+  else { alertEdit.value = null; alertFm.value = { name: '', metric: 'cpu', threshold: 90, device_id: '' } }
+  alertVisible.value = true
 }
 async function doSaveAlert() {
-  if (!alertForm.value.name.trim()) return ElMessage.warning(t('devices.alertName'))
+  if (!alertFm.value.name.trim()) return ElMessage.warning('请输入规则名称')
   alertSaving.value = true
   try {
-    if (alertEditId.value) { await store.updateAlertRule(alertEditId.value, alertForm.value) }
-    else { await store.createAlertRule(alertForm.value) }
-    ElMessage.success(t('common.success'))
-    alertFormVisible.value = false
-    store.loadAlertRules()
-  } catch { ElMessage.error(t('common.error')) } finally { alertSaving.value = false }
+    if (alertEdit.value) await store.updateAlertRule(alertEdit.value.id, alertFm.value)
+    else await store.createAlertRule(alertFm.value)
+    ElMessage.success('已保存'); alertVisible.value = false; store.loadAlertRules()
+  } catch { ElMessage.error('失败') } finally { alertSaving.value = false }
 }
 async function deleteAlert(row: any) {
-  try { await store.deleteAlertRule(row.id); ElMessage.success(t('common.success')) }
-  catch { ElMessage.error(t('common.error')) }
+  try { await store.deleteAlertRule(row.id); ElMessage.success('已删除') } catch { ElMessage.error('失败') }
 }
 async function toggleAlert(row: any) { try { await store.toggleAlertRule(row.id) } catch {} }
+
+// ── 详情 ──
+function openDetail(dev: any) { router.push(`/devices/${dev.id}`) }
+
+onMounted(() => loadAll())
 </script>
 
 <style scoped>
-.devices-page { }
-
-.stats-row { display: flex; gap: 16px; margin-bottom: 20px; }
-.stat-card {
-  flex: 1; padding: 18px 20px; border-radius: var(--radius-lg); text-align: center; cursor: pointer;
-  background: var(--bg-glass); backdrop-filter: blur(12px); border: 1px solid var(--border-color);
-  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+.d-root { max-width: 1400px; margin: 0 auto; }
+.d-stats { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.d-stat {
+  padding: 12px 20px; border-radius: 14px; background: var(--bg-glass, #fff);
+  border: 1px solid var(--border-color, #e2e8f0); cursor: pointer;
+  text-align: center; min-width: 80px; transition: all .2s;
 }
-.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.stat-card.online { border-left: 3px solid var(--el-color-success); }
-.stat-card.offline { border-left: 3px solid var(--el-color-info); }
-.stat-card.scan { border-left: 3px solid var(--accent); background: linear-gradient(135deg, var(--accent), #6366f1); color: #fff; border-color: transparent; }
-.stat-card.scan .stat-num { font-size: 24px; }
-.stat-card.scan .stat-lbl { color: rgba(255,255,255,0.85); }
-.stat-num { font-size: 28px; font-weight: 800; display: block; color: var(--text-primary); }
-.stat-lbl { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
-
-.device-link { color: var(--accent); text-decoration: none; font-weight: 500; }
-.device-link:hover { text-decoration: underline; }
-.mono { font-family: monospace; font-size: 12px; }
-
-.section { border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 24px; }
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.section-header h3 { margin: 0; font-size: 15px; }
-.empty { padding: 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
-
-/* Batch */
-.batch-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--accent); color: #fff; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 12px; }
-.batch-bar .el-button { --el-button-bg-color: rgba(255,255,255,0.2); --el-button-text-color: #fff; --el-button-border-color: transparent; }
-.batch-list { margin-bottom: 4px; }
-.batch-results { margin-top: 12px; max-height: 300px; overflow-y: auto; }
-.batch-result-item { margin-bottom: 10px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; }
-.batch-device { font-weight: 600; font-size: 12px; display: block; margin-bottom: 4px; }
-.batch-output { margin: 6px 0 0; font-size: 11px; font-family: monospace; white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; color: var(--text-secondary); }
-
-/* Tags */
-.tag-cell { cursor: pointer; font-size: 12px; padding: 2px 8px; background: var(--bg-elevated); border-radius: 4px; display: inline-block; min-width: 40px; }
-.tag-cell.placeholder { color: var(--text-tertiary); }
-
-/* ===== Discovery Float ===== */
-.disco-root { padding: 4px 0; }
-
-.disco-controls { margin-bottom: 16px; }
-.disco-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
-.disco-input-group { display: flex; gap: 10px; }
-.range-input { flex: 1; }
-.scan-btn { min-width: 110px; }
-
-/* Progress bar (custom, matches glass theme) */
-.disco-progress {
-  padding: 16px 20px; margin-bottom: 16px; border-radius: var(--radius-md);
-  background: var(--bg-base); border: 1px solid var(--border-color);
+.d-stat:hover { border-color: var(--accent, #4f7cff); }
+.d-stat.active { border-color: var(--accent, #4f7cff); background: #eef2ff; }
+.ds-num { font-size: 26px; font-weight: 800; color: #1A1A1A; display: block; }
+.ds-num.off { color: #94a3b8; }
+.ds-num.accent { color: #4f7cff; }
+.ds-lbl { font-size: 11px; color: #64748b; }
+.d-scan-btn {
+  margin-left: auto; padding: 9px 18px; border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 12px; background: transparent; cursor: pointer; font-size: 13px;
+  color: #64748b; transition: all .2s;
 }
-.dp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
-.dp-stage { color: var(--text-secondary); }
-.dp-pct { font-weight: 700; color: var(--accent); font-size: 14px; font-family: var(--font-mono); }
-.dp-bar { width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
-.dp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #6366f1); border-radius: 3px; transition: width .4s ease; }
-.dp-fill.done { background: #22c55e; }
+.d-scan-btn:hover { border-color: var(--accent, #4f7cff); color: var(--accent, #4f7cff); }
+.d-scan-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Result grid */
-.disco-results { }
-.dr-header { margin-bottom: 12px; }
-.dr-count { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; max-height: 350px; overflow-y: auto; }
+/* 扫描进度 */
+.d-scan-bar { position: relative; height: 6px; background: #f1f5f9; border-radius: 3px; margin-bottom: 16px; overflow: hidden; }
+.dsb-fill { height: 100%; background: linear-gradient(90deg, #4f7cff, #15c39a); border-radius: 3px; transition: width .4s; }
+.dsb-text { position: absolute; right: 0; top: -18px; font-size: 11px; color: #64748b; }
 
-.dr-card {
-  padding: 14px 16px; border-radius: var(--radius-md);
-  background: var(--bg-glass); border: 1px solid var(--border-color);
-  backdrop-filter: blur(8px); transition: border-color var(--dur-fast);
+/* 区域 */
+.d-section { margin-bottom: 24px; }
+.d-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.d-section-title { font-size: 14px; font-weight: 600; color: #1A1A1A; margin: 0; }
+.dsh-count { font-size: 12px; color: #94a3b8; }
+.d-empty { padding: 32px; text-align: center; color: #94a3b8; font-size: 13px; }
+
+/* 卡片网格 */
+.d-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.d-card {
+  position: relative; padding: 14px; border-radius: 14px; background: #fff;
+  border: 1px solid #f1f5f9; cursor: pointer; transition: all .2s;
 }
-.dr-card.managed { opacity: 0.7; }
-.drc-top { display: flex; align-items: center; gap: 10px; }
-.drc-icon { font-size: 22px; }
-.drc-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.drc-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.drc-ip { font-size: 11px; color: var(--text-tertiary); }
-.drc-details { display: flex; gap: 16px; margin-top: 10px; }
-.drc-item { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text-secondary); }
-.drc-item small { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
-.drc-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+.d-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: #e2e8f0; }
+.d-card.offline { opacity: .55; }
+.dc-top { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.dc-icon { font-size: 24px; }
+.dc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dc-name { font-size: 14px; font-weight: 600; color: #1A1A1A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-ip { font-size: 11px; color: #64748b; }
+.dc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dc-dot.online { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.4); }
+.dc-dot.offline { background: #94a3b8; }
 
-/* Empty */
-.disco-empty {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 40px 0; color: var(--text-tertiary); font-size: 14px;
+/* 指标 */
+.dc-metrics { display: flex; gap: 14px; margin-bottom: 8px; }
+.dcm-item { display: flex; flex-direction: column; align-items: center; }
+.dcm-val { font-size: 18px; font-weight: 700; }
+.dcm-val.sm { font-size: 12px; }
+.dcm-key { font-size: 10px; color: #94a3b8; }
+.dc-no-data { font-size: 11px; color: #94a3b8; }
+.dc-offline-msg { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
+
+/* 操作按钮 */
+.dc-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.dca-btn {
+  padding: 3px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+  background: transparent; cursor: pointer; font-size: 11px; transition: all .15s;
 }
-.empty-icon { font-size: 40px; opacity: 0.4; }
-.empty-hint { font-size: 12px; color: var(--text-quaternary); }
+.dca-btn:hover { background: #f1f5f9; }
+.dca-btn.danger:hover { color: #ef4444; border-color: #fecaca; }
+.dca-btn.mini { padding: 2px 6px; font-size: 10px; }
 
-/* Install */
-.install-result { margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
-.install-result.success { background: #22c55e15; color: #22c55e; }
-.install-result.error { background: #ef444415; color: #ef4444; }
+/* 标签 */
+.dc-tags { margin-top: 6px; }
+.dct-chip { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #eef2ff; color: #4f7cff; font-size: 11px; }
+
+/* 发现设备列表 */
+.d-list { display: flex; flex-direction: column; gap: 6px; }
+.d-list-item {
+  display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+  border-radius: 10px; background: #fff; border: 1px solid #f1f5f9;
+  transition: border-color .15s;
+}
+.d-list-item:hover { border-color: #e2e8f0; }
+.dli-icon { font-size: 20px; flex-shrink: 0; }
+.dli-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dli-name { font-size: 13px; font-weight: 600; color: #1A1A1A; }
+.dli-sub { font-size: 11px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dli-install {
+  padding: 5px 12px; border: 1px solid #4f7cff; border-radius: 8px; background: #eef2ff;
+  color: #4f7cff; cursor: pointer; font-size: 11px; flex-shrink: 0; transition: all .15s;
+}
+.dli-install:hover { background: #4f7cff; color: #fff; }
+
+/* 告警 */
+.alert-item { cursor: default; }
+.alert-item .dli-info { pointer-events: none; }
+
+/* 安装消息 */
+.d-install-msg { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
+.d-install-msg.ok { background: #f0fdf4; color: #166534; }
+.d-install-msg.err { background: #fef2f2; color: #991b1b; }
 </style>

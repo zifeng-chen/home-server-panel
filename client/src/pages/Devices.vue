@@ -321,8 +321,8 @@ async function loadAll() {
   try {
     store.loadStats()
     store.loadAlertRules()
-    const { data: d } = await api.get('/v2/device/overview') as any
-    if (d.success) devices.value = d.data || []
+    const res = await api.get('/v2/device/overview') as any
+    if (res?.success) devices.value = res.data || []
   } catch {}
 }
 

@@ -1,0 +1,55 @@
+# Written for procd /etc/rc.common on OpenWrt/iStoreOS
+# HSP Panel — Home Server Panel
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+SCRIPT_DIR=/usr/share/hsp-panel
+APP_DIR=$SCRIPT_DIR/app
+PID_FILE=/var/run/hsp-panel.pid
+
+start_service() {
+	# 检查 Node.js
+	command -v node >/dev/null || {
+		logger -t hsp-panel "ERROR: node not found"
+		exit 1
+	}
+
+	# 首次启动时自动生成 .env
+	if [ ! -f "$APP_DIR/.env" ]; then
+		logger -t hsp-panel "首次启动，生成默认 .env"
+		cat > "$APP_DIR/.env" <<-EOF
+PORT=3456
+HOST=0.0.0.0
+DB_MODE=sqlite
+NODE_ENV=production
+EOF
+	fi
+
+	procd_open_instance
+	procd_set_param command node "$APP_DIR/src/server.js"
+	procd_set_param workdir "$APP_DIR"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn
+	procd_set_param pidfile $PID_FILE
+	procd_close_instance
+
+	logger -t hsp-panel "HSP Panel 服务已启动 (port 3456)"
+}
+
+stop_service() {
+	pid=$(cat $PID_FILE 2>/dev/null)
+	[ -n "$pid" ] && kill "$pid" 2>/dev/null
+	rm -f $PID_FILE
+}
+
+reload_service() {
+	restart
+}
+
+service_triggers() {
+	procd_add_reload_trigger "hsp-panel"
+}

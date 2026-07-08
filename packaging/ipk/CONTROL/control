@@ -1,0 +1,10 @@
+Package: hsp-panel
+Version: 0.9.4-beta
+Depends: node (>=20)
+Provides: hsp-panel
+Source: https://github.com/zifeng-chen/home-server-panel
+License: MIT
+Maintainer: Chen <chen@izifeng.cn>
+Architecture: x86_64
+Description: Home Server Panel — 家庭服务器运维管理面板
+ 一站式Web界面管理路由器/NAS/服务器，支持DDNS/SSL/反向代理/Docker/SSH终端/设备监控。

@@ -1,0 +1,125 @@
+<%+header%>
+
+<style>
+.hsp-wrap { max-width:560px; margin:0 auto; padding:24px 12px; text-align:center; }
+.hsp-icon { font-size:56px; margin-bottom:8px; }
+.hsp-title { font-size:22px; margin:0 0 4px; }
+.hsp-sub { color:#999; margin:0 0 20px; font-size:13px; }
+.hsp-card { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:24px 20px; margin:16px 0; }
+.hsp-card h4 { margin:0 0 16px; font-size:15px; text-align:center; }
+.hsp-status-row { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:16px; }
+.hsp-badge { display:inline-flex; align-items:center; gap:8px; padding:8px 20px; border-radius:24px; font-size:14px; font-weight:700; }
+.hsp-badge.on  { background:#e8f5e9; color:#2e7d32; }
+.hsp-badge.off { background:#fbe9e7; color:#c62828; }
+.hsp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.hsp-dot.on  { background:#4caf50; box-shadow:0 0 8px rgba(76,175,80,0.5); }
+.hsp-dot.off { background:#ef5350; }
+.hsp-btn-group { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.hsp-btn-group .cbi-button { min-width:90px; }
+.hsp-url-box { background:#f7f8fa; border:1px solid #e0e0e0; border-radius:8px; padding:14px 16px; text-align:center; }
+.hsp-url-box code { font-size:15px; color:#1565c0; font-weight:600; }
+.hsp-info { display:flex; justify-content:center; gap:28px; flex-wrap:wrap; font-size:13px; color:#666; }
+.hsp-info span strong { color:#333; }
+.hsp-msg { margin-top:10px; font-size:13px; text-align:center; min-height:20px; }
+.hsp-msg.success { color:#2e7d32; }
+.hsp-msg.error   { color:#c62828; }
+</style>
+
+<div class="hsp-wrap">
+    <div class="hsp-icon">🖥️</div>
+    <h3 class="hsp-title">HSP 管理面板</h3>
+    <p class="hsp-sub">Home Server Panel — 家庭服务器一站式运维管理</p>
+
+    <div class="hsp-card">
+        <div class="hsp-status-row">
+            <span class="hsp-badge on"><span class="hsp-dot on"></span> 运行中</span>
+        </div>
+        <div class="hsp-btn-group">
+            <button class="cbi-button cbi-button-apply" onclick="hspCtrl('start')">▶ 启动</button>
+            <button class="cbi-button cbi-button-reload" onclick="hspCtrl('restart')">↻ 重启</button>
+            <button class="cbi-button cbi-button-reset" onclick="hspCtrl('stop')">⏹ 停止</button>
+        </div>
+        <div class="hsp-msg" id="hsp-msg"></div>
+    </div>
+
+    <div class="hsp-card">
+        <h4>🔗 面板地址</h4>
+        <div class="hsp-url-box">
+            <code id="hsp-url">加载中...</code>
+            <br><br>
+            <a class="cbi-button cbi-button-action" href="#" target="_blank" id="hsp-link">打开面板 ↗</a>
+        </div>
+    </div>
+
+    <div class="hsp-card">
+        <h4>📋 安装信息</h4>
+        <div class="hsp-info">
+            <span>路径: <strong>/opt/hsp-panel</strong></span>
+            <span>端口: <strong id="hsp-port">3456</strong></span>
+            <span>版本: <strong>v0.9.4-beta</strong></span>
+        </div>
+    </div>
+</div>
+
+<script>
+var API_BASE = '<%=luci.dispatcher.build_url("admin", "services", "hsp-panel", "api")%>';
+
+// 初次加载状态
+fetch(API_BASE + '/status', { credentials: 'same-origin' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok && d.data) {
+            var dd = d.data;
+            document.getElementById('hsp-url').textContent = dd.url;
+            document.getElementById('hsp-link').href = dd.url;
+            document.getElementById('hsp-port').textContent = dd.port;
+
+            var badge = document.querySelector('.hsp-badge');
+            var dot = document.querySelector('.hsp-dot');
+            if (dd.running) {
+                badge.className = 'hsp-badge on';
+                badge.innerHTML = '<span class="hsp-dot on"></span> 运行中';
+                document.querySelector('.hsp-btn-group').innerHTML = 
+                    '<button class="cbi-button cbi-button-apply" onclick="hspCtrl(\'start\')" disabled>▶ 启动</button>' +
+                    '<button class="cbi-button cbi-button-reload" onclick="hspCtrl(\'restart\')">↻ 重启</button>' +
+                    '<button class="cbi-button cbi-button-reset" onclick="hspCtrl(\'stop\')">⏹ 停止</button>';
+            } else {
+                badge.className = 'hsp-badge off';
+                badge.innerHTML = '<span class="hsp-dot off"></span> 已停止';
+                document.querySelector('.hsp-btn-group').innerHTML = 
+                    '<button class="cbi-button cbi-button-apply" onclick="hspCtrl(\'start\')">▶ 启动</button>' +
+                    '<button class="cbi-button cbi-button-reload" onclick="hspCtrl(\'restart\')" disabled>↻ 重启</button>' +
+                    '<button class="cbi-button cbi-button-reset" onclick="hspCtrl(\'stop\')" disabled>⏹ 停止</button>';
+            }
+        }
+    });
+
+function hspCtrl(action) {
+    var btns = document.querySelectorAll('.hsp-btn-group button');
+    for (var i = 0; i < btns.length; i++) btns[i].disabled = true;
+    var msg = document.getElementById('hsp-msg');
+    msg.className = 'hsp-msg';
+    msg.textContent = '处理中...';
+
+    fetch(API_BASE + '/' + action, { method: 'POST', credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (data.ok) {
+                msg.className = 'hsp-msg success';
+                msg.textContent = '操作成功，2秒后刷新...';
+                setTimeout(function(){ location.reload(); }, 2000);
+            } else {
+                msg.className = 'hsp-msg error';
+                msg.textContent = '操作失败 (rc=' + (data.rc || '?') + ')';
+                for (var i = 0; i < btns.length; i++) btns[i].disabled = false;
+            }
+        })
+        .catch(function(e){
+            msg.className = 'hsp-msg error';
+            msg.textContent = '请求失败: ' + e;
+            for (var i = 0; i < btns.length; i++) btns[i].disabled = false;
+        });
+}
+</script>
+
+<%+footer%>

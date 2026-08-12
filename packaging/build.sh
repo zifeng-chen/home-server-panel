@@ -63,7 +63,18 @@ mkdir -p "$IPK_DATA_DIR/etc/init.d"
 cp "$SCRIPT_DIR/ipk/etc/init.d/hsp-panel" "$IPK_DATA_DIR/etc/init.d/hsp-panel"
 chmod +x "$IPK_DATA_DIR/etc/init.d/hsp-panel"
 
+# LuCI 集成（iStoreOS 服务菜单入口）
+mkdir -p "$IPK_DATA_DIR/usr/lib/lua/luci/controller"
+mkdir -p "$IPK_DATA_DIR/usr/lib/lua/luci/view/hsp"
+cp "$SCRIPT_DIR/ipk/luci/controller/hsp.lua" "$IPK_DATA_DIR/usr/lib/lua/luci/controller/hsp.lua"
+cp "$SCRIPT_DIR/ipk/luci/view/hsp/main.htm" "$IPK_DATA_DIR/usr/lib/lua/luci/view/hsp/main.htm"
+
 echo "  ✓ 数据准备完成 ($(du -sh $IPK_DATA_DIR | cut -f1))"
+# 也拷贝到 .run 数据目录
+RUN_LUCI_DIR="$RUN_DATA_DIR/usr/lib/lua/luci"
+mkdir -p "$RUN_LUCI_DIR/controller" "$RUN_LUCI_DIR/view/hsp"
+cp "$SCRIPT_DIR/ipk/luci/controller/hsp.lua" "$RUN_LUCI_DIR/controller/hsp.lua"
+cp "$SCRIPT_DIR/ipk/luci/view/hsp/main.htm" "$RUN_LUCI_DIR/view/hsp/main.htm"
 
 # ══════════════════════════════════════════════════════════
 # 3. 打包 ipk（用 python3 生成标准 ar 格式）
@@ -128,13 +139,14 @@ echo "[4/4] 打包 .run 自解压安装器..."
 
 RUN_DATA_DIR="/tmp/hsp-run-data"
 rm -rf "$RUN_DATA_DIR"
-mkdir -p "$RUN_DATA_DIR/app" "$RUN_DATA_DIR/client" "$RUN_DATA_DIR/agent"
+mkdir -p "$RUN_DATA_DIR/app" "$RUN_DATA_DIR/agent"
 
-# 平铺目录，解压到安装根目录
+# APP 布局：server.js 在 app/src/，从 __dirname/.. 找 client/dist 和 public
 cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/app/"* "$RUN_DATA_DIR/app/"
-cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/client/"* "$RUN_DATA_DIR/client/"
+# client/dist 和 public 放在 app/ 下，让 server.js 的 .. 路径能正确找到
+cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/client" "$RUN_DATA_DIR/app/client"
+cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/public" "$RUN_DATA_DIR/app/public" 2>/dev/null || true
 cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/agent/"* "$RUN_DATA_DIR/agent/" 2>/dev/null || true
-cp -r "$IPK_DATA_DIR/usr/share/$APP_NAME/public/"* "$RUN_DATA_DIR/public/" 2>/dev/null || true
 
 # init.d 脚本（standalone，不依赖 rc.common/procd）
 mkdir -p "$RUN_DATA_DIR/etc/init.d"
@@ -178,6 +190,9 @@ esac
 INITRUN
 chmod +x "$RUN_DATA_DIR/etc/init.d/$APP_NAME"
 
+# 安装后提示 LuCI 菜单需手动启用
+INSTALL_TIP="\n📋 iStoreOS 用户：安装后请执行以下命令刷新 LuCI 菜单：\n   rm -f /tmp/luci-indexcache && /etc/init.d/uhttpd restart\n   然后刷新浏览器即可在「服务」菜单看到「HSP 管理面板」\n"
+
 # 自解压安装器脚本
 RUN_FILE="$DIST_DIR/${PACKAGE}_${VERSION}_${ARCH}.run"
 cat > /tmp/hsp_installer.sh <<-RUNSH
@@ -218,6 +233,15 @@ HOST=0.0.0.0
 DB_MODE=sqlite
 NODE_ENV=production
 EOF
+	fi
+	
+	# LuCI 集成（iStoreOS 服务菜单入口）
+	if [ -d /usr/lib/lua/luci ]; then
+		cp "\$INSTALL_DIR/usr/lib/lua/luci/controller/hsp.lua" /usr/lib/lua/luci/controller/hsp.lua 2>/dev/null
+		mkdir -p /usr/lib/lua/luci/view/hsp
+		cp "\$INSTALL_DIR/usr/lib/lua/luci/view/hsp/main.htm" /usr/lib/lua/luci/view/hsp/main.htm 2>/dev/null
+		rm -f /tmp/luci-indexcache
+		/etc/init.d/uhttpd restart 2>/dev/null || true
 	fi
 	
 	echo ""

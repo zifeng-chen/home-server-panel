@@ -159,15 +159,22 @@ PID_FILE="/var/run/$APP_NAME.pid"
 LOG_FILE="/opt/$APP_NAME/hsp.log"
 
 start() {
+	# 已在运行则跳过
+	if [ -f "\$PID_FILE" ] && kill -0 "\$(cat \$PID_FILE 2>/dev/null)" 2>/dev/null; then
+		echo "HSP Panel already running (PID \$(cat \$PID_FILE))"
+		return 0
+	fi
 	[ -f "\$APP_DIR/.env" ] || {
 		cat > "\$APP_DIR/.env" <<-EOF
-PORT=3456
+HSP_PORT=3456
 HOST=0.0.0.0
 DB_MODE=sqlite
 NODE_ENV=production
 EOF
 	}
 	cd "\$APP_DIR"
+	# CGI 环境会注入 SERVER_PORT=80，必须清除避免覆盖 .env 的 HSP_PORT
+	unset SERVER_PORT PORT
 	nohup node src/server.js >> "\$LOG_FILE" 2>&1 &
 	echo \$! > \$PID_FILE
 	sleep 1
@@ -177,6 +184,9 @@ EOF
 stop() {
 	pid=\$(cat \$PID_FILE 2>/dev/null)
 	[ -n "\$pid" ] && kill "\$pid" 2>/dev/null
+	sleep 1
+	# BusyBox 兼容：用 killall 兜底清理所有 node 进程（iStoreOS 无 pkill）
+	killall node 2>/dev/null
 	rm -f \$PID_FILE
 	echo "HSP Panel stopped"
 }

@@ -3,6 +3,11 @@ const express = require('express');
 const router = express.Router();
 const alertService = require('../../services/v2/alert-service');
 
+// GET /api/v2/alert/metrics — 可用指标列表
+router.get('/metrics', (req, res) => {
+  res.json({ success: true, data: alertService.getMetrics() });
+});
+
 // GET /api/v2/alert/rules
 router.get('/rules', async (req, res) => {
   try {
@@ -16,11 +21,11 @@ router.get('/rules', async (req, res) => {
 // POST /api/v2/alert/rule
 router.post('/rule', async (req, res) => {
   try {
-    const { name, metric, operator, threshold, device_id } = req.body;
-    if (!name || !metric || !operator || !threshold) {
+    const { name, metric, operator, threshold, device_id, target } = req.body;
+    if (!name || !metric || !operator || threshold == null) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
-    const result = await alertService.createRule({ name, metric, operator, threshold, device_id });
+    const result = await alertService.createRule({ name, metric, operator, threshold, device_id, target });
     res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

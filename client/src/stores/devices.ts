@@ -142,7 +142,13 @@ export const useDevicesStore = defineStore('devices', () => {
     if (r) r.enabled = r.enabled ? 0 : 1
   }
 
+  // --- metric list ---
+  async function loadMetricList() {
+    const res = await api.get('/v2/alert/metrics') as any
+    return res || { data: [] }
+  }
+
   return { devices, stats, loading, currentDevice, detailLoading, alertRules, alertLoading,
     load, loadStats, loadDetail, sendCommand, deleteDevice,
-    loadAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, toggleAlertRule }
+    loadAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, toggleAlertRule, loadMetricList }
 })

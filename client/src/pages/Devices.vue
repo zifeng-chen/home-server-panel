@@ -184,19 +184,36 @@
     </el-dialog>
 
     <!-- ════════════════════════════════════════════════════════════ -->
-    <!-- 弹窗：告警规则编辑                                            -->
+    <!-- 弹窗：告警规则编辑（系统指标 + 自定义规则）                   -->
     <!-- ════════════════════════════════════════════════════════════ -->
-    <el-dialog v-model="alertVisible" :title="alertEdit ? '编辑规则' : '添加规则'" width="420" append-to-body destroy-on-close>
+    <el-dialog v-model="alertVisible" :title="alertEdit ? '编辑规则' : '添加规则'" width="460" append-to-body destroy-on-close>
       <el-form label-width="80px">
         <el-form-item label="名称"><el-input v-model="alertFm.name" placeholder="如 CPU 过高" maxlength="30" /></el-form-item>
         <el-form-item label="指标">
-          <el-select v-model="alertFm.metric">
-            <el-option label="CPU" value="cpu" />
-            <el-option label="内存" value="memory_pct" />
-            <el-option label="磁盘" value="disk_pct" />
+          <el-select v-model="alertFm.metric" @change="onMetricChange">
+            <el-option-group label="系统指标">
+              <el-option v-for="m in metricList.filter(x=>x.source==='metric')" :key="m.value" :label="m.label" :value="m.value" />
+            </el-option-group>
+            <el-option-group label="自定义规则">
+              <el-option v-for="m in metricList.filter(x=>x.source==='command')" :key="m.value" :label="m.label" :value="m.value" />
+            </el-option-group>
           </el-select>
         </el-form-item>
-        <el-form-item label="阈值"><el-input-number v-model="alertFm.threshold" :min="1" :max="100" /></el-form-item>
+        <el-form-item v-if="curMetric?.source === 'command'" label="目标">
+          <el-input v-model="alertFm.target" :placeholder="curMetric?.help || '进程名/端口号'" />
+        </el-form-item>
+        <el-form-item :label="alertFm.metric === 'conn' ? '连接数阈值' : '阈值'">
+          <el-input-number v-model="alertFm.threshold" :min="0" :max="alertFm.metric === 'conn' ? 100000 : 100" :step="1" />
+          <span style="margin-left:6px;font-size:12px;color:#94a3b8">{{ curMetric?.unit || '' }}</span>
+        </el-form-item>
+        <el-form-item label="条件">
+          <el-select v-model="alertFm.operator">
+            <el-option label="大于 (gt)" value="gt" />
+            <el-option label="小于 (lt)" value="lt" />
+            <el-option label="等于 (eq)" value="eq" />
+            <el-option label="不等于 (ne)" value="ne" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="设备">
           <el-select v-model="alertFm.device_id" placeholder="全部设备" clearable>
             <el-option v-for="d in devices" :key="d.id" :label="d.name || d.hostname || d.id" :value="d.id" />
@@ -279,8 +296,16 @@ const installOk = ref(false)
 // ── 告警 ──
 const alertVisible = ref(false)
 const alertEdit = ref<any>(null)
-const alertFm = ref({ name: '', metric: 'cpu', threshold: 90, device_id: '' })
+const alertFm = ref<Record<string,any>>({ name: '', metric: 'cpu', threshold: 90, device_id: '', operator: 'gt', target: '' })
 const alertSaving = ref(false)
+
+// ── 从后端拿指标列表 ──
+const metricList = ref<any[]>([])
+const curMetric = computed(() => metricList.value.find((m: any) => m.value === alertFm.value.metric))
+function onMetricChange(val: string) {
+  const m = metricList.value.find((x: any) => x.value === val)
+  if (m) { alertFm.value.operator = m.defaultOp || 'gt'; alertFm.value.threshold = m.defaultThreshold || 90; alertFm.value.target = '' }
+}
 
 // ── 辅助函数 ──
 const devIcon = (d: any) => {
@@ -401,8 +426,13 @@ async function doInstall() {
 
 // ── 告警 ──
 function openAlertForm(row?: any) {
-  if (row) { alertEdit.value = row; alertFm.value = { name: row.name, metric: row.metric || 'cpu', threshold: row.threshold || 90, device_id: row.device_id || '' } }
-  else { alertEdit.value = null; alertFm.value = { name: '', metric: 'cpu', threshold: 90, device_id: '' } }
+  if (row) {
+    alertEdit.value = row
+    alertFm.value = { name: row.name, metric: row.metric || 'cpu', threshold: Number(row.threshold) || 90, device_id: row.device_id || '', operator: row.operator || 'gt', target: row.target || '' }
+  } else {
+    alertEdit.value = null
+    alertFm.value = { name: '', metric: 'cpu', threshold: 90, device_id: '', operator: 'gt', target: '' }
+  }
   alertVisible.value = true
 }
 async function doSaveAlert() {
@@ -422,7 +452,14 @@ async function toggleAlert(row: any) { try { await store.toggleAlertRule(row.id)
 // ── 详情 ──
 function openDetail(dev: any) { router.push(`/devices/${dev.id}`) }
 
-onMounted(() => loadAll())
+onMounted(() => { loadAll(); loadMetrics() })
+
+async function loadMetrics() {
+  try {
+    const res = await store.loadMetricList()
+    if (res?.data) metricList.value = res.data
+  } catch (_) {}
+}
 </script>
 
 <style scoped>

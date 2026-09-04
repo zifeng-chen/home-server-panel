@@ -362,20 +362,31 @@ class DeviceService {
       await pool.execute(`CREATE TABLE IF NOT EXISTS alert_rules (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(64) NOT NULL,
-        metric ENUM('cpu','memory','disk') NOT NULL,
-        operator ENUM('gt','lt') NOT NULL,
-        threshold DECIMAL(5,1) NOT NULL,
+        metric VARCHAR(32) NOT NULL COMMENT '指标：cpu/memory/disk/process/port/conn/custom',
+        operator ENUM('gt','lt','eq','ne') NOT NULL DEFAULT 'gt',
+        threshold DECIMAL(10,2) NOT NULL,
         device_id VARCHAR(64) DEFAULT NULL,
+        target VARCHAR(128) DEFAULT NULL COMMENT '自定义目标：进程名/端口号/正则等',
         enabled TINYINT(1) DEFAULT 1,
         last_triggered TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_alert_device(device_id),
         FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      // 存量表字段补丁（无 ALTER COLUMN 兼容低版本 MySQL）
+      await this._migrateAlertSchema(pool);
       console.log('[V2] alert_rules 表已就绪');
     } catch (err) {
       console.warn('[V2] alert_rules 自动建表失败:', err.message?.slice(0, 100));
     }
+  }
+
+  async _migrateAlertSchema(pool) {
+    // 按需追加 target 列
+    try { await pool.query('ALTER TABLE alert_rules ADD COLUMN target VARCHAR(128) DEFAULT NULL COMMENT "自定义目标"'); } catch (_) {}
+    // 扩宽 metric 字段
+    try { await pool.query('ALTER TABLE alert_rules MODIFY COLUMN metric VARCHAR(32) NOT NULL COMMENT "指标"'); } catch (_) {}
+    // 追加 eq/ne 操作符（ENUM 仅在 8.0+ 支持 ADD value，先忽略）
   }
 }
 

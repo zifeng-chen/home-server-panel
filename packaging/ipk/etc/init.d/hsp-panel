@@ -21,7 +21,7 @@ start_service() {
 	if [ ! -f "$APP_DIR/.env" ]; then
 		logger -t hsp-panel "首次启动，生成默认 .env"
 		cat > "$APP_DIR/.env" <<-EOF
-PORT=3456
+SERVER_PORT=3456
 HOST=0.0.0.0
 DB_MODE=sqlite
 NODE_ENV=production

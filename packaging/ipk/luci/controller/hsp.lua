@@ -28,7 +28,7 @@ local function hsp_status()
     local fs = require("nixio.fs")
     if fs and fs.access and fs.access(env_file) then
         for line in io.lines(env_file) do
-            local k, v = line:match("^(PORT)=(.-)$")
+            local k, v = line:match("^(HSP_PORT)=(.-)$") or line:match("^(SERVER_PORT)=(.-)$") or line:match("^(PORT)=(.-)$")
             if k and v and tonumber(v) then port = v:gsub("%s", "") end
         end
     end

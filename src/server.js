@@ -88,7 +88,7 @@ const dbService = require('./services/db-service');
 sqliteService.seedDefaultAdmin();
 
 const app = express();
-const PORT = process.env.SERVER_PORT || 3456;
+const PORT = process.env.HSP_PORT || process.env.SERVER_PORT || process.env.PORT || 3456;
 
 // 隐藏 Express 指纹
 app.disable('x-powered-by');

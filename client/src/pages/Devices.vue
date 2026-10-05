@@ -25,6 +25,7 @@
       <button class="d-scan-btn" @click="scanToggle" :disabled="scanning">
         {{ scanning ? '扫描中...' : '🔍 扫描发现' }}
       </button>
+      <button class="d-scan-btn batch" @click="openBatch">⌨️ 批量命令</button>
     </div>
 
     <!-- ── 扫描进度条 ── -->
@@ -225,6 +226,100 @@
         <el-button type="primary" @click="doSaveAlert" :loading="alertSaving">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 弹窗：批量命令（Phase 3 FR-3.4）                              -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <el-dialog v-model="batchVisible" title="批量命令" width="880" top="6vh" append-to-body destroy-on-close>
+      <!-- 目标设备 -->
+      <div class="bd-sec">
+        <div class="bd-sec-head">
+          <span>目标设备 <b>{{ batchIds.length }}</b> / 在线 {{ onlineDevices.length }}</span>
+          <span class="bd-sec-acts">
+            <el-button link size="small" @click="batchIds = onlineDevices.map(d => d.id)">全选在线</el-button>
+            <el-button link size="small" @click="batchIds = []">清空</el-button>
+          </span>
+        </div>
+        <el-checkbox-group v-model="batchIds" class="bd-devs">
+          <el-checkbox v-for="d in devices" :key="d.id" :value="d.id" :disabled="d.status !== 'online'">
+            <span class="bd-dev-name">{{ d.name || d.hostname || d.id }}</span>
+            <span class="bd-dev-ip">{{ d.ip }}</span>
+            <span v-if="d.status !== 'online'" class="bd-dev-off">离线</span>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+
+      <!-- 命令模板 -->
+      <div class="bd-sec">
+        <div class="bd-sec-head"><span>命令模板</span><span class="bd-sec-acts">点击填入下方命令</span></div>
+        <div class="bd-tpls">
+          <button v-for="tp in batchTemplates" :key="tp.id" class="bd-tpl"
+                  :class="{ on: batchCommand === tp.command }" @click="batchCommand = tp.command">
+            <span class="bd-tpl-lbl">{{ tp.icon }} {{ tp.label }}</span>
+            <code class="bd-tpl-cmd">{{ tp.command }}</code>
+          </button>
+        </div>
+      </div>
+
+      <!-- 命令输入 -->
+      <div class="bd-sec">
+        <el-input v-model="batchCommand" type="textarea" :rows="2" placeholder="df -h" />
+        <div class="bd-foot">
+          <span class="bd-hint">并发 5 · 单设备超时 30s · 结果按设备聚合</span>
+          <el-button type="primary" size="small" :loading="batchRunning" @click="doBatchRun">执行</el-button>
+        </div>
+      </div>
+
+      <!-- 结果 -->
+      <div v-if="batchResults.length" class="bd-sec">
+        <div class="bd-sec-head">
+          <span>
+            执行结果 · 成功 <b class="ok">{{ batchSummary.ok }}</b> / {{ batchSummary.total }}
+            · {{ batchSummary.totalMs }}ms
+          </span>
+          <span class="bd-sec-acts">
+            <el-button link size="small" @click="batchDiff = !batchDiff">
+              {{ batchDiff ? '显示全部' : '仅显示差异' }}
+            </el-button>
+          </span>
+        </div>
+        <div v-if="batchDiff && !displayResults.length" class="bd-hist-empty">所有设备输出一致</div>
+        <div class="bd-results">
+          <div v-for="r in displayResults" :key="r.deviceId" class="bd-res" :class="{ err: !r.ok }">
+            <div class="bd-res-head">
+              <span class="bd-res-name">{{ r.deviceName }}</span>
+              <el-tag size="small" :type="r.ok ? 'success' : 'danger'" effect="plain">
+                {{ r.ok ? 'OK' : 'exit ' + r.exitCode }}
+              </el-tag>
+              <span class="bd-res-time">{{ r.duration }}ms</span>
+            </div>
+            <pre class="bd-res-out">{{ r.stdout || r.error || '(无输出)' }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 历史 -->
+      <div class="bd-sec">
+        <div class="bd-sec-head">
+          <span>历史记录</span>
+          <span class="bd-sec-acts">
+            <el-button link size="small" @click="loadBatchHistory">刷新</el-button>
+            <el-button link size="small" @click="doClearBatchHistory">清空</el-button>
+          </span>
+        </div>
+        <div v-if="batchHistory.length" class="bd-hist">
+          <div v-for="h in batchHistory.slice(0, 8)" :key="h.id" class="bd-hist-item" @click="replayHistory(h)">
+            <code class="bd-hist-cmd">{{ h.command }}</code>
+            <span class="bd-hist-meta">{{ h.at }} · 成功 {{ h.summary?.ok }}/{{ h.summary?.total }} · {{ h.summary?.totalMs }}ms</span>
+          </div>
+        </div>
+        <div v-else class="bd-hist-empty">暂无历史</div>
+      </div>
+
+      <template #footer>
+        <el-button @click="batchVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -298,6 +393,95 @@ const alertVisible = ref(false)
 const alertEdit = ref<any>(null)
 const alertFm = ref<Record<string,any>>({ name: '', metric: 'cpu', threshold: 90, device_id: '', operator: 'gt', target: '' })
 const alertSaving = ref(false)
+
+// ── 批量命令（Phase 3 FR-3.4）──
+const batchVisible = ref(false)
+const batchIds = ref<string[]>([])
+const batchCommand = ref('df -h')
+const batchTemplates = ref<any[]>([])
+const batchRunning = ref(false)
+const batchResults = ref<any[]>([])
+const batchSummary = ref<any>({ total: 0, ok: 0, failed: 0, totalMs: 0 })
+const batchHistory = ref<any[]>([])
+const batchDiff = ref(false)
+
+const onlineDevices = computed(() => devices.value.filter((d: any) => d.status === 'online'))
+
+const normOut = (s: any) => String(s || '').replace(/\s+/g, ' ').trim()
+
+// “仅显示差异”：隐藏与多数设备输出一致的设备
+const displayResults = computed(() => {
+  if (!batchDiff.value) return batchResults.value
+  const groups = new Map<string, number>()
+  for (const r of batchResults.value) {
+    const k = normOut(r.stdout || r.error)
+    groups.set(k, (groups.get(k) || 0) + 1)
+  }
+  let maxKey = ''
+  let maxN = -1
+  for (const [k, n] of groups) if (n > maxN) { maxN = n; maxKey = k }
+  return batchResults.value.filter(r => normOut(r.stdout || r.error) !== maxKey)
+})
+
+async function openBatch() {
+  batchVisible.value = true
+  batchIds.value = onlineDevices.value.map((d: any) => d.id)
+  if (!batchTemplates.value.length) {
+    try {
+      const r = await api.get('/v2/batch/templates') as any
+      batchTemplates.value = r?.data || []
+    } catch { /* ignore */ }
+  }
+  loadBatchHistory()
+}
+
+async function loadBatchHistory() {
+  try {
+    const r = await api.get('/v2/batch/history', { params: { limit: 20 } }) as any
+    batchHistory.value = r?.data || []
+  } catch { batchHistory.value = [] }
+}
+
+function replayHistory(h: any) {
+  batchCommand.value = h.command || ''
+  batchResults.value = h.results || []
+  batchSummary.value = h.summary || { total: 0, ok: 0, failed: 0, totalMs: 0 }
+  batchDiff.value = false
+}
+
+async function doBatchRun() {
+  if (!batchIds.value.length) { ElMessage.warning('请至少选择一台设备'); return }
+  if (!batchCommand.value.trim()) { ElMessage.warning('请输入命令'); return }
+  batchRunning.value = true
+  batchDiff.value = false
+  try {
+    const r = await api.post('/v2/batch/run', {
+      deviceIds: batchIds.value,
+      command: batchCommand.value.trim(),
+    }, { timeout: 180000 }) as any
+    batchResults.value = r?.data?.results || []
+    batchSummary.value = r?.data?.summary || { total: 0, ok: 0, failed: 0, totalMs: 0 }
+    ElMessage.success(`完成：成功 ${batchSummary.value.ok}/${batchSummary.value.total}`)
+    loadBatchHistory()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '执行失败')
+  } finally {
+    batchRunning.value = false
+  }
+}
+
+async function doClearBatchHistory() {
+  try {
+    await ElMessageBox.confirm('清空全部批量执行历史？', '确认', { type: 'warning' })
+  } catch { return }
+  try {
+    await api.delete('/v2/batch/history')
+    batchHistory.value = []
+    ElMessage.success('已清空')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '清空失败')
+  }
+}
 
 // ── 从后端拿指标列表 ──
 const metricList = ref<any[]>([])
@@ -575,4 +759,71 @@ async function loadMetrics() {
 .d-install-msg { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
 .d-install-msg.ok { background: #f0fdf4; color: #166534; }
 .d-install-msg.err { background: #fef2f2; color: #991b1b; }
+
+/* ══ 批量命令 ══ */
+.d-scan-btn.batch { background: #eef2ff; color: #4f7cff; border-color: #c7d2fe; }
+.d-scan-btn.batch:hover { background: #4f7cff; color: #fff; }
+
+.bd-sec { margin-bottom: 16px; }
+.bd-sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 8px;
+}
+.bd-sec-head b { color: #4f7cff; }
+.bd-sec-head .ok { color: #15c39a; }
+.bd-sec-acts { font-weight: 400; display: flex; gap: 4px; }
+
+.bd-devs {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px; max-height: 168px; overflow-y: auto;
+  padding: 8px 10px; border: 1px solid #eef0f4; border-radius: 8px; background: #fafbfc;
+}
+.bd-devs :deep(.el-checkbox) { margin-right: 0; height: 26px; }
+.bd-dev-name { font-size: 12px; color: #1f2937; }
+.bd-dev-ip { font-size: 11px; color: #94a3b8; margin-left: 6px; }
+.bd-dev-off { font-size: 11px; color: #cbd5e1; margin-left: 6px; }
+
+.bd-tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 8px; }
+.bd-tpl {
+  text-align: left; padding: 8px 10px; border: 1px solid #e8ecf3; border-radius: 8px;
+  background: #fff; cursor: pointer; transition: all .15s; display: flex; flex-direction: column; gap: 3px;
+}
+.bd-tpl:hover { border-color: #4f7cff; background: #f7faff; }
+.bd-tpl.on { border-color: #4f7cff; background: #eef2ff; }
+.bd-tpl-lbl { font-size: 12px; color: #1f2937; font-weight: 500; }
+.bd-tpl-cmd {
+  font-size: 10.5px; color: #94a3b8; font-family: ui-monospace, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.bd-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.bd-hint { font-size: 11px; color: #a8b0bd; }
+
+.bd-results { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.bd-res { border: 1px solid #eef0f4; border-radius: 8px; overflow: hidden; }
+.bd-res.err { border-color: #fde2e2; }
+.bd-res-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: #fafbfc; border-bottom: 1px solid #f1f3f7;
+}
+.bd-res-name { font-size: 12px; font-weight: 600; color: #1f2937; }
+.bd-res-time { font-size: 11px; color: #a8b0bd; margin-left: auto; }
+.bd-res-out {
+  margin: 0; padding: 8px 10px; font-size: 11.5px; line-height: 1.5;
+  font-family: ui-monospace, monospace; color: #475569; background: #fff;
+  max-height: 150px; overflow: auto; white-space: pre-wrap;
+}
+
+.bd-hist { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
+.bd-hist-item {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  border-radius: 6px; background: #fafbfc; cursor: pointer; border: 1px solid transparent;
+}
+.bd-hist-item:hover { background: #f2f6ff; border-color: #dbe4ff; }
+.bd-hist-cmd {
+  font-size: 11.5px; color: #334155; font-family: ui-monospace, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.bd-hist-meta { font-size: 11px; color: #a8b0bd; flex-shrink: 0; }
+.bd-hist-empty { font-size: 12px; color: #b8c0cc; padding: 10px; text-align: center; }
 </style>

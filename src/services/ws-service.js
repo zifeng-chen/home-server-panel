@@ -88,6 +88,27 @@ function init(httpServer) {
           socket.write('HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
           socket.destroy();
         });
+    } else if (pathname === '/api/v2/terminal/ws') {
+      // V2 设备终端中继 — Cookie 认证 + ?id=<deviceId>
+      const cookieToken = (request.headers.cookie || '').split(';')
+        .map(c => c.trim())
+        .find(c => c.startsWith('hsp_token='))
+        ?.split('=')[1];
+      if (!cookieToken || !auth.verifyToken(cookieToken)) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      const q = new URL(request.url, `http://${request.headers.host}`).searchParams;
+      const deviceId = q.get('id');
+      if (!deviceId) {
+        socket.write('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        handleTerminalConnection(ws, deviceId, q.get('host'));
+      });
     } else {
       // Unknown path, destroy
       socket.destroy();
@@ -193,6 +214,60 @@ function handleSshConnection(ws) {
     for (const { event, fn } of listeners) sshService.off(event, fn);
     if (sessionId) { sshService.disconnect(sessionId); sessionId = null; }
   });
+}
+
+// === V2 终端中继连接处理（Phase 3）===
+function handleTerminalConnection(ws, deviceId, host) {
+  const terminalRelay = require('./v2/terminal-relay');
+
+  const sendJSON = (obj) => {
+    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
+  };
+
+  let session = null;
+  try {
+    session = terminalRelay.create(deviceId, {
+      host: host || deviceId,
+      send: (text) => sendJSON({ type: 'data', data: text }),
+      onClose: () => { try { ws.close(); } catch (_) { /* ignore */ } },
+    });
+  } catch (err) {
+    sendJSON({ type: 'error', message: err.message });
+    try { ws.close(); } catch (_) { /* ignore */ }
+    return;
+  }
+
+  console.log(`[WS] 终端会话建立: ${session.id} → ${deviceId}`);
+  sendJSON({ type: 'ready', sessionId: session.id, deviceId, host: host || deviceId });
+  session.banner();
+
+  ws.on('message', (raw) => {
+    let msg;
+    try { msg = JSON.parse(raw.toString()); } catch { return; }
+    switch (msg.type) {
+      case 'input':
+        if (session) session.input(msg.data || '');
+        break;
+      case 'interrupt':
+        if (session) session.input('\x03');
+        break;
+      case 'ping':
+        sendJSON({ type: 'pong', t: Date.now() });
+        break;
+      default:
+        break;
+    }
+  });
+
+  const cleanup = () => {
+    if (session) {
+      console.log(`[WS] 终端会话关闭: ${session.id}`);
+      terminalRelay.close(session.id);
+      session = null;
+    }
+  };
+  ws.on('close', cleanup);
+  ws.on('error', cleanup);
 }
 
 module.exports = { init, sendToDevice, isDeviceOnline, getOnlineDeviceCount };

@@ -58,3 +58,18 @@
 - [x] 安装引导API (`POST /api/nginx/install`)
 - [x] 前端实时终端日志 UI (EventSource + 滚动)
 - [x] 多平台支持 (brew/apt/yum/apk)
+
+## V3.0 Phase 3 — 设备远程运维 🚧
+- [x] FR-3.2 文件浏览器（list/read/write/delete/upload/download + 路径白名单 + 敏感文件黑名单）
+- [x] FR-3.3 Docker 管理（容器/镜像/资源占用/Compose；Agent + 本机双通道；镜像拉取与清理）
+- [x] FR-3.1 Web 终端（xterm.js + WS 中继；多会话；行模式交互 shell；断线重连）
+- [x] FR-3.4 批量命令（并行执行 + 10 个巡检模板 + 差异对比 + 历史回放）
+- [ ] T8 部署验收：需在 `192.168.100.x` 网段对 iStoreOS 实机实测
+
+## V3.0 Phase 4 — AI 智能引擎 ⬜
+- [ ] AI 对话面板 / 设备诊断 / 方案生成 / 自然语言命令
+
+## V3.0 Phase 5 — 技能插件体系 ⬜
+
+## V3.0 Phase 6 — 自愈与自动运维 ⬜
+- [ ] 注：2026-07-01 曾实现 health-check/healing/report-service，2026-07-02 清理时被当作残留删除，只剩 alert-service

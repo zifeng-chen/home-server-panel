@@ -1,5 +1,39 @@
 # v0.9.4-beta (2026-06-27)
 
+## [未发布] V3.0 Phase 3 — 设备远程运维（T4–T7）(2026-10-05)
+
+> 承接上一次提交的 FR-3.2 文件浏览器，本次补齐 Phase 3 剩余三块能力。
+
+### FR-3.3 Docker 管理（新增）
+- 🐳 Agent 侧 `agent/docker.go`：新增 11 个动作（`docker_status / ps / logs / stats / action / remove / images / pull / image_rm / prune / compose`）
+- 🐳 服务端 `docker-remote.js` + `routes/v2/docker.js`：远程经 WS 命令通道转发，本机直连 docker CLI
+- 🐳 前端 `DockerPanel.vue`：容器列表（状态点/端口/CPU·MEM）、启停重启、日志抽屉（自动刷新）、镜像拉取与清理、Compose 面板
+- 🔒 容器名/镜像引用正则白名单 + 操作 allowlist；不拼接 shell，全部走参数数组，杜绝命令注入
+- 🔒 Volume prune 需显式确认；compose 文件复用文件浏览器路径白名单，仅允许 `.yml/.yaml`
+- 🧩 Compose `ps` 表格解析改为按表头列区间切分，修复 CREATED/STATUS 含空格导致的串列问题
+
+### FR-3.1 Web 终端（新增）
+- 🖥️ `terminal-relay.js` + WS 路径 `/api/v2/terminal/ws`：浏览器 ←WS→ HSP ←命令通道→ Agent，设备不直连
+- 🖥️ `WebTerminal.vue`（xterm.js）：多会话标签、断线自动重连、复制/粘贴/清屏、窗口自适应
+- ⌨️ 行模式交互 shell：逐字符回显、退格、Ctrl+C / Ctrl+L、↑↓ 历史、`cd` 跟踪与 `~` 缩写
+- 🔒 终端通道独立 Cookie 鉴权，非登录态直接 401
+- ℹ️ 不引入 PTY 原生依赖，行为在 iStoreOS(BusyBox) 上一致；全屏程序（top/vi）不在支持范围
+
+### FR-3.4 批量命令（完善）
+- ⚡ `command-service.sendMany()`：并发上限 5 的并行下发 + 逐设备结果聚合（原先只广播不回收，等于空转）
+- ⚡ `batch-service.js` + `routes/v2/batch.js`：10 个预定义巡检模板、结果按设备聚合、差异对比、历史落盘（`data/batch-history.json`，保留 100 条）
+- ⚡ `Devices.vue`：批量命令弹窗（设备多选、模板一键填入、结果卡片、「仅显示差异」、历史回放）
+- 🐛 修复 `command-service.getOnlineDevices()` 引用未定义变量导致返回空数组
+
+### 回归与验证
+- ✅ Go 单测新增 `agent/docker_test.go`（compose 解析 / 引用校验 / 危险操作守卫）
+- ✅ 服务层端到端脚本 68 项断言通过（含假 Agent 模拟远程设备）
+- ✅ WS 终端端到端 13 项断言通过（真实握手 + 鉴权 + 交互）
+- ✅ Agent 三架构重新编译（`linux-amd64 / linux-arm64 / darwin-arm64`，v2.0.2）
+
+### 待办
+- ⏳ T8 部署验收：需在 `192.168.100.x` 网段对 iStoreOS 实机验证（当前本机跨网段无法连通）
+
 ## [v0.9.4-beta] - 2026-06-27
 
 ### 设备详情页全面重设计

@@ -317,6 +317,10 @@ app.use('/api/v2/install', require('./routes/v2/install'));
 app.use('/api/v2/dashboard', require('./routes/v2/dashboard'));
 // Phase 3 远程运维：文件操作（需认证）
 app.use('/api/v2/file', require('./routes/v2/file'));
+// Phase 3 远程运维：远程 Docker（需认证）
+app.use('/api/v2/docker', require('./routes/v2/docker'));
+// Phase 3 远程运维：批量命令（需认证）
+app.use('/api/v2/batch', require('./routes/v2/batch'));
 
 // SPA fallback
 app.use((req, res, next) => {

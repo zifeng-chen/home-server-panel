@@ -255,7 +255,21 @@
     "notInstalled": "Docker not installed",
     "running": "Running",
     "stopped": "Stopped",
-    "subtitle": "Container & image lifecycle"
+    "subtitle": "Container & image lifecycle",
+    "notAvailable": "Docker unavailable",
+    "daemonDown": "Docker installed but daemon is not running",
+    "filterPlaceholder": "Filter containers / images",
+    "showAll": "Include stopped",
+    "loadStats": "Load resource usage",
+    "noContainers": "No containers",
+    "noImages": "No images",
+    "dangling": "Dangling",
+    "pull": "Pull",
+    "prune": "Prune dangling images",
+    "compose": "Compose",
+    "composeHint": "Compose file must live in an allowed directory (/root /opt /mnt /volume* ...) and be .yml / .yaml",
+    "composeEmpty": "Pick an action to see output here",
+    "follow": "Auto refresh"
   },
   "ssh": {
     "title": "SSH Terminal",
@@ -546,5 +560,16 @@
     "batchInstall": "Batch Install",
     "clearResults": "Clear Results",
     "quickActions": "Quick Actions"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "newTab": "New session",
+    "reconnect": "Reconnect",
+    "copy": "Copy",
+    "paste": "Paste",
+    "clear": "Clear",
+    "noTab": "No session",
+    "open": "Open terminal",
+    "lineModeNote": "Line-mode terminal: press Enter to run the whole line; Ctrl+C cancels, Ctrl+L clears, Up/Down browses history. Full-screen apps (top/vi) are not supported."
   }
 }

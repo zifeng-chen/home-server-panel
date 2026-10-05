@@ -51,6 +51,14 @@
             <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
             {{ $t('files.title') }}
           </el-button>
+          <el-button v-if="device.status === 'online'" @click="toggleTerminal" :type="showTerminal ? 'primary' : ''">
+            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><rect x="2" y="4" width="20" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 9l3 3-3 3M12 15h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ $t('terminal.title') }}
+          </el-button>
+          <el-button v-if="device.status === 'online'" @click="toggleDocker" :type="showDocker ? 'primary' : ''">
+            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M22 10.5h-2.5V8h-3v2.5H14V8h-3v2.5H8.5V8h-3v2.5H3V13c0 4.5 3 7.5 8 7.5 4.6 0 8-2.6 8.6-6.5H22v-3.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            Docker
+          </el-button>
           <el-button type="danger" plain @click="doDelete">
             <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>
             {{ $t('devices.delete') }}
@@ -241,6 +249,12 @@
 
       <!-- ===== 文件浏览器（Phase 3）===== -->
       <FileBrowser v-if="showFileBrowser" :device-id="deviceId" />
+
+      <!-- ===== Web 终端（Phase 3）===== -->
+      <WebTerminal v-if="showTerminal" :device-id="deviceId" :host="device.ip || device.name || device.hostname" />
+
+      <!-- ===== 远程 Docker（Phase 3）===== -->
+      <DockerPanel v-if="showDocker" :device-id="deviceId" />
     </template>
   </div>
 </template>
@@ -253,6 +267,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDevicesStore } from '../stores/devices'
 import api from '../api'
 import FileBrowser from '../components/FileBrowser.vue'
+import WebTerminal from '../components/WebTerminal.vue'
+import DockerPanel from '../components/DockerPanel.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -304,6 +320,18 @@ const diskColor = computed(() => {
 const showCommandPanel = ref(false)
 // 文件浏览器
 const showFileBrowser = ref(false)
+// Web 终端 / Docker 面板（互斥展示，避免页面过长）
+const showTerminal = ref(false)
+const showDocker = ref(false)
+
+function toggleTerminal() {
+  showTerminal.value = !showTerminal.value
+  if (showTerminal.value) showDocker.value = false
+}
+function toggleDocker() {
+  showDocker.value = !showDocker.value
+  if (showDocker.value) showTerminal.value = false
+}
 const cmdText = ref('')
 const cmdSending = ref(false)
 const cmdResult = ref<string | null>(null)

@@ -34,7 +34,7 @@ var (
 	hostIP     string
 
 	httpClient = &http.Client{Timeout: 15 * time.Second}
-	agentVersion = "2.0.1"
+	agentVersion = "2.0.2"
 
 	// 网络速率计算：差分累计字节数 → B/s
 	lastNetRx  uint64
@@ -413,6 +413,10 @@ func executeCommand(cmd Msg) map[string]any {
 		return runPlugin("netstat", nil)
 	case "file_list", "file_read", "file_write", "file_delete", "file_upload":
 		return handleFileAction(cmd.Action, cmd.Data)
+	case "docker_status", "docker_ps", "docker_logs", "docker_stats",
+		"docker_action", "docker_remove", "docker_images", "docker_pull",
+		"docker_image_rm", "docker_prune", "docker_compose":
+		return handleDockerAction(cmd.Action, cmd.Data)
 	default:
 		return map[string]any{"error": "unknown action", "action": cmd.Action}
 	}

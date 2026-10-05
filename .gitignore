@@ -6,6 +6,7 @@ data/*.bak
 data/panel.db
 data/proxy-config.json
 data/sessions.json
+data/batch-history.json
 logs/
 node_modules/
 packaging/dist/

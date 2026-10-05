@@ -255,7 +255,21 @@
     "notInstalled": "Docker 未安装",
     "running": "运行中",
     "stopped": "已停止",
-    "subtitle": "容器与镜像生命周期"
+    "subtitle": "容器与镜像生命周期",
+    "notAvailable": "Docker 不可用",
+    "daemonDown": "Docker 已安装但 daemon 未运行",
+    "filterPlaceholder": "筛选容器 / 镜像",
+    "showAll": "含未运行",
+    "loadStats": "加载资源占用",
+    "noContainers": "暂无容器",
+    "noImages": "暂无镜像",
+    "dangling": "悬空",
+    "pull": "拉取",
+    "prune": "清理悬空镜像",
+    "compose": "Compose",
+    "composeHint": "compose 文件需位于允许目录（/root /opt /mnt /volume* 等），且为 .yml / .yaml",
+    "composeEmpty": "选择动作后在此查看输出",
+    "follow": "自动刷新"
   },
   "ssh": {
     "title": "SSH 终端",
@@ -546,5 +560,16 @@
     "batchInstall": "批量安装",
     "clearResults": "清空结果",
     "quickActions": "快捷操作"
+  },
+  "terminal": {
+    "title": "终端",
+    "newTab": "新会话",
+    "reconnect": "重连",
+    "copy": "复制",
+    "paste": "粘贴",
+    "clear": "清屏",
+    "noTab": "暂无会话",
+    "open": "打开终端",
+    "lineModeNote": "行模式终端：回车执行整行命令；Ctrl+C 取消、Ctrl+L 清屏、上下键翻历史。全屏程序（top/vi）暂不支持。"
   }
 }

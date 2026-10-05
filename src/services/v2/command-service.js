@@ -95,13 +95,67 @@ class CommandService {
   }
 
   /**
+   * 并行向多台设备下发命令，聚合逐设备结果（批量命令用）
+   * @param {string[]} deviceIds
+   * @param {object} command - { action, command, plugin, data }
+   * @param {{timeout?:number, concurrency?:number}} opts
+   * @returns {Promise<{results:Array, totalMs:number}>}
+   */
+  async sendMany(deviceIds, command, opts = {}) {
+    const timeout = opts.timeout || DEFAULT_TIMEOUT;
+    const concurrency = Math.max(1, Math.min(opts.concurrency || 5, 20));
+    const list = [...new Set((deviceIds || []).filter(Boolean))];
+    const results = new Array(list.length);
+    let cursor = 0;
+    const startedAt = Date.now();
+
+    const worker = async () => {
+      while (cursor < list.length) {
+        const idx = cursor++;
+        const deviceId = list[idx];
+        const t0 = Date.now();
+        try {
+          const reply = await this.send(deviceId, command, timeout);
+          const r = (reply && reply.result) || {};
+          const stdout = typeof r.stdout === 'string' ? r.stdout
+            : (typeof r.output === 'string' ? r.output : '');
+          results[idx] = {
+            deviceId,
+            ok: !r.error && (typeof r.exit_code !== 'number' || r.exit_code === 0),
+            stdout,
+            stderr: typeof r.stderr === 'string' ? r.stderr : '',
+            exitCode: typeof r.exit_code === 'number' ? r.exit_code : (r.error ? 1 : 0),
+            error: r.error || '',
+            duration: Date.now() - t0,
+          };
+        } catch (err) {
+          results[idx] = {
+            deviceId,
+            ok: false,
+            stdout: '',
+            stderr: '',
+            exitCode: -1,
+            error: err.message,
+            duration: Date.now() - t0,
+          };
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, list.length) }, () => worker())
+    );
+    return { results, totalMs: Date.now() - startedAt };
+  }
+
+  /**
    * 获取在线设备列表
    */
   getOnlineDevices() {
     const online = [];
     for (const [dId, ws] of deviceConns) {
       if (ws.readyState === 1) {
-        online.push(deviceId);
+        online.push(dId);
       }
     }
     return online;

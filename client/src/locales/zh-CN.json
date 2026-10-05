@@ -370,6 +370,20 @@
     "noResponse": "无返回",
     "sendCmdSuccess": "命令已发送"
   },
+  "files": {
+    "title": "文件",
+    "refresh": "刷新",
+    "newFile": "新建",
+    "upload": "上传",
+    "up": "上级",
+    "download": "下载",
+    "save": "保存",
+    "close": "关闭",
+    "delete": "删除",
+    "empty": "空目录",
+    "binary": "二进制文件，请下载查看",
+    "confirmDelete": "确定删除该文件？"
+  },
   "settings": {
     "title": "系统设置",
     "basic": "基础设置",

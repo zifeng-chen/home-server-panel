@@ -315,6 +315,8 @@ app.use('/api/monitor', require('./routes/monitor'));
 app.use('/api/v2/discovery', require('./routes/v2/discovery'));
 app.use('/api/v2/install', require('./routes/v2/install'));
 app.use('/api/v2/dashboard', require('./routes/v2/dashboard'));
+// Phase 3 远程运维：文件操作（需认证）
+app.use('/api/v2/file', require('./routes/v2/file'));
 
 // SPA fallback
 app.use((req, res, next) => {

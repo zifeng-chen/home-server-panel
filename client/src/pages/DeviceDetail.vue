@@ -47,6 +47,10 @@
             <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M9 2h6v2H9zm2 4v4h2V6zm-6.5 7l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             {{ $t('devices.sendCommand') }}
           </el-button>
+          <el-button v-if="device.status === 'online'" @click="showFileBrowser = !showFileBrowser" :type="showFileBrowser ? 'primary' : ''">
+            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            {{ $t('files.title') }}
+          </el-button>
           <el-button type="danger" plain @click="doDelete">
             <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:4px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>
             {{ $t('devices.delete') }}
@@ -234,6 +238,9 @@
           <div v-else class="panel-empty">{{ $t('devices.noCommands') }}</div>
         </div>
       </div>
+
+      <!-- ===== 文件浏览器（Phase 3）===== -->
+      <FileBrowser v-if="showFileBrowser" :device-id="deviceId" />
     </template>
   </div>
 </template>
@@ -245,6 +252,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDevicesStore } from '../stores/devices'
 import api from '../api'
+import FileBrowser from '../components/FileBrowser.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -294,6 +302,8 @@ const diskColor = computed(() => {
 
 // 命令面板
 const showCommandPanel = ref(false)
+// 文件浏览器
+const showFileBrowser = ref(false)
 const cmdText = ref('')
 const cmdSending = ref(false)
 const cmdResult = ref<string | null>(null)

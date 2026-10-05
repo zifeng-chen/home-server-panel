@@ -411,6 +411,8 @@ func executeCommand(cmd Msg) map[string]any {
 		return runPlugin("ps", nil)
 	case "get_connections":
 		return runPlugin("netstat", nil)
+	case "file_list", "file_read", "file_write", "file_delete", "file_upload":
+		return handleFileAction(cmd.Action, cmd.Data)
 	default:
 		return map[string]any{"error": "unknown action", "action": cmd.Action}
 	}

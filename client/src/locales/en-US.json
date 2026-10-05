@@ -370,6 +370,20 @@
     "noResponse": "No response",
     "sendCmdSuccess": "Command sent"
   },
+  "files": {
+    "title": "Files",
+    "refresh": "Refresh",
+    "newFile": "New",
+    "upload": "Upload",
+    "up": "Up",
+    "download": "Download",
+    "save": "Save",
+    "close": "Close",
+    "delete": "Delete",
+    "empty": "Empty directory",
+    "binary": "Binary file, download to view",
+    "confirmDelete": "Delete this file?"
+  },
   "settings": {
     "title": "System Settings",
     "basic": "Basic Settings",
